@@ -40,6 +40,7 @@
 //! All public types live in the crate root or in clearly named submodules.
 
 pub mod config;
+pub mod emit;
 pub mod error;
 pub mod gate;
 pub mod intake;
