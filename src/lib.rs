@@ -46,6 +46,7 @@ pub mod error;
 pub mod gate;
 pub mod intake;
 pub mod ir;
+pub mod linkgen;
 pub mod lower;
 pub mod output;
 pub mod typemap;
