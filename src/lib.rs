@@ -40,6 +40,7 @@
 //! All public types live in the crate root or in clearly named submodules.
 
 pub mod config;
+pub mod contract;
 #[cfg(test)]
 mod corpus;
 pub mod crategen;
@@ -52,6 +53,8 @@ pub mod linkgen;
 pub mod lower;
 pub mod output;
 pub mod typemap;
+
+pub use contract::{generate, GecOutputMeta, SCHEMA_VERSION};
 
 pub use config::GecConfig;
 pub use error::{GecError, GecResult};
