@@ -44,6 +44,7 @@ pub mod error;
 pub mod intake;
 pub mod ir;
 pub mod output;
+pub mod typemap;
 
 pub use config::GecConfig;
 pub use error::{GecError, GecResult};
