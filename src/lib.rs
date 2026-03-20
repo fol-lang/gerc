@@ -40,6 +40,7 @@
 //! All public types live in the crate root or in clearly named submodules.
 
 pub mod config;
+pub mod consumer;
 pub mod contract;
 #[cfg(test)]
 mod corpus;
