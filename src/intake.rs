@@ -1,10 +1,22 @@
-use bic::{BindingPackage, ResolvedLinkPlan, ValidationReport};
+use bic::{
+    BindingItem, BindingPackage, DeclarationProvenance, ResolvedLinkPlan, ValidationReport,
+};
 
 /// Primary input container for a `gec` generation run.
 ///
 /// Wraps a required `bic::BindingPackage` plus optional enrichment data.
 /// The `BindingPackage` is the single source of truth for C declarations;
 /// validation and link-plan data are supplementary evidence.
+///
+/// ## Required vs optional `bic` evidence
+///
+/// - **Required**: `BindingPackage` — always needed; contains items, diagnostics,
+///   macros, layouts, and link surface.
+/// - **Optional**: `ValidationReport` — symbol-level validation evidence.
+///   Useful for gating generation on verified symbols but not required for
+///   basic projection.
+/// - **Optional**: `ResolvedLinkPlan` — resolved native link requirements.
+///   When absent, `gec` uses the raw `BindingLinkSurface` from the package.
 #[derive(Debug, Clone)]
 pub struct GecInput {
     /// The core `bic` analysis output — required.
@@ -37,6 +49,13 @@ impl GecInput {
         self
     }
 
+    /// Normalize the intake: remove duplicate items and ensure provenance
+    /// alignment with items. This is idempotent.
+    pub fn normalize(&mut self) {
+        dedup_items(&mut self.package);
+        align_provenance(&mut self.package);
+    }
+
     /// Returns `true` if the package contains no items and no diagnostics.
     pub fn is_empty(&self) -> bool {
         self.package.is_empty()
@@ -56,6 +75,18 @@ impl GecInput {
     pub fn has_link_plan(&self) -> bool {
         self.link_plan.is_some()
     }
+
+    /// Whether the package has provenance entries aligned with items.
+    pub fn has_aligned_provenance(&self) -> bool {
+        self.package.provenance.len() == self.package.items.len()
+    }
+
+    /// Construct from a JSON string (deserializes a `BindingPackage`).
+    pub fn from_json(json: &str) -> Result<Self, String> {
+        let package: BindingPackage =
+            serde_json::from_str(json).map_err(|e| e.to_string())?;
+        Ok(Self::from_package(package))
+    }
 }
 
 impl From<BindingPackage> for GecInput {
@@ -64,12 +95,74 @@ impl From<BindingPackage> for GecInput {
     }
 }
 
+/// Remove duplicate items by (kind, name) identity. Keeps first occurrence.
+fn dedup_items(pkg: &mut BindingPackage) {
+    let mut seen = std::collections::HashSet::new();
+    let mut deduped = Vec::new();
+    let mut deduped_prov = Vec::new();
+
+    for (i, item) in pkg.items.drain(..).enumerate() {
+        let key = item_identity(&item);
+        if seen.insert(key) {
+            deduped.push(item);
+            if let Some(prov) = pkg.provenance.get(i).cloned() {
+                deduped_prov.push(prov);
+            }
+        }
+    }
+    pkg.items = deduped;
+    if !pkg.provenance.is_empty() {
+        pkg.provenance = deduped_prov;
+    }
+}
+
+fn item_identity(item: &BindingItem) -> String {
+    match item {
+        BindingItem::Function(f) => format!("fn:{}", f.name),
+        BindingItem::Record(r) => {
+            format!("rec:{}", r.name.as_deref().unwrap_or("<anon>"))
+        }
+        BindingItem::Enum(e) => {
+            format!("enum:{}", e.name.as_deref().unwrap_or("<anon>"))
+        }
+        BindingItem::TypeAlias(t) => format!("alias:{}", t.name),
+        BindingItem::Variable(v) => format!("var:{}", v.name),
+        BindingItem::Unsupported(u) => {
+            format!("unsup:{}", u.name.as_deref().unwrap_or("<anon>"))
+        }
+    }
+}
+
+/// Ensure provenance vec is aligned with items (pad with defaults if short).
+fn align_provenance(pkg: &mut BindingPackage) {
+    if pkg.provenance.is_empty() && !pkg.items.is_empty() {
+        // No provenance at all — leave empty (not all packages have it)
+        return;
+    }
+    while pkg.provenance.len() < pkg.items.len() {
+        pkg.provenance.push(DeclarationProvenance::default());
+    }
+    pkg.provenance.truncate(pkg.items.len());
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use bic::*;
 
     fn empty_package() -> BindingPackage {
         BindingPackage::new()
+    }
+
+    fn sample_function(name: &str) -> BindingItem {
+        BindingItem::Function(FunctionBinding {
+            name: name.into(),
+            calling_convention: CallingConvention::C,
+            parameters: vec![],
+            return_type: BindingType::Void,
+            variadic: false,
+            source_offset: None,
+        })
     }
 
     #[test]
@@ -93,5 +186,97 @@ mod tests {
             .with_link_plan(ResolvedLinkPlan::default());
         assert!(input.has_link_plan());
         assert!(!input.has_validation());
+    }
+
+    #[test]
+    fn normalize_dedup_functions() {
+        let mut pkg = empty_package();
+        pkg.items.push(sample_function("foo"));
+        pkg.items.push(sample_function("foo")); // duplicate
+        pkg.items.push(sample_function("bar"));
+
+        let mut input = GecInput::from_package(pkg);
+        assert_eq!(input.item_count(), 3);
+        input.normalize();
+        assert_eq!(input.item_count(), 2);
+    }
+
+    #[test]
+    fn normalize_preserves_provenance_alignment() {
+        let mut pkg = empty_package();
+        pkg.items.push(sample_function("a"));
+        pkg.items.push(sample_function("b"));
+        pkg.provenance.push(DeclarationProvenance {
+            item_name: Some("a".into()),
+            ..Default::default()
+        });
+        // provenance shorter than items
+
+        let mut input = GecInput::from_package(pkg);
+        input.normalize();
+        assert!(input.has_aligned_provenance());
+    }
+
+    #[test]
+    fn normalize_is_idempotent() {
+        let mut pkg = empty_package();
+        pkg.items.push(sample_function("foo"));
+        pkg.items.push(sample_function("foo"));
+
+        let mut input = GecInput::from_package(pkg);
+        input.normalize();
+        let count_after_first = input.item_count();
+        input.normalize();
+        assert_eq!(input.item_count(), count_after_first);
+    }
+
+    #[test]
+    fn from_json_minimal() {
+        let json = r#"{"source_path": null, "items": [], "diagnostics": []}"#;
+        let input = GecInput::from_json(json).unwrap();
+        assert!(input.is_empty());
+    }
+
+    #[test]
+    fn from_json_with_function() {
+        let json = r#"{
+            "source_path": "test.h",
+            "items": [
+                {"Function": {
+                    "name": "foo",
+                    "calling_convention": "C",
+                    "parameters": [],
+                    "return_type": "Void",
+                    "variadic": false,
+                    "source_offset": null
+                }}
+            ],
+            "diagnostics": []
+        }"#;
+        let input = GecInput::from_json(json).unwrap();
+        assert_eq!(input.item_count(), 1);
+    }
+
+    #[test]
+    fn from_json_invalid() {
+        let result = GecInput::from_json("not json");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn provenance_preserved_through_normalize() {
+        let mut pkg = empty_package();
+        pkg.items.push(sample_function("x"));
+        pkg.provenance.push(DeclarationProvenance {
+            item_name: Some("x".into()),
+            ..Default::default()
+        });
+
+        let mut input = GecInput::from_package(pkg);
+        input.normalize();
+        assert_eq!(
+            input.package.provenance[0].item_name.as_deref(),
+            Some("x")
+        );
     }
 }
