@@ -43,6 +43,7 @@ pub mod config;
 pub mod error;
 pub mod intake;
 pub mod ir;
+pub mod lower;
 pub mod output;
 pub mod typemap;
 
