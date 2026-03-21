@@ -154,6 +154,8 @@ pub fn emit_crate(
         emitted.files.push(build_rs);
     }
 
+    emitted.files.sort();
+
     Ok(emitted)
 }
 
@@ -380,6 +382,33 @@ mod tests {
         assert!(dir.join("src/lib.rs").exists());
         assert!(dir.join("build.rs").exists());
         assert!(result.files.len() >= 3);
+    }
+
+    #[test]
+    fn emitted_files_are_deterministically_ordered() {
+        let dir = tempdir("emit_file_order");
+        let mut proj = sample_projection();
+        proj.link_requirements.push(RustLinkRequirement {
+            kind: RustLinkKind::DynamicLibrary,
+            name: "z".into(),
+            search_path: None,
+        });
+        let cfg = sample_config();
+        let result = emit_crate(
+            &proj,
+            &cfg,
+            &dir,
+            OutputMode::Crate,
+            OverwritePolicy::Overwrite,
+        )
+        .unwrap();
+
+        let ordered: Vec<String> = result
+            .files
+            .iter()
+            .map(|path| path.strip_prefix(&dir).unwrap().display().to_string())
+            .collect();
+        assert_eq!(ordered, vec!["Cargo.toml", "build.rs", "src/lib.rs"]);
     }
 
     #[test]
