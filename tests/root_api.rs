@@ -28,29 +28,6 @@ fn root_reexports_source_emit_helpers() {
 }
 
 #[test]
-fn root_reexports_legacy_binding_adapters() {
-    let mut pkg = linc::BindingPackage::new();
-    pkg.items.push(linc::BindingItem::Function(linc::FunctionBinding {
-        name: "legacy_demo".into(),
-        calling_convention: linc::CallingConvention::C,
-        parameters: vec![],
-        return_type: linc::BindingType::Void,
-        variadic: false,
-        source_offset: None,
-    }));
-
-    let input = gec::input_from_binding_package(pkg.clone());
-    assert_eq!(input.item_count(), 1);
-
-    let json = serde_json::to_string(&pkg).unwrap();
-    let from_json = gec::input_from_binding_json(&json).unwrap();
-    assert_eq!(from_json.item_count(), 1);
-
-    let source = gec::source_from_binding_package(&pkg);
-    assert_eq!(source.declarations.len(), 1);
-}
-
-#[test]
 fn root_reexports_rustc_link_arg_renderer() {
     let args = gec::emit_rustc_link_args(&[
         gec::ir::RustLinkRequirement {
@@ -181,8 +158,9 @@ fn root_helpers_support_intake_gate_lower_workflow() {
             source_offset: None,
         }));
 
-    let input = gec::GecInput::from_source_package(source).with_evidence(gec::EvidenceInputs::default());
-    let package = linc::from_source_package(&input.source);
+    let input =
+        gec::GecInput::from_source_package(source).with_evidence(gec::EvidenceInputs::default());
+    let package = linc::intake::adapters::to_binding_package(&input.source);
     let (decisions, gate_diags) = gec::gate_package(&package, input.evidence.validation.as_ref());
     assert!(gate_diags.is_empty());
     assert!(matches!(decisions[0], gec::GateDecision::Accept));

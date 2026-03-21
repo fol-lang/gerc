@@ -101,7 +101,7 @@ fn vendored_zlib_parc_linc_gec_link_surface() {
     let entry = root.join("main.c");
 
     let result = linc_common::process(
-        &linc::HeaderConfig::new()
+        &linc::raw_headers::HeaderConfig::new()
             .header(&entry)
             .include_dir(&include_dir)
             .link_lib("z")
@@ -110,7 +110,9 @@ fn vendored_zlib_parc_linc_gec_link_surface() {
     .unwrap();
 
     let output = generate(
-        &GecInput::from_package(result.package),
+        &GecInput::from_source_package(linc::intake::adapters::from_binding_package(
+            &result.package,
+        )),
         &GecConfig::new("zlib_sys"),
     )
     .unwrap();
@@ -131,7 +133,7 @@ fn vendored_zlib_parc_linc_gec_resolved_link_plan() {
     let entry = root.join("main.c");
 
     let result = linc_common::process(
-        &linc::HeaderConfig::new()
+        &linc::raw_headers::HeaderConfig::new()
             .header(&entry)
             .include_dir(&include_dir)
             .link_lib("z")
@@ -141,7 +143,10 @@ fn vendored_zlib_parc_linc_gec_resolved_link_plan() {
 
     let plan = linc::resolve_link_plan(&result.package);
     let output = generate(
-        &GecInput::from_package(result.package).with_link_plan(plan.clone()),
+        &GecInput::from_source_package(linc::intake::adapters::from_binding_package(
+            &result.package,
+        ))
+        .with_link_plan(plan.clone()),
         &GecConfig::new("zlib_sys"),
     )
     .unwrap();
@@ -162,7 +167,7 @@ fn vendored_libpng_parc_linc_gec_link_surface() {
     let entry = root.join("main.c");
 
     let result = linc_common::process(
-        &linc::HeaderConfig::new()
+        &linc::raw_headers::HeaderConfig::new()
             .header(&entry)
             .include_dir(&include_dir)
             .link_lib("png")
@@ -171,7 +176,9 @@ fn vendored_libpng_parc_linc_gec_link_surface() {
     .unwrap();
 
     let output = generate(
-        &GecInput::from_package(result.package),
+        &GecInput::from_source_package(linc::intake::adapters::from_binding_package(
+            &result.package,
+        )),
         &GecConfig::new("png_sys"),
     )
     .unwrap();

@@ -10,7 +10,7 @@ Cargo-compatible crate bundle with `build.rs`.
 ## Responsibilities
 
 - source-first intake from `linc::SourcePackage`
-- explicit `linc::BindingPackage` intake plus optional validation and link-plan evidence
+- optional `linc::LinkAnalysisPackage`, `ValidationReport`, and `ResolvedLinkPlan` evidence
 - conservative gating of unsupported or under-evidenced declarations
 - lowering into Rust projection IR
 - deterministic Rust source emission

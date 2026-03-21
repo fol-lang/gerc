@@ -14,14 +14,14 @@ PARC         (source parsing and extraction)
 
 ## What happens inside GERC
 
-1. **Intake** — `gec` receives a `linc::BindingPackage` (plus optional
-   validation and link-plan data) via `GecInput`.
+1. **Intake** — `gec` receives a `linc::SourcePackage` plus optional
+   validation and link-plan data via `GecInput`.
 
 2. **Safety gating** — Each declaration is checked against generation rules.
    Items that cannot be safely represented in Rust (bitfields, anonymous
    records, incomplete types) are rejected with diagnostics.
 
-3. **Lowering** — Accepted declarations are lowered from `linc` types into
+3. **Lowering** — Accepted declarations are lowered from source-derived `linc` types into
    `gec`'s internal Rust projection IR (`RustProjection`).
 
 4. **Type mapping** — C types (`int`, `void*`, pointers, arrays, function

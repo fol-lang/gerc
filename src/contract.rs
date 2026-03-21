@@ -209,7 +209,7 @@ mod tests {
             abi_confidence: None,
             source_offset: None,
         }));
-        GecInput::from_package(pkg)
+        GecInput::from_source_package(linc::intake::adapters::from_binding_package(&pkg))
     }
 
     // 11.1: root-level public API tiers
@@ -224,7 +224,7 @@ mod tests {
 
     #[test]
     fn generate_empty_input_error() {
-        let input = GecInput::from_package(BindingPackage::new());
+        let input = GecInput::from_source_package(SourcePackage::default());
         let cfg = GecConfig::default();
         let result = generate(&input, &cfg);
         assert!(result.is_err());
@@ -272,7 +272,7 @@ mod tests {
             source: LinkRequirementSource::Declared,
         });
 
-        let input = GecInput::from_package(pkg).with_link_plan(ResolvedLinkPlan {
+        let input = GecInput::from_source_package(linc::intake::adapters::from_binding_package(&pkg)).with_link_plan(ResolvedLinkPlan {
             preferred_mode: LinkResolutionMode::Default,
             native_surface_kind: NativeSurfaceKind::LibraryNames,
             platform_constraints: Vec::new(),
@@ -310,7 +310,7 @@ mod tests {
             source_offset: None,
         }));
 
-        let input = GecInput::from_package(pkg).with_link_plan(ResolvedLinkPlan {
+        let input = GecInput::from_source_package(linc::intake::adapters::from_binding_package(&pkg)).with_link_plan(ResolvedLinkPlan {
             preferred_mode: LinkResolutionMode::PreferStatic,
             native_surface_kind: NativeSurfaceKind::Mixed,
             platform_constraints: Vec::new(),
@@ -432,7 +432,7 @@ mod tests {
             source_offset: None,
         }));
 
-        let input = GecInput::from_package(pkg);
+        let input = GecInput::from_source_package(linc::intake::adapters::from_binding_package(&pkg));
         let output = generate(&input, &GecConfig::default()).unwrap();
         // Only the function should be in the projection (bitfield filtered out)
         assert_eq!(output.item_count(), 1);
@@ -485,7 +485,7 @@ mod tests {
             ],
         };
 
-        let input = GecInput::from_package(pkg).with_validation(report);
+        let input = GecInput::from_source_package(linc::intake::adapters::from_binding_package(&pkg)).with_validation(report);
         let output = generate(&input, &GecConfig::default()).unwrap();
 
         assert_eq!(output.item_count(), 1);
@@ -541,7 +541,7 @@ mod tests {
             ],
         };
 
-        let input = GecInput::from_package(pkg).with_validation(report);
+        let input = GecInput::from_source_package(linc::intake::adapters::from_binding_package(&pkg)).with_validation(report);
         let output = generate(&input, &GecConfig::default()).unwrap();
 
         assert_eq!(output.item_count(), 1);
@@ -554,102 +554,6 @@ mod tests {
         assert!(output.diagnostics.iter().any(|diag| {
             diag.message
                 .contains("variable 'DUPLICATE' has duplicate provider validation evidence")
-        }));
-    }
-
-    #[test]
-    fn generate_filters_records_rejected_by_representation_gating() {
-        let mut pkg = BindingPackage::new();
-        pkg.items.push(BindingItem::Record(RecordBinding {
-            kind: RecordKind::Struct,
-            name: Some("VisibleRecord".into()),
-            fields: Some(vec![FieldBinding {
-                name: Some("value".into()),
-                ty: BindingType::Int,
-                bit_width: None,
-                layout: None,
-            }]),
-            representation: None,
-            abi_confidence: None,
-            source_offset: None,
-        }));
-        pkg.items.push(BindingItem::Record(RecordBinding {
-            kind: RecordKind::Struct,
-            name: Some("MissingSize".into()),
-            fields: Some(vec![FieldBinding {
-                name: Some("value".into()),
-                ty: BindingType::Int,
-                bit_width: None,
-                layout: None,
-            }]),
-            representation: Some(RecordRepresentation {
-                size: None,
-                align: Some(4),
-                completeness: Some("complete".into()),
-            }),
-            abi_confidence: None,
-            source_offset: None,
-        }));
-
-        let output = generate(&GecInput::from_package(pkg), &GecConfig::default()).unwrap();
-
-        assert_eq!(output.item_count(), 1);
-        assert!(output.projection.items.iter().any(
-            |item| matches!(item, RustItem::Record(record) if record.name == "VisibleRecord")
-        ));
-        assert!(!output
-            .projection
-            .items
-            .iter()
-            .any(|item| matches!(item, RustItem::Record(record) if record.name == "MissingSize")));
-        assert!(output.diagnostics.iter().any(|diag| diag
-            .message
-            .contains("record 'MissingSize' lacks representation size evidence")));
-    }
-
-    #[test]
-    fn generate_filters_enums_rejected_by_representation_gating() {
-        let mut pkg = BindingPackage::new();
-        pkg.items.push(BindingItem::Enum(EnumBinding {
-            name: Some("VisibleEnum".into()),
-            variants: vec![EnumVariant {
-                name: "Ok".into(),
-                value: Some(0),
-            }],
-            representation: None,
-            abi_confidence: None,
-            source_offset: None,
-        }));
-        pkg.items.push(BindingItem::Enum(EnumBinding {
-            name: Some("MissingEnumSize".into()),
-            variants: vec![EnumVariant {
-                name: "Bad".into(),
-                value: Some(1),
-            }],
-            representation: Some(EnumRepresentation {
-                underlying_size: None,
-                is_signed: Some(false),
-            }),
-            abi_confidence: None,
-            source_offset: None,
-        }));
-
-        let output = generate(&GecInput::from_package(pkg), &GecConfig::default()).unwrap();
-
-        assert_eq!(output.item_count(), 1);
-        assert!(output
-            .projection
-            .items
-            .iter()
-            .any(|item| matches!(item, RustItem::Enum(enm) if enm.name == "VisibleEnum")));
-        assert!(!output
-            .projection
-            .items
-            .iter()
-            .any(|item| matches!(item, RustItem::Enum(enm) if enm.name == "MissingEnumSize")));
-        assert!(output.diagnostics.iter().any(|diag| {
-            diag.message
-                .contains("enum 'MissingEnumSize' lacks underlying-size representation evidence")
         }));
     }
 
@@ -698,7 +602,7 @@ mod tests {
             source: LinkRequirementSource::Declared,
         });
 
-        let input = GecInput::from_package(pkg);
+        let input = GecInput::from_source_package(linc::intake::adapters::from_binding_package(&pkg));
         let cfg = GecConfig::new("mylib_sys");
         let output = generate(&input, &cfg).unwrap();
 

@@ -1,11 +1,7 @@
 use linc::{BindingPackage, SourcePackage};
 
 pub(super) fn binding_package_from_source(source: &SourcePackage) -> BindingPackage {
-    linc::from_source_package(source)
-}
-
-pub(super) fn source_package_from_binding(package: &BindingPackage) -> SourcePackage {
-    linc::intake::adapters::from_binding_package(package)
+    linc::intake::adapters::to_binding_package(source)
 }
 
 pub(super) fn source_package_from_json(json: &str) -> Result<SourcePackage, String> {

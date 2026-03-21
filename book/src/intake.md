@@ -4,11 +4,9 @@
 
 `gec` is source-first. The required input is always a `linc::SourcePackage`.
 
-Compatibility and enrichment paths sit around that required input:
+Enrichment paths sit around that required input:
 
 - `linc::SourcePackage` via `GecInput::from_source_package(...)`
-- legacy `linc::BindingPackage` via `GecInput::from_package(...)`
-  or `input_from_binding_package(...)`
 
 The source-package path is the preferred starting point when the caller already
 has `parc` or another frontend contract. It keeps `gec` on the split-pipeline
@@ -54,7 +52,7 @@ or analysis-declared raw link surfaces.
 ## Building a `GecInput`
 
 ```rust
-use gec::intake::{input_from_binding_package, GecInput};
+use gec::intake::GecInput;
 
 use linc::{LinkAnalysisPackage, SourcePackage};
 
@@ -65,16 +63,11 @@ let input = GecInput::from_source_package(SourcePackage::default());
 let input = GecInput::from_source_package(SourcePackage::default())
     .with_analysis(LinkAnalysisPackage::default());
 
-// Transitional legacy-binding intake
-let input = input_from_binding_package(pkg);
-
 // Optional explicit enrichment (builder pattern)
-let input = GecInput::from_package(pkg)
+let input = GecInput::from_source_package(SourcePackage::default())
     .with_validation(report)
     .with_link_plan(plan);
 
-// Explicit JSON entrypoints
-let input = GecInput::from_binding_json(binding_json).unwrap();
 let input = GecInput::from_source_json(source_json).unwrap();
 ```
 
@@ -89,5 +82,4 @@ let input = GecInput::from_source_json(source_json).unwrap();
 ## What gec does NOT accept
 
 `gec` does not accept raw C source code or header files directly. Source
-extraction belongs in `parc`, and transitional raw-header scanning belongs in
-`linc::HeaderConfig`.
+extraction belongs in `parc`, and link/binary evidence belongs in `linc`.

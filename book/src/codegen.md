@@ -10,7 +10,7 @@ Code generation in `gec` proceeds through several stages:
 
 ### 1. Safety gating (`gate`)
 
-Each item in the `BindingPackage` is evaluated against generation rules:
+Each item in the source-derived lowering package is evaluated against generation rules:
 
 | Rule | Effect |
 |---|---|
@@ -93,4 +93,4 @@ Platform filtering is supported via `cfg!()` guards when platform constraints
 are specified.
 
 When a resolved `ResolvedLinkPlan` is attached to `GecInput`, `gec` prefers
-that evidence over the raw package link surface.
+that evidence over the source-declared raw link surface.

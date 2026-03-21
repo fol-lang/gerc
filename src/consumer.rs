@@ -458,7 +458,8 @@ mod tests {
             source_offset: None,
         }));
 
-        let input = GecInput::from_package(pkg);
+        let input =
+            GecInput::from_source_package(linc::intake::adapters::from_binding_package(&pkg));
         let cfg = GecConfig::new("final_test");
         let output = generate(&input, &cfg).unwrap();
 

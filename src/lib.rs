@@ -6,8 +6,7 @@
 //!
 //! # What `GERC` does
 //!
-//! - Consumes source contracts directly and can adapt legacy `linc`
-//!   `BindingPackage` input when migration requires it.
+//! - Consumes source contracts directly plus optional `linc` evidence.
 //! - Maps C types to Rust FFI-safe types.
 //! - Lowers `linc` declarations into an internal Rust projection IR.
 //! - Emits deterministic Rust source files and Cargo-compatible crate structures.
@@ -81,10 +80,7 @@ pub use crategen::{
 pub use emit::{emit_source, emit_type};
 pub use error::{GecError, GecResult};
 pub use gate::{gate_package, GateDecision};
-pub use intake::{
-    input_from_binding_json, input_from_binding_package, source_from_binding_package,
-    EvidenceInputs, GecInput,
-};
+pub use intake::{EvidenceInputs, GecInput};
 pub use linkgen::emit_rustc_link_args;
 pub use lower::lower_package;
 pub use output::GecOutput;

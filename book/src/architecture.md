@@ -4,7 +4,7 @@
 
 | Module | Purpose |
 |---|---|
-| `intake` | Consumes `linc::BindingPackage` and optional enrichment data |
+| `intake` | Consumes `linc::SourcePackage` and optional enrichment data |
 | `typemap` | Maps C types (`linc::BindingType`) to Rust FFI types (`RustType`) |
 | `gate` | Safety gating — accepts or rejects each declaration |
 | `lower` | Lowers accepted `linc` items into Rust projection IR |
@@ -33,7 +33,7 @@ module-qualified imports for routine use:
 ## Data flow
 
 ```text
-GecInput (linc::BindingPackage + optional extras)
+GecInput (linc::SourcePackage + optional extras)
     │
     ├── gate_package()  →  Vec<GateDecision> + diagnostics
     │       │

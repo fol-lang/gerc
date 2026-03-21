@@ -63,9 +63,8 @@ let emitted = emit_crate(
 ).unwrap();
 ```
 
-`GecInput` also exposes explicit JSON constructors:
+`GecInput` exposes an explicit source-contract JSON constructor:
 
-- `GecInput::from_binding_json(...)`
 - `GecInput::from_source_json(...)`
 
 When validation evidence is attached, `generate()` filters out declarations

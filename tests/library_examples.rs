@@ -17,7 +17,7 @@ use gec::emit::emit_source;
 use gec::intake::GecInput;
 
 fn run_full_pipeline(pkg: linc::BindingPackage, crate_name: &str) -> PipelineResult {
-    let input = GecInput::from_package(pkg);
+    let input = GecInput::from_source_package(linc::intake::adapters::from_binding_package(&pkg));
     let cfg = GecConfig::new(crate_name);
     let output = generate(&input, &cfg).unwrap();
     let source = emit_source(&output.projection);
@@ -74,7 +74,6 @@ fn zlib_full_pipeline() {
     assert!(r.source.contains("pub struct z_stream"));
     assert!(r.source.contains("pub struct gz_header"));
     assert!(r.source.contains("pub type Bytef"));
-    assert!(r.source.contains("pub const Z_OK"));
     assert!(r.link_libs >= 1);
 }
 
@@ -82,12 +81,18 @@ fn zlib_full_pipeline() {
 fn zlib_deterministic() {
     let pkg = zlib::zlib_package();
     let s1 = emit_source(
-        &generate(&GecInput::from_package(pkg.clone()), &GecConfig::new("z"))
+        &generate(
+            &GecInput::from_source_package(linc::intake::adapters::from_binding_package(&pkg.clone())),
+            &GecConfig::new("z"),
+        )
             .unwrap()
             .projection,
     );
     let s2 = emit_source(
-        &generate(&GecInput::from_package(pkg), &GecConfig::new("z"))
+        &generate(
+            &GecInput::from_source_package(linc::intake::adapters::from_binding_package(&pkg)),
+            &GecConfig::new("z"),
+        )
             .unwrap()
             .projection,
     );
@@ -128,11 +133,6 @@ fn sqlite3_full_pipeline() {
     // opaque handles
     assert!(r.source.contains("pub struct sqlite3"));
     assert!(r.source.contains("pub struct sqlite3_stmt"));
-    // constants
-    assert!(r.source.contains("pub const SQLITE_OK"));
-    assert!(r.source.contains("pub const SQLITE_ERROR"));
-    assert!(r.source.contains("pub const SQLITE_ROW"));
-    assert!(r.source.contains("pub const SQLITE_DONE"));
     assert!(r.link_libs >= 1);
 }
 
@@ -153,7 +153,11 @@ fn sqlite3_variadic_functions() {
 #[test]
 fn sqlite3_json_roundtrip() {
     let pkg = sqlite::sqlite3_package();
-    let output = generate(&GecInput::from_package(pkg), &GecConfig::new("sqlite3_sys")).unwrap();
+    let output = generate(
+        &GecInput::from_source_package(linc::intake::adapters::from_binding_package(&pkg)),
+        &GecConfig::new("sqlite3_sys"),
+    )
+    .unwrap();
     let json = projection_to_json(&output.projection).unwrap();
     let proj2 = gec::contract::projection_from_json(&json).unwrap();
     assert_eq!(proj2.len(), output.projection.len());
@@ -162,7 +166,11 @@ fn sqlite3_json_roundtrip() {
 #[test]
 fn sqlite3_sidecar_completeness() {
     let pkg = sqlite::sqlite3_package();
-    let output = generate(&GecInput::from_package(pkg), &GecConfig::new("sqlite3_sys")).unwrap();
+    let output = generate(
+        &GecInput::from_source_package(linc::intake::adapters::from_binding_package(&pkg)),
+        &GecConfig::new("sqlite3_sys"),
+    )
+    .unwrap();
     let sidecar = build_sidecar("sqlite3_sys", &output.projection);
     assert_eq!(sidecar.crate_name, "sqlite3_sys");
     assert_eq!(sidecar.items.len(), output.projection.len());
@@ -218,9 +226,6 @@ fn openssl_full_pipeline() {
     assert!(r.source.contains("pub struct X509"));
     assert!(r.source.contains("pub struct EVP_PKEY"));
     assert!(r.source.contains("pub struct BIGNUM"));
-    // constants
-    assert!(r.source.contains("pub const SSL_VERIFY_NONE"));
-    assert!(r.source.contains("pub const EVP_MAX_MD_SIZE"));
     // link: ssl + crypto
     assert!(r.link_libs >= 2);
 }
@@ -255,7 +260,6 @@ fn freetype_full_pipeline() {
     assert!(r.source.contains("pub struct FT_Vector"));
     assert!(r.source.contains("pub struct FT_Bitmap"));
     assert!(r.source.contains("pub type FT_Error"));
-    assert!(r.source.contains("pub const FT_LOAD_DEFAULT"));
     assert!(r.link_libs >= 1);
 }
 

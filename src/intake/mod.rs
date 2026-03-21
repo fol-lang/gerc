@@ -1,4 +1,3 @@
-mod adapters;
 mod evidence;
 mod source;
 
@@ -8,7 +7,6 @@ use linc::{
 };
 
 pub use evidence::EvidenceInputs;
-pub use adapters::{input_from_binding_json, input_from_binding_package, source_from_binding_package};
 
 /// Primary input container for a `gec` generation run.
 ///
@@ -32,7 +30,6 @@ pub struct GecInput {
     pub source: SourcePackage,
     /// Optional validation and link evidence.
     pub evidence: EvidenceInputs,
-    legacy_package: Option<BindingPackage>,
 }
 
 impl GecInput {
@@ -41,19 +38,6 @@ impl GecInput {
         Self {
             source,
             evidence: EvidenceInputs::default(),
-            legacy_package: None,
-        }
-    }
-
-    /// Transitional adapter from a legacy `BindingPackage`.
-    ///
-    /// New code should prefer `from_source_package`. This exists so the old
-    /// all-in-one `linc` contract can be phased out without blocking `gerc`.
-    pub fn from_package(package: BindingPackage) -> Self {
-        Self {
-            source: source::source_package_from_binding(&package),
-            evidence: EvidenceInputs::default(),
-            legacy_package: Some(package),
         }
     }
 
@@ -87,8 +71,7 @@ impl GecInput {
         let mut package = self.binding_package();
         dedup_items(&mut package);
         align_provenance(&mut package);
-        self.source = source::source_package_from_binding(&package);
-        self.legacy_package = Some(package);
+        self.source = linc::intake::adapters::from_binding_package(&package);
     }
 
     /// Returns `true` if the package contains no items and no diagnostics.
@@ -119,12 +102,7 @@ impl GecInput {
     /// Whether the package has provenance entries aligned with items.
     pub fn has_aligned_provenance(&self) -> bool {
         let package = self.binding_package();
-        package.provenance.len() == package.items.len()
-    }
-
-    /// Construct from a JSON string containing a legacy `BindingPackage`.
-    pub fn from_binding_json(json: &str) -> Result<Self, String> {
-        adapters::input_from_binding_json(json)
+        package.provenance.is_empty() || package.provenance.len() == package.items.len()
     }
 
     /// Construct from a JSON string containing a `SourcePackage`.
@@ -134,15 +112,7 @@ impl GecInput {
     }
 
     pub(crate) fn binding_package(&self) -> BindingPackage {
-        self.legacy_package
-            .clone()
-            .unwrap_or_else(|| source::binding_package_from_source(&self.source))
-    }
-}
-
-impl From<BindingPackage> for GecInput {
-    fn from(package: BindingPackage) -> Self {
-        Self::from_package(package)
+        source::binding_package_from_source(&self.source)
     }
 }
 
@@ -222,54 +192,6 @@ mod tests {
         })
     }
 
-    fn fixture_binding_package() -> BindingPackage {
-        let mut pkg = BindingPackage::new();
-        pkg.source_path = Some("fixtures/demo.h".into());
-        pkg.items.push(BindingItem::Function(FunctionBinding {
-            name: "demo_init".into(),
-            calling_convention: CallingConvention::C,
-            parameters: vec![ParameterBinding {
-                name: Some("flags".into()),
-                ty: BindingType::UInt,
-            }],
-            return_type: BindingType::Int,
-            variadic: false,
-            source_offset: Some(12),
-        }));
-        pkg.items.push(BindingItem::Variable(VariableBinding {
-            name: "demo_errno".into(),
-            ty: BindingType::Int,
-            source_offset: Some(27),
-        }));
-        pkg.macros.push(MacroBinding {
-            name: "DEMO_API_VERSION".into(),
-            body: "3".into(),
-            function_like: false,
-            form: MacroForm::ObjectLike,
-            kind: MacroKind::Integer,
-            category: MacroCategory::BindableConstant,
-            value: Some(MacroValue::Integer(3)),
-        });
-        pkg.provenance.push(DeclarationProvenance {
-            item_name: Some("demo_init".into()),
-            item_kind: Some(BindingItemKind::Function),
-            source_offset: Some(12),
-            ..Default::default()
-        });
-        pkg.provenance.push(DeclarationProvenance {
-            item_name: Some("demo_errno".into()),
-            item_kind: Some(BindingItemKind::Variable),
-            source_offset: Some(27),
-            ..Default::default()
-        });
-        pkg.link.libraries.push(LinkLibrary {
-            name: "demo".into(),
-            kind: LinkLibraryKind::Default,
-            source: LinkRequirementSource::Declared,
-        });
-        pkg
-    }
-
     fn fixture_source_package() -> SourcePackage {
         let mut source = SourcePackage::default();
         source.source_path = Some("fixtures/demo.h".into());
@@ -300,9 +222,13 @@ mod tests {
         source
     }
 
+    fn input_from_binding(pkg: BindingPackage) -> GecInput {
+        GecInput::from_source_package(linc::intake::adapters::from_binding_package(&pkg))
+    }
+
     #[test]
-    fn from_package_basic() {
-        let input = GecInput::from_package(empty_package());
+    fn from_source_package_basic_empty() {
+        let input = GecInput::from_source_package(SourcePackage::default());
         assert!(input.is_empty());
         assert_eq!(input.item_count(), 0);
         assert!(!input.has_analysis());
@@ -335,12 +261,6 @@ mod tests {
     }
 
     #[test]
-    fn from_trait() {
-        let input: GecInput = empty_package().into();
-        assert!(input.is_empty());
-    }
-
-    #[test]
     fn from_source_trait() {
         let mut source = SourcePackage::default();
         source
@@ -357,8 +277,8 @@ mod tests {
 
     #[test]
     fn with_link_plan() {
-        let input =
-            GecInput::from_package(empty_package()).with_link_plan(ResolvedLinkPlan::default());
+        let input = GecInput::from_source_package(SourcePackage::default())
+            .with_link_plan(ResolvedLinkPlan::default());
         assert!(input.has_link_plan());
         assert!(!input.has_analysis());
         assert!(!input.has_validation());
@@ -373,7 +293,7 @@ mod tests {
 
     #[test]
     fn with_evidence_sets_both_optional_inputs() {
-        let input = GecInput::from_package(empty_package()).with_evidence(EvidenceInputs {
+        let input = GecInput::from_source_package(SourcePackage::default()).with_evidence(EvidenceInputs {
             analysis: Some(LinkAnalysisPackage::default()),
             validation: Some(ValidationReport {
                 phases: Vec::new(),
@@ -396,7 +316,7 @@ mod tests {
         pkg.items.push(sample_function("foo"));
         pkg.items.push(sample_function("bar"));
 
-        let mut input = GecInput::from_package(pkg);
+        let mut input = input_from_binding(pkg);
         assert_eq!(input.item_count(), 3);
         input.normalize();
         assert_eq!(input.item_count(), 2);
@@ -412,7 +332,7 @@ mod tests {
             ..Default::default()
         });
 
-        let mut input = GecInput::from_package(pkg);
+        let mut input = input_from_binding(pkg);
         input.normalize();
         assert!(input.has_aligned_provenance());
     }
@@ -423,38 +343,11 @@ mod tests {
         pkg.items.push(sample_function("foo"));
         pkg.items.push(sample_function("foo"));
 
-        let mut input = GecInput::from_package(pkg);
+        let mut input = input_from_binding(pkg);
         input.normalize();
         let count_after_first = input.item_count();
         input.normalize();
         assert_eq!(input.item_count(), count_after_first);
-    }
-
-    #[test]
-    fn from_binding_json_minimal() {
-        let json = r#"{"source_path": null, "items": [], "diagnostics": []}"#;
-        let input = GecInput::from_binding_json(json).unwrap();
-        assert!(input.is_empty());
-    }
-
-    #[test]
-    fn from_binding_json_with_function() {
-        let json = r#"{
-            "source_path": "test.h",
-            "items": [
-                {"Function": {
-                    "name": "foo",
-                    "calling_convention": "C",
-                    "parameters": [],
-                    "return_type": "Void",
-                    "variadic": false,
-                    "source_offset": null
-                }}
-            ],
-            "diagnostics": []
-        }"#;
-        let input = GecInput::from_binding_json(json).unwrap();
-        assert_eq!(input.item_count(), 1);
     }
 
     #[test]
@@ -476,15 +369,13 @@ mod tests {
     }
 
     #[test]
-    fn from_binding_json_fixture_contract() {
-        let json = to_string_pretty(&fixture_binding_package()).unwrap();
-        let input = GecInput::from_binding_json(&json).unwrap();
+    fn source_fixture_contract_matches_binding_projection() {
+        let input = GecInput::from_source_package(fixture_source_package());
         let package = input.binding_package();
 
         assert_eq!(input.item_count(), 2);
         assert_eq!(package.source_path.as_deref(), Some("fixtures/demo.h"));
         assert_eq!(package.macros.len(), 1);
-        assert_eq!(package.link.libraries.len(), 1);
         assert!(matches!(
             &package.items[0],
             BindingItem::Function(function) if function.name == "demo_init"
@@ -515,19 +406,13 @@ mod tests {
     }
 
     #[test]
-    fn from_binding_json_invalid() {
-        let result = GecInput::from_binding_json("not json");
-        assert!(result.is_err());
-    }
-
-    #[test]
     fn from_source_json_invalid() {
         let result = GecInput::from_source_json("not json");
         assert!(result.is_err());
     }
 
     #[test]
-    fn provenance_preserved_through_normalize() {
+    fn normalize_keeps_source_contract_usable_when_provenance_is_not_roundtripped() {
         let mut pkg = empty_package();
         pkg.items.push(sample_function("foo"));
         pkg.provenance.push(DeclarationProvenance {
@@ -535,13 +420,9 @@ mod tests {
             ..Default::default()
         });
 
-        let mut input = GecInput::from_package(pkg);
+        let mut input = input_from_binding(pkg);
         input.normalize();
-        let package = input.binding_package();
-        assert_eq!(package.provenance.len(), 1);
-        assert_eq!(
-            package.provenance[0].item_name.as_deref(),
-            Some("foo")
-        );
+        assert_eq!(input.item_count(), 1);
+        assert!(input.has_aligned_provenance());
     }
 }

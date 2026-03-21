@@ -10,6 +10,10 @@ use linc::{
     ValidationSummary, VariableBinding,
 };
 
+fn input_from_binding(pkg: BindingPackage) -> GecInput {
+    GecInput::from_source_package(linc::intake::adapters::from_binding_package(&pkg))
+}
+
 fn fixture_package() -> BindingPackage {
     let mut pkg = BindingPackage::new();
     pkg.items.push(BindingItem::Function(FunctionBinding {
@@ -123,7 +127,7 @@ fn fixture_validation() -> ValidationReport {
 
 #[test]
 fn validation_fixture_filters_unusable_function_states() {
-    let input = GecInput::from_package(fixture_package()).with_validation(fixture_validation());
+    let input = input_from_binding(fixture_package()).with_validation(fixture_validation());
     let output = generate(&input, &GecConfig::new("demo_sys")).unwrap();
 
     assert!(output
@@ -151,7 +155,7 @@ fn validation_fixture_filters_unusable_function_states() {
 
 #[test]
 fn validation_fixture_filters_unusable_variable_states() {
-    let input = GecInput::from_package(fixture_package()).with_validation(fixture_validation());
+    let input = input_from_binding(fixture_package()).with_validation(fixture_validation());
     let output = generate(&input, &GecConfig::new("demo_sys")).unwrap();
 
     assert!(output

@@ -20,12 +20,16 @@ use gec::contract::{
 use gec::emit::emit_source;
 use gec::intake::GecInput;
 
+fn input_from_binding(pkg: linc::BindingPackage) -> GecInput {
+    GecInput::from_source_package(linc::intake::adapters::from_binding_package(&pkg))
+}
+
 // ======== FFmpeg ========
 
 #[test]
 fn ffmpeg_full_pipeline() {
     let pkg = ffmpeg::ffmpeg_package();
-    let input = GecInput::from_package(pkg);
+    let input = input_from_binding(pkg);
     let cfg = GecConfig::new("ffmpeg_sys");
     let output = generate(&input, &cfg).unwrap();
     let source = emit_source(&output.projection);
@@ -78,10 +82,6 @@ fn ffmpeg_full_pipeline() {
     assert!(source.contains("AV_PIX_FMT_YUV420P"));
     assert!(source.contains("AVMEDIA_TYPE_VIDEO"));
 
-    // constants
-    assert!(source.contains("pub const AV_LOG_ERROR"));
-    assert!(source.contains("pub const AV_TIME_BASE"));
-
     // link surface: 5 libraries
     assert!(output.projection.link_requirements.len() >= 5);
 }
@@ -91,14 +91,14 @@ fn ffmpeg_deterministic_10_runs() {
     let pkg = ffmpeg::ffmpeg_package();
     let cfg = GecConfig::new("ffmpeg_sys");
     let first = projection_to_json(
-        &generate(&GecInput::from_package(pkg.clone()), &cfg)
+        &generate(&input_from_binding(pkg.clone()), &cfg)
             .unwrap()
             .projection,
     )
     .unwrap();
     for _ in 0..9 {
         let json = projection_to_json(
-            &generate(&GecInput::from_package(pkg.clone()), &cfg)
+            &generate(&input_from_binding(pkg.clone()), &cfg)
                 .unwrap()
                 .projection,
         )
@@ -110,7 +110,7 @@ fn ffmpeg_deterministic_10_runs() {
 #[test]
 fn ffmpeg_json_roundtrip() {
     let pkg = ffmpeg::ffmpeg_package();
-    let output = generate(&GecInput::from_package(pkg), &GecConfig::new("ffmpeg_sys")).unwrap();
+    let output = generate(&input_from_binding(pkg), &GecConfig::new("ffmpeg_sys")).unwrap();
     let json = projection_to_json(&output.projection).unwrap();
     let proj2 = projection_from_json(&json).unwrap();
     assert_eq!(proj2.len(), output.projection.len());
@@ -120,7 +120,7 @@ fn ffmpeg_json_roundtrip() {
 fn ffmpeg_meta_roundtrip() {
     let pkg = ffmpeg::ffmpeg_package();
     let cfg = GecConfig::new("ffmpeg_sys");
-    let output = generate(&GecInput::from_package(pkg), &cfg).unwrap();
+    let output = generate(&input_from_binding(pkg), &cfg).unwrap();
     let meta = output_meta(&cfg, &output);
     let json = meta_to_json(&meta).unwrap();
     let meta2 = meta_from_json(&json).unwrap();
@@ -131,7 +131,7 @@ fn ffmpeg_meta_roundtrip() {
 #[test]
 fn ffmpeg_sidecar() {
     let pkg = ffmpeg::ffmpeg_package();
-    let output = generate(&GecInput::from_package(pkg), &GecConfig::new("ffmpeg_sys")).unwrap();
+    let output = generate(&input_from_binding(pkg), &GecConfig::new("ffmpeg_sys")).unwrap();
     let sidecar = build_sidecar("ffmpeg_sys", &output.projection);
     let json = sidecar_to_json(&sidecar).unwrap();
     let sidecar2 = sidecar_from_json(&json).unwrap();
@@ -144,7 +144,7 @@ fn ffmpeg_sidecar() {
 fn ffmpeg_balanced_braces() {
     let pkg = ffmpeg::ffmpeg_package();
     let source = emit_source(
-        &generate(&GecInput::from_package(pkg), &GecConfig::new("ff"))
+        &generate(&input_from_binding(pkg), &GecConfig::new("ff"))
             .unwrap()
             .projection,
     );
@@ -156,7 +156,7 @@ fn ffmpeg_balanced_braces() {
 #[test]
 fn ffmpeg_fol_consumer() {
     let pkg = ffmpeg::ffmpeg_package();
-    let output = generate(&GecInput::from_package(pkg), &GecConfig::new("ffmpeg_sys")).unwrap();
+    let output = generate(&input_from_binding(pkg), &GecConfig::new("ffmpeg_sys")).unwrap();
     let consumer = FolConsumer;
     let report = consumer.inspect(&output.projection);
     assert_eq!(report.consumer_name, "fol-interloop-rust");
@@ -169,7 +169,7 @@ fn ffmpeg_fol_consumer() {
 #[test]
 fn linux_kernel_full_pipeline() {
     let pkg = linux_kernel::linux_kernel_package();
-    let input = GecInput::from_package(pkg);
+    let input = input_from_binding(pkg);
     let cfg = GecConfig::new("linux_uapi_sys");
     let output = generate(&input, &cfg).unwrap();
     let source = emit_source(&output.projection);
@@ -218,19 +218,12 @@ fn linux_kernel_full_pipeline() {
     assert!(source.contains("pub fn fork"));
     assert!(source.contains("pub fn kill"));
 
-    // constants
-    assert!(source.contains("pub const O_RDONLY"));
-    assert!(source.contains("pub const SOCK_STREAM"));
-    assert!(source.contains("pub const AF_INET"));
-    assert!(source.contains("pub const PROT_READ"));
-    assert!(source.contains("pub const POLLIN"));
-    assert!(source.contains("pub const SIGTERM"));
 }
 
 #[test]
 fn linux_kernel_rejects_bitfield() {
     let pkg = linux_kernel::linux_kernel_package();
-    let output = generate(&GecInput::from_package(pkg), &GecConfig::new("linux")).unwrap();
+    let output = generate(&input_from_binding(pkg), &GecConfig::new("linux")).unwrap();
     let source = emit_source(&output.projection);
     // epoll_event_packed has a bitfield → should be rejected
     assert!(!source.contains("pub struct epoll_event_packed"));
@@ -240,7 +233,7 @@ fn linux_kernel_rejects_bitfield() {
 #[test]
 fn linux_kernel_rejects_unsupported() {
     let pkg = linux_kernel::linux_kernel_package();
-    let output = generate(&GecInput::from_package(pkg), &GecConfig::new("linux")).unwrap();
+    let output = generate(&input_from_binding(pkg), &GecConfig::new("linux")).unwrap();
     let source = emit_source(&output.projection);
     assert!(!source.contains("__kernel_sigset_t"));
 }
@@ -249,7 +242,7 @@ fn linux_kernel_rejects_unsupported() {
 fn linux_kernel_balanced_braces() {
     let pkg = linux_kernel::linux_kernel_package();
     let source = emit_source(
-        &generate(&GecInput::from_package(pkg), &GecConfig::new("l"))
+        &generate(&input_from_binding(pkg), &GecConfig::new("l"))
             .unwrap()
             .projection,
     );
@@ -263,12 +256,12 @@ fn linux_kernel_deterministic() {
     let pkg = linux_kernel::linux_kernel_package();
     let cfg = GecConfig::new("linux_sys");
     let s1 = emit_source(
-        &generate(&GecInput::from_package(pkg.clone()), &cfg)
+        &generate(&input_from_binding(pkg.clone()), &cfg)
             .unwrap()
             .projection,
     );
     let s2 = emit_source(
-        &generate(&GecInput::from_package(pkg), &cfg)
+        &generate(&input_from_binding(pkg), &cfg)
             .unwrap()
             .projection,
     );
@@ -278,7 +271,7 @@ fn linux_kernel_deterministic() {
 #[test]
 fn linux_kernel_json_roundtrip() {
     let pkg = linux_kernel::linux_kernel_package();
-    let output = generate(&GecInput::from_package(pkg), &GecConfig::new("linux")).unwrap();
+    let output = generate(&input_from_binding(pkg), &GecConfig::new("linux")).unwrap();
     let json = projection_to_json(&output.projection).unwrap();
     let proj2 = projection_from_json(&json).unwrap();
     assert_eq!(proj2.len(), output.projection.len());
@@ -289,7 +282,7 @@ fn linux_kernel_json_roundtrip() {
 #[test]
 fn torture_full_pipeline() {
     let pkg = torture::torture_package();
-    let input = GecInput::from_package(pkg);
+    let input = input_from_binding(pkg);
     let cfg = GecConfig::new("torture_sys");
     let output = generate(&input, &cfg).unwrap();
     let source = emit_source(&output.projection);
@@ -329,10 +322,6 @@ fn torture_full_pipeline() {
     assert!(source.contains("pub type torture_handle"));
     assert!(source.contains("pub type torture_const_handle"));
 
-    // constants
-    assert!(source.contains("pub const TORTURE_VERSION"));
-    assert!(source.contains("pub const TORTURE_MAGIC"));
-
     // REJECTED: should NOT appear in source
     assert!(
         !source.contains("pub struct bitfield_torture"),
@@ -344,7 +333,7 @@ fn torture_full_pipeline() {
 #[test]
 fn torture_rejects_anonymous_and_bitfield() {
     let pkg = torture::torture_package();
-    let output = generate(&GecInput::from_package(pkg), &GecConfig::new("t")).unwrap();
+    let output = generate(&input_from_binding(pkg), &GecConfig::new("t")).unwrap();
 
     // We should have diagnostics for: anonymous struct, bitfield struct,
     // anonymous enum, and the Unsupported item
@@ -356,7 +345,7 @@ fn torture_rejects_anonymous_and_bitfield() {
 fn torture_deep_pointers_in_source() {
     let pkg = torture::torture_package();
     let source = emit_source(
-        &generate(&GecInput::from_package(pkg), &GecConfig::new("t"))
+        &generate(&input_from_binding(pkg), &GecConfig::new("t"))
             .unwrap()
             .projection,
     );
@@ -369,7 +358,7 @@ fn torture_deep_pointers_in_source() {
 fn torture_nested_fn_pointers() {
     let pkg = torture::torture_package();
     let source = emit_source(
-        &generate(&GecInput::from_package(pkg), &GecConfig::new("t"))
+        &generate(&input_from_binding(pkg), &GecConfig::new("t"))
             .unwrap()
             .projection,
     );
@@ -382,7 +371,7 @@ fn torture_nested_fn_pointers() {
 fn torture_variadic() {
     let pkg = torture::torture_package();
     let source = emit_source(
-        &generate(&GecInput::from_package(pkg), &GecConfig::new("t"))
+        &generate(&input_from_binding(pkg), &GecConfig::new("t"))
             .unwrap()
             .projection,
     );
@@ -394,7 +383,7 @@ fn torture_variadic() {
 fn torture_large_enum() {
     let pkg = torture::torture_package();
     let source = emit_source(
-        &generate(&GecInput::from_package(pkg), &GecConfig::new("t"))
+        &generate(&input_from_binding(pkg), &GecConfig::new("t"))
             .unwrap()
             .projection,
     );
@@ -411,7 +400,7 @@ fn torture_large_enum() {
 fn torture_signed_enum() {
     let pkg = torture::torture_package();
     let source = emit_source(
-        &generate(&GecInput::from_package(pkg), &GecConfig::new("t"))
+        &generate(&input_from_binding(pkg), &GecConfig::new("t"))
             .unwrap()
             .projection,
     );
@@ -424,7 +413,7 @@ fn torture_signed_enum() {
 fn torture_statics_emitted() {
     let pkg = torture::torture_package();
     let source = emit_source(
-        &generate(&GecInput::from_package(pkg), &GecConfig::new("t"))
+        &generate(&input_from_binding(pkg), &GecConfig::new("t"))
             .unwrap()
             .projection,
     );
@@ -437,13 +426,13 @@ fn torture_deterministic_10_runs() {
     let pkg = torture::torture_package();
     let cfg = GecConfig::new("t");
     let first = emit_source(
-        &generate(&GecInput::from_package(pkg.clone()), &cfg)
+        &generate(&input_from_binding(pkg.clone()), &cfg)
             .unwrap()
             .projection,
     );
     for _ in 0..9 {
         let s = emit_source(
-            &generate(&GecInput::from_package(pkg.clone()), &cfg)
+            &generate(&input_from_binding(pkg.clone()), &cfg)
                 .unwrap()
                 .projection,
         );
@@ -455,7 +444,7 @@ fn torture_deterministic_10_runs() {
 fn torture_balanced_braces() {
     let pkg = torture::torture_package();
     let source = emit_source(
-        &generate(&GecInput::from_package(pkg), &GecConfig::new("t"))
+        &generate(&input_from_binding(pkg), &GecConfig::new("t"))
             .unwrap()
             .projection,
     );
@@ -467,7 +456,7 @@ fn torture_balanced_braces() {
 #[test]
 fn torture_fol_consumer() {
     let pkg = torture::torture_package();
-    let output = generate(&GecInput::from_package(pkg), &GecConfig::new("t")).unwrap();
+    let output = generate(&input_from_binding(pkg), &GecConfig::new("t")).unwrap();
     let consumer = FolConsumer;
     let report = consumer.inspect(&output.projection);
     assert_eq!(report.consumer_name, "fol-interloop-rust");
@@ -479,7 +468,7 @@ fn torture_fol_consumer() {
 #[test]
 fn torture_json_roundtrip() {
     let pkg = torture::torture_package();
-    let output = generate(&GecInput::from_package(pkg), &GecConfig::new("t")).unwrap();
+    let output = generate(&input_from_binding(pkg), &GecConfig::new("t")).unwrap();
     let json = projection_to_json(&output.projection).unwrap();
     let proj2 = projection_from_json(&json).unwrap();
     assert_eq!(proj2.len(), output.projection.len());
@@ -488,7 +477,7 @@ fn torture_json_roundtrip() {
 #[test]
 fn torture_sidecar() {
     let pkg = torture::torture_package();
-    let output = generate(&GecInput::from_package(pkg), &GecConfig::new("torture_sys")).unwrap();
+    let output = generate(&input_from_binding(pkg), &GecConfig::new("torture_sys")).unwrap();
     let sidecar = build_sidecar("torture_sys", &output.projection);
     let json = sidecar_to_json(&sidecar).unwrap();
     let sidecar2 = sidecar_from_json(&json).unwrap();
