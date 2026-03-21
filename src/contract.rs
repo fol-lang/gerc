@@ -45,8 +45,10 @@ pub fn generate(input: &GecInput, _config: &GecConfig) -> GecResult<GecOutput> {
         return Err(GecError::EmptyInput);
     }
 
-    let (decisions, gate_diags) =
-        gate_package(&input_clone.package, input_clone.validation.as_ref());
+    let (decisions, gate_diags) = gate_package(
+        &input_clone.package,
+        input_clone.evidence.validation.as_ref(),
+    );
 
     // Filter items: only lower accepted items
     let mut filtered_pkg = input_clone.package.clone();
@@ -65,6 +67,7 @@ pub fn generate(input: &GecInput, _config: &GecConfig) -> GecResult<GecOutput> {
     // Prefer resolved link evidence when present; otherwise fall back to the
     // raw package link surface.
     proj.link_requirements = input_clone
+        .evidence
         .link_plan
         .as_ref()
         .map(lower_resolved_plan)

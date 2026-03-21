@@ -1,10 +1,13 @@
 mod adapters;
+mod evidence;
 mod source;
 
 use linc::{
     BindingItem, BindingPackage, DeclarationProvenance, ResolvedLinkPlan, SourcePackage,
     ValidationReport,
 };
+
+pub use evidence::EvidenceInputs;
 
 /// Primary input container for a `gec` generation run.
 ///
@@ -25,10 +28,8 @@ use linc::{
 pub struct GecInput {
     /// The core `linc` analysis output — required.
     pub package: BindingPackage,
-    /// Optional validation report (declaration-vs-artifact matching).
-    pub validation: Option<ValidationReport>,
-    /// Optional resolved link plan (library/artifact resolution).
-    pub link_plan: Option<ResolvedLinkPlan>,
+    /// Optional validation and link evidence.
+    pub evidence: EvidenceInputs,
 }
 
 impl GecInput {
@@ -36,8 +37,7 @@ impl GecInput {
     pub fn from_package(package: BindingPackage) -> Self {
         Self {
             package,
-            validation: None,
-            link_plan: None,
+            evidence: EvidenceInputs::default(),
         }
     }
 
@@ -48,13 +48,19 @@ impl GecInput {
 
     /// Attach a validation report.
     pub fn with_validation(mut self, report: ValidationReport) -> Self {
-        self.validation = Some(report);
+        self.evidence.validation = Some(report);
         self
     }
 
     /// Attach a resolved link plan.
     pub fn with_link_plan(mut self, plan: ResolvedLinkPlan) -> Self {
-        self.link_plan = Some(plan);
+        self.evidence.link_plan = Some(plan);
+        self
+    }
+
+    /// Attach evidence in one step.
+    pub fn with_evidence(mut self, evidence: EvidenceInputs) -> Self {
+        self.evidence = evidence;
         self
     }
 
@@ -77,12 +83,12 @@ impl GecInput {
 
     /// Whether validation evidence is attached.
     pub fn has_validation(&self) -> bool {
-        self.validation.is_some()
+        self.evidence.validation.is_some()
     }
 
     /// Whether a resolved link plan is attached.
     pub fn has_link_plan(&self) -> bool {
-        self.link_plan.is_some()
+        self.evidence.link_plan.is_some()
     }
 
     /// Whether the package has provenance entries aligned with items.
@@ -244,6 +250,22 @@ mod tests {
             GecInput::from_package(empty_package()).with_link_plan(ResolvedLinkPlan::default());
         assert!(input.has_link_plan());
         assert!(!input.has_validation());
+    }
+
+    #[test]
+    fn with_evidence_sets_both_optional_inputs() {
+        let input = GecInput::from_package(empty_package()).with_evidence(EvidenceInputs {
+            validation: Some(ValidationReport {
+                phases: Vec::new(),
+                entries: Vec::new(),
+                summary: ValidationSummary::default(),
+                matches: Vec::new(),
+            }),
+            link_plan: Some(ResolvedLinkPlan::default()),
+        });
+
+        assert!(input.has_validation());
+        assert!(input.has_link_plan());
     }
 
     #[test]
