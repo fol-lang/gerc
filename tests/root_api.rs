@@ -1,4 +1,5 @@
 use gec::ir::{RustFunction, RustItem, RustProjection, RustType};
+use linc::{SourceDeclaration, SourceFunction, SourcePackage, SourceType};
 
 #[test]
 fn root_reexports_source_emit_helpers() {
@@ -47,6 +48,36 @@ fn root_reexports_crate_emit_helpers() {
     assert!(dir.join("src/lib.rs").exists());
     assert_eq!(gec::normalize_crate_name("demo-sys").unwrap(), "demo_sys");
     assert_eq!(emitted.root, dir);
+}
+
+#[test]
+fn root_public_api_supports_source_to_crate_workflow() {
+    let mut source = SourcePackage::default();
+    source
+        .declarations
+        .push(SourceDeclaration::Function(SourceFunction {
+            name: "workflow_init".into(),
+            parameters: vec![],
+            return_type: SourceType::Int,
+            variadic: false,
+            source_offset: None,
+        }));
+
+    let cfg = gec::GecConfig::new("workflow_sys");
+    let output = gec::generate_from_source(source, &cfg).unwrap();
+    let emitted_source = gec::emit_source(&output.projection);
+    let emitted_crate = gec::emit_crate(
+        &output.projection,
+        &cfg,
+        &tempdir("root_workflow_crate"),
+        gec::OutputMode::Crate,
+        gec::OverwritePolicy::Overwrite,
+    )
+    .unwrap();
+
+    assert!(emitted_source.contains("pub fn workflow_init"));
+    assert!(emitted_crate.root.join("Cargo.toml").exists());
+    assert!(emitted_crate.root.join("src/lib.rs").exists());
 }
 
 fn tempdir(name: &str) -> std::path::PathBuf {
