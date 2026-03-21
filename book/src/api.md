@@ -4,7 +4,7 @@
 
 `gec` organizes its public API into two tiers:
 
-- **Tier 1 (stable)**: `generate()`, `GecConfig`, `GecInput`, `GecOutput`,
+- **Tier 1 (stable)**: `generate()`, `generate_from_source()`, `GecConfig`, `GecInput`, `GecOutput`,
   `GecOutputMeta`, `SCHEMA_VERSION`
 - **Tier 2 (public but less stable)**: individual modules (`lower`, `gate`,
   `emit`, `typemap`, `linkgen`, `crategen`, `consumer`)
@@ -12,12 +12,15 @@
 ## Primary workflow
 
 ```rust
-use gec::{GecConfig, GecInput, generate};
+use gec::{generate_from_source, GecConfig, GecInput, generate};
 
-// 1. Build input from a bic BindingPackage
+// 1a. Build input from a linc BindingPackage
 let input = GecInput::from_package(pkg);
 
-// 2. Configure generation
+// 1b. Or generate directly from a linc SourcePackage
+let output = generate_from_source(source, &GecConfig::new("mylib_sys")).unwrap();
+
+// 2. Configure generation for the explicit-input path
 let config = GecConfig::new("mylib_sys");
 
 // 3. Run the pipeline
@@ -26,6 +29,11 @@ let output = generate(&input, &config).unwrap();
 // 4. Use the output
 let source = gec::emit::emit_source(&output.projection);
 ```
+
+`GecInput` also exposes explicit JSON constructors:
+
+- `GecInput::from_binding_json(...)`
+- `GecInput::from_source_json(...)`
 
 ## Configuration
 

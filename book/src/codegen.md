@@ -14,7 +14,7 @@ Each item in the `BindingPackage` is evaluated against generation rules:
 | Anonymous records | Rejected — Rust requires named types |
 | Anonymous enums | Rejected — Rust requires named types |
 | Incomplete/opaque fields | Rejected — cannot determine layout |
-| `bic::Unsupported` items | Rejected — explicitly unsupported by `bic` |
+| `linc::Unsupported` items | Rejected — explicitly unsupported upstream |
 
 Rejected items produce diagnostics in the output but no Rust code.
 
@@ -40,7 +40,7 @@ C types are mapped to Rust FFI-safe equivalents:
 
 ### 3. Lowering (`lower`)
 
-Accepted items are lowered from `bic` types to `gec`'s internal IR:
+Accepted items are lowered from `linc` types to `gec`'s internal IR:
 
 - **Functions** → `RustFunction` (name, parameters, return type, variadic flag)
 - **Structs** → `RustRecord` with `RustRecordKind::Struct`
@@ -67,7 +67,7 @@ the same output.
 
 ## Link metadata (`linkgen`)
 
-`bic`'s link surface is lowered into Cargo-compatible `build.rs` directives:
+`linc` link evidence is lowered into Cargo-compatible `build.rs` directives:
 
 - `cargo:rustc-link-lib=NAME` — link a library
 - `cargo:rustc-link-lib=static=NAME` — link a static library
@@ -77,3 +77,6 @@ the same output.
 
 Platform filtering is supported via `cfg!()` guards when platform constraints
 are specified.
+
+When a resolved `ResolvedLinkPlan` is attached to `GecInput`, `gec` prefers
+that evidence over the raw package link surface.
