@@ -74,6 +74,18 @@ pub fn generate(input: &GecInput, _config: &GecConfig) -> GecResult<GecOutput> {
     })
 }
 
+/// Generate directly from a `linc::SourcePackage`.
+///
+/// This is the preferred entrypoint when the caller has source contracts and
+/// wants `gec` to adapt them through LINC internally.
+pub fn generate_from_source(
+    source: linc::SourcePackage,
+    config: &GecConfig,
+) -> GecResult<GecOutput> {
+    let input = GecInput::from_source_package(source);
+    generate(&input, config)
+}
+
 /// Generate JSON-serializable output metadata.
 pub fn output_meta(config: &GecConfig, output: &GecOutput) -> GecOutputMeta {
     let rejected = output
@@ -125,8 +137,8 @@ pub fn projection_from_json(json: &str) -> GecResult<RustProjection> {
 #[cfg(test)]
 mod tests {
     use super::{
-        generate, meta_from_json, meta_to_json, output_meta, projection_from_json,
-        projection_to_json, SCHEMA_VERSION,
+        generate, generate_from_source, meta_from_json, meta_to_json, output_meta,
+        projection_from_json, projection_to_json, SCHEMA_VERSION,
     };
     use crate::config::GecConfig;
     use crate::error::GecError;
@@ -184,6 +196,31 @@ mod tests {
         let input = GecInput::from_package(BindingPackage::new());
         let cfg = GecConfig::default();
         let result = generate(&input, &cfg);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn generate_from_source_basic() {
+        let mut source = SourcePackage::default();
+        source
+            .declarations
+            .push(SourceDeclaration::Function(SourceFunction {
+                name: "foo".into(),
+                parameters: vec![],
+                return_type: SourceType::Void,
+                variadic: false,
+                source_offset: None,
+            }));
+
+        let cfg = GecConfig::default();
+        let output = generate_from_source(source, &cfg).unwrap();
+        assert_eq!(output.item_count(), 1);
+    }
+
+    #[test]
+    fn generate_from_source_empty_input_error() {
+        let cfg = GecConfig::default();
+        let result = generate_from_source(SourcePackage::default(), &cfg);
         assert!(result.is_err());
     }
 

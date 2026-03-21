@@ -55,7 +55,7 @@ pub mod lower;
 pub mod output;
 pub mod typemap;
 
-pub use contract::{generate, GecOutputMeta, SCHEMA_VERSION};
+pub use contract::{generate, generate_from_source, GecOutputMeta, SCHEMA_VERSION};
 
 pub use config::GecConfig;
 pub use error::{GecError, GecResult};
