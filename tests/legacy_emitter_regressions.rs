@@ -88,3 +88,32 @@ fn legacy_const_void_pointer_returns_stay_const_in_emission() {
     let source = generate_source(pkg);
     assert!(source.contains("pub fn find() -> *const core::ffi::c_void;"));
 }
+
+#[test]
+fn named_opaque_types_stay_named_instead_of_becoming_erased_comments() {
+    let mut pkg = BindingPackage::new();
+    pkg.items.push(BindingItem::Record(RecordBinding {
+        kind: RecordKind::Struct,
+        name: Some("FILE".into()),
+        fields: None,
+        representation: None,
+        abi_confidence: None,
+        source_offset: None,
+    }));
+    pkg.items.push(BindingItem::Function(FunctionBinding {
+        name: "borrow_file".into(),
+        calling_convention: CallingConvention::C,
+        parameters: vec![ParameterBinding {
+            name: Some("file".into()),
+            ty: BindingType::ptr(BindingType::Opaque("FILE".into())),
+        }],
+        return_type: BindingType::Int,
+        variadic: false,
+        source_offset: None,
+    }));
+
+    let source = generate_source(pkg);
+    assert!(source.contains("pub struct FILE { _opaque: [u8; 0] }"));
+    assert!(source.contains("pub fn borrow_file(file: *mut FILE) -> core::ffi::c_int;"));
+    assert!(!source.contains("opaque: FILE"));
+}
