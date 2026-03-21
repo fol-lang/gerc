@@ -195,3 +195,25 @@ fn enums_emit_as_repr_enums_not_typedef_plus_const_blocks() {
     assert!(!source.contains("pub type color ="));
     assert!(!source.contains("pub const RED: color"));
 }
+
+#[test]
+fn function_pointer_aliases_emit_option_wrapped_signatures() {
+    let mut pkg = BindingPackage::new();
+    pkg.items.push(BindingItem::TypeAlias(linc::TypeAliasBinding {
+        name: "handler_t".into(),
+        target: BindingType::FunctionPointer {
+            return_type: Box::new(BindingType::Void),
+            parameters: vec![BindingType::Int],
+            variadic: false,
+        },
+        canonical_resolution: None,
+        abi_confidence: None,
+        source_offset: None,
+    }));
+
+    let source = generate_source(pkg);
+    assert!(source.contains(
+        "pub type handler_t = Option<unsafe extern \"C\" fn(core::ffi::c_int)>;"
+    ));
+    assert!(!source.contains("pub type handler_t = unsafe extern \"C\" fn("));
+}
