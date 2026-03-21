@@ -10,7 +10,7 @@ use crate::error::{GecError, GecResult};
 use crate::gate::{gate_package, GateDecision};
 use crate::intake::GecInput;
 use crate::ir::RustProjection;
-use crate::linkgen::lower_link_surface;
+use crate::linkgen::{lower_link_surface, lower_resolved_plan};
 use crate::lower::lower_package;
 use crate::output::{GecOutput, GecSeverity};
 
@@ -62,8 +62,13 @@ pub fn generate(input: &GecInput, _config: &GecConfig) -> GecResult<GecOutput> {
 
     let (mut proj, lower_diags) = lower_package(&filtered_pkg);
 
-    // Populate link requirements
-    proj.link_requirements = lower_link_surface(&input_clone.package);
+    // Prefer resolved link evidence when present; otherwise fall back to the
+    // raw package link surface.
+    proj.link_requirements = input_clone
+        .link_plan
+        .as_ref()
+        .map(lower_resolved_plan)
+        .unwrap_or_else(|| lower_link_surface(&input_clone.package));
 
     let mut all_diags = gate_diags;
     all_diags.extend(lower_diags);
@@ -222,6 +227,49 @@ mod tests {
         let cfg = GecConfig::default();
         let result = generate_from_source(SourcePackage::default(), &cfg);
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn generate_prefers_resolved_link_plan() {
+        let mut pkg = BindingPackage::new();
+        pkg.items.push(BindingItem::Function(FunctionBinding {
+            name: "foo".into(),
+            calling_convention: CallingConvention::C,
+            parameters: vec![],
+            return_type: BindingType::Void,
+            variadic: false,
+            source_offset: None,
+        }));
+        pkg.link.libraries.push(LinkLibrary {
+            name: "rawlib".into(),
+            kind: LinkLibraryKind::Default,
+            source: LinkRequirementSource::Declared,
+        });
+
+        let input = GecInput::from_package(pkg).with_link_plan(ResolvedLinkPlan {
+            preferred_mode: LinkResolutionMode::Default,
+            native_surface_kind: NativeSurfaceKind::LibraryNames,
+            platform_constraints: Vec::new(),
+            inputs: vec![LinkInput::Library(LinkLibrary {
+                name: "resolvedlib".into(),
+                kind: LinkLibraryKind::Default,
+                source: LinkRequirementSource::Declared,
+            })],
+            requirements: Vec::new(),
+            transitive_dependencies: Vec::new(),
+        });
+
+        let cfg = GecConfig::default();
+        let output = generate(&input, &cfg).unwrap();
+        let link_names: Vec<&str> = output
+            .projection
+            .link_requirements
+            .iter()
+            .map(|req| req.name.as_str())
+            .collect();
+
+        assert!(link_names.contains(&"resolvedlib"));
+        assert!(!link_names.contains(&"rawlib"));
     }
 
     // 11.2: typed error taxonomy
