@@ -70,6 +70,12 @@ fn gate_function(f: &FunctionBinding, validation: Option<&ValidationReport>) -> 
                 f.name
             ));
         }
+        if symbol_match.status == linc::MatchStatus::DuplicateProviders {
+            return GateDecision::Reject(format!(
+                "function '{}' has duplicate provider validation evidence",
+                f.name
+            ));
+        }
     }
 
     // Check for unsupported parameter types
@@ -105,6 +111,12 @@ fn gate_variable(v: &linc::VariableBinding, validation: Option<&ValidationReport
         if symbol_match.status == linc::MatchStatus::AbiShapeMismatch {
             return GateDecision::Reject(format!(
                 "variable '{}' has ABI mismatch validation evidence",
+                v.name
+            ));
+        }
+        if symbol_match.status == linc::MatchStatus::DuplicateProviders {
+            return GateDecision::Reject(format!(
+                "variable '{}' has duplicate provider validation evidence",
                 v.name
             ));
         }
@@ -452,6 +464,71 @@ mod tests {
         assert_eq!(
             decisions[0],
             GateDecision::Reject("variable 'GLOBAL' has ABI mismatch validation evidence".into())
+        );
+    }
+
+    #[test]
+    fn reject_function_with_duplicate_provider_validation() {
+        let pkg = make_package(vec![BindingItem::Function(FunctionBinding {
+            name: "foo".into(),
+            calling_convention: CallingConvention::C,
+            parameters: vec![],
+            return_type: BindingType::Void,
+            variadic: false,
+            source_offset: None,
+        })]);
+        let report = ValidationReport {
+            phases: Vec::new(),
+            entries: Vec::new(),
+            summary: ValidationSummary::default(),
+            matches: vec![SymbolMatch {
+                name: "foo".into(),
+                item_kind: ItemKind::Function,
+                status: MatchStatus::DuplicateProviders,
+                visibility: None,
+                provider_artifacts: vec!["a".into(), "b".into()],
+                confidence: MatchConfidence::Low,
+                evidence_kind: EvidenceKind::DuplicateVisibleProviders,
+            }],
+        };
+
+        let (decisions, _) = gate_package(&pkg, Some(&report));
+        assert_eq!(
+            decisions[0],
+            GateDecision::Reject(
+                "function 'foo' has duplicate provider validation evidence".into()
+            )
+        );
+    }
+
+    #[test]
+    fn reject_variable_with_duplicate_provider_validation() {
+        let pkg = make_package(vec![BindingItem::Variable(VariableBinding {
+            name: "GLOBAL".into(),
+            ty: BindingType::Int,
+            source_offset: None,
+        })]);
+        let report = ValidationReport {
+            phases: Vec::new(),
+            entries: Vec::new(),
+            summary: ValidationSummary::default(),
+            matches: vec![SymbolMatch {
+                name: "GLOBAL".into(),
+                item_kind: ItemKind::Variable,
+                status: MatchStatus::DuplicateProviders,
+                visibility: None,
+                provider_artifacts: vec!["a".into(), "b".into()],
+                confidence: MatchConfidence::Low,
+                evidence_kind: EvidenceKind::DuplicateVisibleProviders,
+            }],
+        };
+
+        let (decisions, _) = gate_package(&pkg, Some(&report));
+        assert_eq!(
+            decisions[0],
+            GateDecision::Reject(
+                "variable 'GLOBAL' has duplicate provider validation evidence".into()
+            )
         );
     }
 
