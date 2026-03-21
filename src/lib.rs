@@ -61,6 +61,7 @@ pub use contract::{
 };
 
 pub use config::GecConfig;
+pub use consumer::{build_sidecar, sidecar_from_json, sidecar_to_json, MetadataSidecar};
 pub use crategen::{
     emit_build_rs, emit_crate, normalize_crate_name, CrateManifest, EmittedCrate, OutputMode,
     OverwritePolicy,
