@@ -168,6 +168,32 @@ fn sqlite3_sidecar_completeness() {
     assert_eq!(sidecar.items.len(), output.projection.len());
 }
 
+#[test]
+fn sqlite3_surface_preserves_typedef_handle_alloc_flow() {
+    let r = run_full_pipeline(sqlite::sqlite3_package(), "sqlite3_sys");
+
+    assert!(r.source.contains(
+        "pub type sqlite3_destructor_type = Option<unsafe extern \"C\" fn(*mut core::ffi::c_void)>;"
+    ));
+    assert!(r.source.contains("pub struct sqlite3 { _opaque: [u8; 0] }"));
+    assert!(r.source.contains("pub struct sqlite3_stmt { _opaque: [u8; 0] }"));
+    assert!(
+        r.source.contains(
+            "pub fn sqlite3_open(filename: *const core::ffi::c_char, ppDb: *mut *mut sqlite3) -> core::ffi::c_int;"
+        )
+    );
+    assert!(r.source.contains(
+        "pub fn sqlite3_prepare_v2(db: *mut sqlite3, sql: *const core::ffi::c_char, nByte: core::ffi::c_int, ppStmt: *mut *mut sqlite3_stmt, pzTail: *mut *const core::ffi::c_char) -> core::ffi::c_int;"
+    ));
+    assert!(
+        r.source
+            .contains("pub fn sqlite3_malloc(n: core::ffi::c_int) -> *mut core::ffi::c_void;")
+    );
+    assert!(
+        r.source.contains("pub fn sqlite3_free(ptr: *mut core::ffi::c_void);")
+    );
+}
+
 // ---- openssl ----
 
 #[test]
