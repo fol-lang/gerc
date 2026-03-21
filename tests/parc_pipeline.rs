@@ -123,3 +123,34 @@ fn vendored_zlib_parc_linc_gec_link_surface() {
         .iter()
         .any(|req| req.name == "z"));
 }
+
+#[test]
+fn vendored_zlib_parc_linc_gec_resolved_link_plan() {
+    let root = vendored_root("zlib");
+    let include_dir = root.join("include");
+    let entry = root.join("main.c");
+
+    let result = linc_common::process(
+        &linc::HeaderConfig::new()
+            .header(&entry)
+            .include_dir(&include_dir)
+            .link_lib("z")
+            .no_origin_filter(),
+    )
+    .unwrap();
+
+    let plan = linc::resolve_link_plan(&result.package);
+    let output = generate(
+        &GecInput::from_package(result.package).with_link_plan(plan.clone()),
+        &GecConfig::new("zlib_sys"),
+    )
+    .unwrap();
+
+    assert_eq!(plan.inputs.len(), 1);
+    assert!(output
+        .projection
+        .link_requirements
+        .iter()
+        .any(|req| req.name == "z"));
+    assert!(gec::emit_build_rs(&output.projection).contains("cargo:rustc-link-lib=dylib=z"));
+}
