@@ -3,13 +3,14 @@
 `gec` is the current crate name for `GERC`, the Rust projection layer in the
 `PARC -> LINC -> GERC` pipeline.
 
-It consumes `linc` contracts and generates Rust FFI bindings from C
-declarations.  The output is a complete Cargo-compatible Rust crate (or a loose
-source bundle) that compiles cleanly with `cargo build`.
+It consumes source contracts directly plus optional `linc` evidence and
+generates Rust FFI bindings from C declarations. The output is a complete
+Cargo-compatible Rust crate (or a loose source bundle), and it now also emits
+plain `rustc` link arguments for non-Cargo toolchains.
 
 The preferred library entrypoint is `generate_from_source(...)`. Attach a
-`ValidationReport` or `ResolvedLinkPlan` through `GecInput` when generation
-needs artifact-backed evidence.
+`LinkAnalysisPackage`, `ValidationReport`, or `ResolvedLinkPlan` through
+`GecInput` when generation needs artifact-backed evidence.
 
 ## Audience
 

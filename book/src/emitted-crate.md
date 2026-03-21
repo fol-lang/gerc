@@ -12,7 +12,8 @@ Writes a complete Cargo-compatible crate directory:
 ```text
 output_dir/
 ├── Cargo.toml
-├── build.rs          (if link requirements exist and build_script enabled)
+├── build.rs              (if link requirements exist and build_script enabled)
+├── rustc-link-args.txt   (if link requirements exist)
 └── src/
     └── lib.rs
 ```
@@ -23,6 +24,7 @@ Writes only the Rust source file (no `Cargo.toml` or `build.rs`):
 
 ```text
 output_dir/
+├── rustc-link-args.txt   (if link requirements exist)
 └── src/
     └── lib.rs
 ```
@@ -50,6 +52,18 @@ fn main() {
     println!("cargo:rustc-link-search=native=/usr/lib");
 }
 ```
+
+## rustc-link-args.txt
+
+When link requirements exist, `gec` also generates a plain text file with
+direct `rustc` arguments:
+
+```text
+-Lnative=/usr/lib
+-ldylib=mylib
+```
+
+This file is intended for non-Cargo toolchains or custom build orchestration.
 
 ## Overwrite policies
 
@@ -90,4 +104,5 @@ assert!(emitted.files.iter().any(|path| path.ends_with("Cargo.toml")));
 
 `EmittedCrate` records the crate root directory and the concrete files that
 were written. In crate mode that file list is deterministic and includes
-`Cargo.toml`, `src/lib.rs`, and `build.rs` when link requirements require it.
+`Cargo.toml`, `src/lib.rs`, `rustc-link-args.txt`, and `build.rs` when link
+requirements require them.

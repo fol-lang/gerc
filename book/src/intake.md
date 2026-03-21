@@ -2,28 +2,33 @@
 
 ## Primary input
 
-`gec` accepts two explicit intake forms:
+`gec` is source-first. The required input is always a `linc::SourcePackage`.
 
-- `linc::BindingPackage` via `GecInput::from_package(...)`
+Compatibility and enrichment paths sit around that required input:
+
 - `linc::SourcePackage` via `GecInput::from_source_package(...)`
+- legacy `linc::BindingPackage` via `GecInput::from_package(...)`
+  or `input_from_binding_package(...)`
 
 The source-package path is the preferred starting point when the caller already
-has `parc`/`linc` source contracts. It keeps `gec` on the split-pipeline path
-and lets the crate adapt source declarations into bindings internally.
-
-The binding-package path is the richer machine contract and contains:
-
-- **Items** — function declarations, record (struct/union) definitions, enum
-  definitions, type aliases, variable declarations, and unsupported markers
-- **Diagnostics** — warnings and errors from upstream analysis
-- **Macros** — C preprocessor macro definitions (integer literals become Rust
-  constants)
-- **Layouts** — ABI layout information for records
-- **Link surface** — native library requirements, search paths, artifacts
+has `parc` or another frontend contract. It keeps `gec` on the split-pipeline
+path and lets the crate consume source meaning directly.
 
 ## Optional enrichment
 
-Two additional `linc` outputs can optionally be attached:
+Three additional `linc` evidence forms can optionally be attached:
+
+### `LinkAnalysisPackage`
+
+The preferred evidence contract from `linc`.
+
+When present, `gec` reads:
+
+- resolved link-plan data
+- declared link surface
+- attached validation evidence
+
+without forcing source declarations to flow through `linc` as the only path.
 
 ### `ValidationReport`
 
@@ -43,23 +48,27 @@ that declaration instead of guessing.
 ### `ResolvedLinkPlan`
 
 Resolved native link requirements. When present, `gec` uses the resolved
-plan (with concrete artifact paths and search directories) instead of the
-raw link surface from the binding package.
+plan (with concrete artifact paths and search directories) instead of source
+or analysis-declared raw link surfaces.
 
 ## Building a `GecInput`
 
 ```rust
-use gec::intake::GecInput;
+use gec::intake::{input_from_binding_package, GecInput};
 
-use linc::SourcePackage;
+use linc::{LinkAnalysisPackage, SourcePackage};
 
-// Source-package intake
+// Preferred source-package intake
 let input = GecInput::from_source_package(SourcePackage::default());
 
-// Binding-package intake
-let input = GecInput::from_package(pkg);
+// Preferred evidence attachment
+let input = GecInput::from_source_package(SourcePackage::default())
+    .with_analysis(LinkAnalysisPackage::default());
 
-// Optional enrichment (builder pattern)
+// Transitional legacy-binding intake
+let input = input_from_binding_package(pkg);
+
+// Optional explicit enrichment (builder pattern)
 let input = GecInput::from_package(pkg)
     .with_validation(report)
     .with_link_plan(plan);
@@ -73,7 +82,7 @@ let input = GecInput::from_source_json(source_json).unwrap();
 
 `GecInput::normalize()` is called automatically during `generate()`. It:
 
-- Deduplicates function declarations by name (last-wins)
+- Deduplicates function declarations by name
 - Aligns provenance markers
 - Is idempotent (safe to call multiple times)
 

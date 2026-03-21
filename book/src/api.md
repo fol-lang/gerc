@@ -11,12 +11,13 @@
 
 The crate root also re-exports the common emission entrypoints so downstream
 code does not need to import `emit` or `crategen` directly for routine use:
-`emit_source`, `emit_type`, `emit_crate`, `emit_build_rs`, `OutputMode`,
-`OverwritePolicy`, `CrateManifest`, and `EmittedCrate`.
+`emit_source`, `emit_type`, `emit_crate`, `emit_build_rs`, `emit_rustc_args`,
+`emit_rustc_link_args`, `OutputMode`, `OverwritePolicy`, `CrateManifest`, and
+`EmittedCrate`.
 
 For explicit staged workflows, the crate root also re-exports:
 
-- `EvidenceInputs` for optional validation/link-plan attachment
+- `EvidenceInputs` for optional analysis/validation/link-plan attachment
 - `gate_package` and `GateDecision` for explicit gating inspection
 - `lower_package` for explicit projection lowering
 - `output_meta`, `meta_to_json`, `meta_from_json`, `projection_to_json`, and
@@ -30,22 +31,19 @@ For explicit staged workflows, the crate root also re-exports:
 
 `generate_from_source()` is the preferred entrypoint when the caller already
 has a `linc::SourcePackage`. Use `GecInput` directly when attaching optional
-validation or resolved link evidence.
+`linc` evidence in parallel with source.
 
 ```rust
 use gec::{
-    emit_crate, emit_source, generate, generate_from_source, GecConfig, GecInput, OutputMode,
-    OverwritePolicy,
+    emit_crate, emit_rustc_args, emit_source, generate, generate_from_source, GecConfig,
+    GecInput, OutputMode, OverwritePolicy,
 };
 
-// 1a. Build input from a linc BindingPackage
-let input = GecInput::from_package(pkg);
+// 1a. Preferred: build input from a SourcePackage
+let input = GecInput::from_source_package(source.clone()).with_analysis(analysis);
 
-// 1b. Or generate directly from a linc SourcePackage
+// 1b. Or generate directly from a SourcePackage
 let output = generate_from_source(source, &GecConfig::new("mylib_sys")).unwrap();
-
-// 2. Attach optional evidence for the explicit-input path
-let input = input.with_validation(report).with_link_plan(plan);
 
 // 3. Configure generation for the explicit-input path
 let config = GecConfig::new("mylib_sys");
@@ -55,6 +53,7 @@ let output = generate(&input, &config).unwrap();
 
 // 5. Use the output
 let source = emit_source(&output.projection);
+let rustc_args = emit_rustc_args(&output.projection);
 let emitted = emit_crate(
     &output.projection,
     &config,
@@ -75,6 +74,12 @@ that fail validation gating instead of emitting speculative Rust bindings.
 The generated Rust source also includes comment-level projection notes for
 preserved provenance and other non-routine lowering outcomes. This keeps
 upstream context visible without changing the Rust API surface.
+
+The emitted crate path now supports both:
+
+- Cargo build-script rendering via `build.rs`
+- direct `rustc` argument rendering via `rustc-link-args.txt` and
+  `emit_rustc_args(...)`
 
 ## Integration coverage
 
