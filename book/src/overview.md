@@ -14,15 +14,16 @@ PARC         (source parsing and extraction)
 
 ## What happens inside GERC
 
-1. **Intake** — `gec` receives a `linc::SourcePackage` plus optional
-   validation and link-plan data via `GecInput`.
+1. **Intake** — `gec` receives its own source/evidence input model via
+   `GecInput`. Tests/examples or external harnesses may translate PARC and LINC
+   artifacts into that model.
 
 2. **Safety gating** — Each declaration is checked against generation rules.
    Items that cannot be safely represented in Rust (bitfields, anonymous
    records, incomplete types) are rejected with diagnostics.
 
-3. **Lowering** — Accepted declarations are lowered from source-derived `linc` types into
-   `gec`'s internal Rust projection IR (`RustProjection`).
+3. **Lowering** — Accepted declarations are lowered from GERC-owned source
+   types into `gec`'s internal Rust projection IR (`RustProjection`).
 
 4. **Type mapping** — C types (`int`, `void*`, pointers, arrays, function
    pointers, etc.) are mapped to Rust FFI-safe equivalents.
@@ -41,3 +42,5 @@ PARC         (source parsing and extraction)
 - **Conservative** — Prefer refusing generation over emitting unsound code.
 - **Library-first** — `gec` is a Rust library, not a CLI tool.
 - **Generic** — No `fol`-specific assumptions in the core crate.
+- **Artifact-boundary integration** — cross-package composition belongs outside
+  `gec/src/**`.

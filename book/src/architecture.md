@@ -4,14 +4,14 @@
 
 | Module | Purpose |
 |---|---|
-| `intake` | Consumes `linc::SourcePackage` and optional enrichment data |
-| `typemap` | Maps C types (`linc::BindingType`) to Rust FFI types (`RustType`) |
+| `intake` | Consumes GERC-owned source and evidence input models |
+| `typemap` | Maps GERC-owned C-like types to Rust FFI types (`RustType`) |
 | `gate` | Safety gating — accepts or rejects each declaration |
-| `lower` | Lowers accepted `linc` items into Rust projection IR |
+| `lower` | Lowers accepted input items into Rust projection IR |
 | `ir` | Internal Rust projection IR: `RustProjection`, `RustItem`, `RustType` |
 | `emit` | Renders the IR into deterministic Rust source code |
 | `crategen` | Writes a full Cargo-compatible crate directory to disk |
-| `linkgen` | Lowers `linc` link surfaces into `build.rs` link directives |
+| `linkgen` | Lowers native link surfaces into `build.rs` and `rustc` directives |
 | `contract` | Top-level `generate()` entry point and JSON output contract |
 | `consumer` | Generic downstream-consumer contract and metadata sidecar |
 | `config` | Generation configuration (`GecConfig`) |
@@ -33,7 +33,7 @@ module-qualified imports for routine use:
 ## Data flow
 
 ```text
-GecInput (linc::SourcePackage + optional extras)
+GecInput (GERC-owned source + optional evidence)
     │
     ├── gate::gate_package()  →  Vec<GateDecision> + diagnostics
     │       │
@@ -51,6 +51,10 @@ GecInput (linc::SourcePackage + optional extras)
 ```
 
 ## Key types
+
+GERC should not import `parc` or `linc` in library code.
+If another package's artifact needs to be consumed, the translation belongs in
+tests/examples or an external harness.
 
 ### `RustProjection`
 

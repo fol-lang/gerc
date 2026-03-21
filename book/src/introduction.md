@@ -3,14 +3,17 @@
 `gec` is the current crate name for `GERC`, the Rust projection layer in the
 `PARC -> LINC -> GERC` pipeline.
 
-It consumes source contracts directly plus optional `linc` evidence and
-generates Rust FFI bindings from C declarations. The output is a complete
-Cargo-compatible Rust crate (or a loose source bundle), and it now also emits
-plain `rustc` link arguments for non-Cargo toolchains.
+The target architecture is strict:
 
-The preferred library entrypoint is `generate_from_source(...)`. Attach a
-`LinkAnalysisPackage`, `ValidationReport`, or `ResolvedLinkPlan` through
-`GecInput` when generation needs artifact-backed evidence.
+- `gec` library code must not depend on `parc` or `linc`
+- `gec` owns its own generation model
+- `gec` consumes translated source and evidence inputs
+- translation from PARC or LINC artifacts belongs only in tests, examples, or
+  external harnesses
+
+`gec` generates Rust FFI bindings from C declarations. The output is a
+complete Cargo-compatible Rust crate (or a loose source bundle), and it also
+emits plain `rustc` link arguments for non-Cargo toolchains.
 
 ## Audience
 
@@ -38,7 +41,7 @@ This book is for developers who:
 ```rust
 use gec::{generate_from_source, GecConfig};
 use gec::emit::emit_source;
-use linc::{SourceDeclaration, SourceFunction, SourcePackage, SourceType};
+use gec::intake::{SourceDeclaration, SourceFunction, SourcePackage, SourceType};
 
 let mut source = SourcePackage::default();
 source.declarations.push(SourceDeclaration::Function(SourceFunction {
