@@ -166,3 +166,32 @@ fn long_double_falls_back_to_explicit_unknown_marker() {
     assert!(source.contains("x: /* unknown: c_longdouble */ ()"));
     assert!(source.contains("-> /* unknown: c_longdouble */ ();"));
 }
+
+#[test]
+fn enums_emit_as_repr_enums_not_typedef_plus_const_blocks() {
+    let mut pkg = BindingPackage::new();
+    pkg.items.push(BindingItem::Enum(linc::EnumBinding {
+        name: Some("color".into()),
+        variants: vec![
+            linc::EnumVariant {
+                name: "RED".into(),
+                value: Some(0),
+            },
+            linc::EnumVariant {
+                name: "GREEN".into(),
+                value: Some(1),
+            },
+        ],
+        representation: None,
+        abi_confidence: None,
+        source_offset: None,
+    }));
+
+    let source = generate_source(pkg);
+    assert!(source.contains("#[repr(c_int)]"));
+    assert!(source.contains("pub enum color"));
+    assert!(source.contains("RED = 0,"));
+    assert!(source.contains("GREEN = 1,"));
+    assert!(!source.contains("pub type color ="));
+    assert!(!source.contains("pub const RED: color"));
+}
