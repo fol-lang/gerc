@@ -58,9 +58,15 @@ fn gate_item(item: &BindingItem, _validation: Option<&ValidationReport>) -> Gate
 /// 6.3: Required evidence rules for function signatures.
 fn gate_function(f: &FunctionBinding, validation: Option<&ValidationReport>) -> GateDecision {
     if let Some(report) = validation {
-        if validation_match_for_function(report, &f.name).is_none() {
+        let Some(symbol_match) = validation_match_for_function(report, &f.name) else {
             return GateDecision::Reject(format!(
                 "function '{}' lacks validation evidence",
+                f.name
+            ));
+        };
+        if symbol_match.status == linc::MatchStatus::AbiShapeMismatch {
+            return GateDecision::Reject(format!(
+                "function '{}' has ABI mismatch validation evidence",
                 f.name
             ));
         }
@@ -90,9 +96,15 @@ fn validation_match_for_function<'a>(
 
 fn gate_variable(v: &linc::VariableBinding, validation: Option<&ValidationReport>) -> GateDecision {
     if let Some(report) = validation {
-        if validation_match_for_variable(report, &v.name).is_none() {
+        let Some(symbol_match) = validation_match_for_variable(report, &v.name) else {
             return GateDecision::Reject(format!(
                 "variable '{}' lacks validation evidence",
+                v.name
+            ));
+        };
+        if symbol_match.status == linc::MatchStatus::AbiShapeMismatch {
+            return GateDecision::Reject(format!(
+                "variable '{}' has ABI mismatch validation evidence",
                 v.name
             ));
         }
@@ -380,6 +392,67 @@ mod tests {
         let (decisions, diags) = gate_package(&pkg, Some(&report));
         assert_eq!(decisions[0], GateDecision::Accept);
         assert!(diags.is_empty());
+    }
+
+    #[test]
+    fn reject_function_with_abi_mismatch_validation() {
+        let pkg = make_package(vec![BindingItem::Function(FunctionBinding {
+            name: "foo".into(),
+            calling_convention: CallingConvention::C,
+            parameters: vec![],
+            return_type: BindingType::Void,
+            variadic: false,
+            source_offset: None,
+        })]);
+        let report = ValidationReport {
+            phases: Vec::new(),
+            entries: Vec::new(),
+            summary: ValidationSummary::default(),
+            matches: vec![SymbolMatch {
+                name: "foo".into(),
+                item_kind: ItemKind::Function,
+                status: MatchStatus::AbiShapeMismatch,
+                visibility: None,
+                provider_artifacts: Vec::new(),
+                confidence: MatchConfidence::Low,
+                evidence_kind: EvidenceKind::AbiShapeMismatch,
+            }],
+        };
+
+        let (decisions, _) = gate_package(&pkg, Some(&report));
+        assert_eq!(
+            decisions[0],
+            GateDecision::Reject("function 'foo' has ABI mismatch validation evidence".into())
+        );
+    }
+
+    #[test]
+    fn reject_variable_with_abi_mismatch_validation() {
+        let pkg = make_package(vec![BindingItem::Variable(VariableBinding {
+            name: "GLOBAL".into(),
+            ty: BindingType::Int,
+            source_offset: None,
+        })]);
+        let report = ValidationReport {
+            phases: Vec::new(),
+            entries: Vec::new(),
+            summary: ValidationSummary::default(),
+            matches: vec![SymbolMatch {
+                name: "GLOBAL".into(),
+                item_kind: ItemKind::Variable,
+                status: MatchStatus::AbiShapeMismatch,
+                visibility: None,
+                provider_artifacts: Vec::new(),
+                confidence: MatchConfidence::Low,
+                evidence_kind: EvidenceKind::AbiShapeMismatch,
+            }],
+        };
+
+        let (decisions, _) = gate_package(&pkg, Some(&report));
+        assert_eq!(
+            decisions[0],
+            GateDecision::Reject("variable 'GLOBAL' has ABI mismatch validation evidence".into())
+        );
     }
 
     // 6.4: opaque record accepted
