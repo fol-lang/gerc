@@ -1,6 +1,7 @@
-# gec
+# GERC (`gec` today)
 
-`gec` is the Rust generation layer in the `PARC -> LINC -> GERC` pipeline.
+`gec` is the current crate name for `GERC`, the Rust generation layer in the
+`PARC -> LINC -> GERC` pipeline.
 
 It consumes `linc` source/link/evidence contracts and produces deterministic
 Rust FFI output: a projected Rust IR, emitted Rust source, and optionally a
@@ -28,20 +29,16 @@ Cargo-compatible crate bundle with `build.rs`.
 ```text
 PARC (source contracts)
     -> LINC (link and evidence contracts)
-    -> gec (Rust projection and crate emission)
+    -> GERC (`gec` crate today)
     -> generated Rust bindings crate
 ```
 
 ## Status
 
-This crate is in active migration toward `GERC`.
-
-Current direction:
-
-- old `bic`-centric framing is being deleted
-- the crate is aligning to split `parc` + `linc` intake
-- backward compatibility is intentionally not a goal
-- legacy Rust emission behavior worth preserving is being rehomed here from `linc`
+This implementation plan is now complete at the crate level. The remaining
+name mismatch is packaging: the crate is still published and imported as
+`gec`, while the architecture and emitted artifacts now identify the role as
+`GERC`.
 
 ## Preferred usage
 

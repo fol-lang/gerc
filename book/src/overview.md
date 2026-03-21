@@ -1,6 +1,6 @@
 # Overview
 
-`gec` sits between `parc`, `linc`, and downstream Rust tooling in the
+`GERC` currently ships as the `gec` crate and sits between `parc`, `linc`, and downstream Rust tooling in the
 following pipeline:
 
 ```text
@@ -12,7 +12,7 @@ PARC         (source parsing and extraction)
     → fol-visible surface
 ```
 
-## What happens inside gec
+## What happens inside GERC
 
 1. **Intake** — `gec` receives a `linc::BindingPackage` (plus optional
    validation and link-plan data) via `GecInput`.

@@ -1,6 +1,7 @@
-# gec
+# GERC (`gec` today)
 
-`gec` is the Rust projection layer in the `PARC -> LINC -> GERC` pipeline.
+`gec` is the current crate name for `GERC`, the Rust projection layer in the
+`PARC -> LINC -> GERC` pipeline.
 
 It consumes `linc` contracts and generates Rust FFI bindings from C
 declarations.  The output is a complete Cargo-compatible Rust crate (or a loose
