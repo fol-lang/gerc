@@ -1,0 +1,730 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>gec</title>
+        <meta name="robots" content="noindex">
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="favicon-de23e50b.svg">
+        <link rel="shortcut icon" href="favicon-8114d1fc.png">
+        <link rel="stylesheet" href="css/variables-8adf115d.css">
+        <link rel="stylesheet" href="css/general-2459343d.css">
+        <link rel="stylesheet" href="css/chrome-ae938929.css">
+        <link rel="stylesheet" href="css/print-9e4910d8.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="fonts/fonts-9644e21d.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="mdbook-highlight-css" href="highlight-493f70e1.css">
+        <link rel="stylesheet" id="mdbook-tomorrow-night-css" href="tomorrow-night-4c0ae647.css">
+        <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
+
+        <!-- Custom theme stylesheets -->
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+            window.path_to_searchindex_js = "searchindex-0442d6c2.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="toc-fea1ade6.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="mdbook-body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="mdbook-sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("mdbook-sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="mdbook-sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="toc.html"></iframe>
+            </noscript>
+            <div id="mdbook-sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="mdbook-page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="mdbook-menu-bar-hover-placeholder"></div>
+                <div id="mdbook-menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="mdbook-sidebar-toggle" class="icon-button" for="mdbook-sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="mdbook-sidebar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"/></svg></span>
+                        </label>
+                        <button id="mdbook-theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="mdbook-theme-list">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M371.3 367.1c27.3-3.9 51.9-19.4 67.2-42.9L600.2 74.1c12.6-19.5 9.4-45.3-7.6-61.2S549.7-4.4 531.1 9.6L294.4 187.2c-24 18-38.2 46.1-38.4 76.1L371.3 367.1zm-19.6 25.4l-116-104.4C175.9 290.3 128 339.6 128 400c0 3.9 .2 7.8 .6 11.6c1.8 17.5-10.2 36.4-27.8 36.4H96c-17.7 0-32 14.3-32 32s14.3 32 32 32H240c61.9 0 112-50.1 112-112c0-2.5-.1-5-.2-7.5z"/></svg></span>
+                        </button>
+                        <ul id="mdbook-theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-ayu">Ayu</button></li>
+                        </ul>
+                        <button id="mdbook-search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="mdbook-searchbar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352c79.5 0 144-64.5 144-144s-64.5-144-144-144S64 128.5 64 208s64.5 144 144 144z"/></svg></span>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">gec</h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <span class=fa-svg id="print-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M128 0C92.7 0 64 28.7 64 64v96h64V64H354.7L384 93.3V160h64V93.3c0-17-6.7-33.3-18.7-45.3L400 18.7C388 6.7 371.7 0 354.7 0H128zM384 352v32 64H128V384 368 352H384zm64 32h32c17.7 0 32-14.3 32-32V256c0-35.3-28.7-64-64-64H64c-35.3 0-64 28.7-64 64v96c0 17.7 14.3 32 32 32H64v64c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V384zm-16-88c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24z"/></svg></span>
+                        </a>
+                        <a href="https://github.com/bresilla/gec" title="Git repository" aria-label="Git repository">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg></span>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="mdbook-search-wrapper" class="hidden">
+                    <form id="mdbook-searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="mdbook-searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="mdbook-searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <span class=fa-svg id="fa-spin"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M304 48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zm0 416c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM48 304c26.5 0 48-21.5 48-48s-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48zm464-48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM142.9 437c18.7-18.7 18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zm0-294.2c18.7-18.7 18.7-49.1 0-67.9S93.7 56.2 75 75s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zM369.1 437c18.7 18.7 49.1 18.7 67.9 0s18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9z"/></svg></span>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="mdbook-searchresults-outer" class="searchresults-outer hidden">
+                        <div id="mdbook-searchresults-header" class="searchresults-header"></div>
+                        <ul id="mdbook-searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('mdbook-sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('mdbook-sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#mdbook-sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="mdbook-content" class="content">
+                    <main>
+                        <h1 id="gec"><a class="header" href="#gec">gec</a></h1>
+<p><code>gec</code> is the Rust projection layer in the <code>PARC -&gt; LINC -&gt; GERC</code> pipeline.</p>
+<p>It consumes <code>linc</code> contracts and generates Rust FFI bindings from C
+declarations.  The output is a complete Cargo-compatible Rust crate (or a loose
+source bundle) that compiles cleanly with <code>cargo build</code>.</p>
+<p>The preferred library entrypoint is <code>generate_from_source(...)</code>. Attach a
+<code>ValidationReport</code> or <code>ResolvedLinkPlan</code> through <code>GecInput</code> when generation
+needs artifact-backed evidence.</p>
+<h2 id="audience"><a class="header" href="#audience">Audience</a></h2>
+<p>This book is for developers who:</p>
+<ul>
+<li>want to understand how <code>gec</code> transforms C declarations into Rust FFI code</li>
+<li>need to integrate <code>gec</code> as a library in their own tooling</li>
+<li>are building downstream consumers (like <code>fol-interloop-rust</code>) on top of <code>gec</code>
+output</li>
+</ul>
+<h2 id="scope"><a class="header" href="#scope">Scope</a></h2>
+<p><code>gec</code> is intentionally narrow:</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Responsibility</th><th>Owner</th></tr>
+</thead>
+<tbody>
+<tr><td>C header parsing and source extraction</td><td><code>parc</code></td></tr>
+<tr><td>Link, validation, and ABI evidence</td><td><code>linc</code></td></tr>
+<tr><td>Rust FFI projection and code generation</td><td><strong><code>gec</code></strong></td></tr>
+<tr><td>Runtime loader policy and deployment</td><td>downstream tooling</td></tr>
+<tr><td><code>fol</code>-specific surface generation</td><td><code>fol-interloop-rust</code></td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="quick-start"><a class="header" href="#quick-start">Quick start</a></h2>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use gec::{generate_from_source, GecConfig};
+use gec::emit::emit_source;
+use linc::{SourceDeclaration, SourceFunction, SourcePackage, SourceType};
+
+let mut source = SourcePackage::default();
+source.declarations.push(SourceDeclaration::Function(SourceFunction {
+    name: "init".into(),
+    parameters: vec![],
+    return_type: SourceType::Int,
+    variadic: false,
+    source_offset: None,
+}));
+
+let config = GecConfig::new("mylib_sys");
+let output = generate_from_source(source, &amp;config).unwrap();
+let source = emit_source(&amp;output.projection);
+println!("{source}");
+<span class="boring">}</span></code></pre>
+<p>If validation evidence is present, <code>gec</code> treats it as a hard gating input for
+functions and variables. Declarations without usable evidence are filtered out
+and reported through diagnostics instead of being emitted.</p>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="overview"><a class="header" href="#overview">Overview</a></h1>
+<p><code>gec</code> sits between <code>parc</code>, <code>linc</code>, and downstream Rust tooling in the
+following pipeline:</p>
+<pre><code class="language-text">PARC         (source parsing and extraction)
+    → LINC   (link, validation, and ABI evidence)
+    → GERC   (Rust projection, code generation)
+    → generated Rust bindings crate
+    → fol-interloop-rust  (optional downstream consumer)
+    → fol-visible surface
+</code></pre>
+<h2 id="what-happens-inside-gec"><a class="header" href="#what-happens-inside-gec">What happens inside gec</a></h2>
+<ol>
+<li>
+<p><strong>Intake</strong> — <code>gec</code> receives a <code>linc::BindingPackage</code> (plus optional
+validation and link-plan data) via <code>GecInput</code>.</p>
+</li>
+<li>
+<p><strong>Safety gating</strong> — Each declaration is checked against generation rules.
+Items that cannot be safely represented in Rust (bitfields, anonymous
+records, incomplete types) are rejected with diagnostics.</p>
+</li>
+<li>
+<p><strong>Lowering</strong> — Accepted declarations are lowered from <code>linc</code> types into
+<code>gec</code>’s internal Rust projection IR (<code>RustProjection</code>).</p>
+</li>
+<li>
+<p><strong>Type mapping</strong> — C types (<code>int</code>, <code>void*</code>, pointers, arrays, function
+pointers, etc.) are mapped to Rust FFI-safe equivalents.</p>
+</li>
+<li>
+<p><strong>Emission</strong> — The IR is rendered into deterministic Rust source code.
+Items are emitted in a stable order: constants, type aliases, enums,
+records, then an <code>extern "C"</code> block for functions and statics.</p>
+</li>
+<li>
+<p><strong>Crate generation</strong> — Optionally, <code>gec</code> writes a full Cargo-compatible
+crate directory: <code>Cargo.toml</code>, <code>src/lib.rs</code>, and a <code>build.rs</code> with native
+link metadata.</p>
+</li>
+</ol>
+<h2 id="design-principles"><a class="header" href="#design-principles">Design principles</a></h2>
+<ul>
+<li><strong>Deterministic</strong> — The same input always produces the same output.</li>
+<li><strong>Conservative</strong> — Prefer refusing generation over emitting unsound code.</li>
+<li><strong>Library-first</strong> — <code>gec</code> is a Rust library, not a CLI tool.</li>
+<li><strong>Generic</strong> — No <code>fol</code>-specific assumptions in the core crate.</li>
+</ul>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="architecture"><a class="header" href="#architecture">Architecture</a></h1>
+<h2 id="module-layout"><a class="header" href="#module-layout">Module layout</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Module</th><th>Purpose</th></tr>
+</thead>
+<tbody>
+<tr><td><code>intake</code></td><td>Consumes <code>linc::BindingPackage</code> and optional enrichment data</td></tr>
+<tr><td><code>typemap</code></td><td>Maps C types (<code>linc::BindingType</code>) to Rust FFI types (<code>RustType</code>)</td></tr>
+<tr><td><code>gate</code></td><td>Safety gating — accepts or rejects each declaration</td></tr>
+<tr><td><code>lower</code></td><td>Lowers accepted <code>linc</code> items into Rust projection IR</td></tr>
+<tr><td><code>ir</code></td><td>Internal Rust projection IR: <code>RustProjection</code>, <code>RustItem</code>, <code>RustType</code></td></tr>
+<tr><td><code>emit</code></td><td>Renders the IR into deterministic Rust source code</td></tr>
+<tr><td><code>crategen</code></td><td>Writes a full Cargo-compatible crate directory to disk</td></tr>
+<tr><td><code>linkgen</code></td><td>Lowers <code>linc</code> link surfaces into <code>build.rs</code> link directives</td></tr>
+<tr><td><code>contract</code></td><td>Top-level <code>generate()</code> entry point and JSON output contract</td></tr>
+<tr><td><code>consumer</code></td><td>Generic downstream-consumer contract and metadata sidecar</td></tr>
+<tr><td><code>config</code></td><td>Generation configuration (<code>GecConfig</code>)</td></tr>
+<tr><td><code>output</code></td><td>Generation output container (<code>GecOutput</code>, diagnostics)</td></tr>
+<tr><td><code>error</code></td><td>Crate error types (<code>GecError</code>, <code>GecResult</code>)</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="data-flow"><a class="header" href="#data-flow">Data flow</a></h2>
+<pre><code class="language-text">GecInput (linc::BindingPackage + optional extras)
+    │
+    ├── gate_package()  →  Vec&lt;GateDecision&gt; + diagnostics
+    │       │
+    │       └── filter: only Accept items pass through
+    │
+    ├── lower_package()  →  RustProjection + diagnostics
+    │
+    ├── lower_link_surface()  →  Vec&lt;RustLinkRequirement&gt;
+    │
+    └── GecOutput { projection, diagnostics }
+            │
+            ├── emit_source()  →  Rust source string
+            ├── emit_crate()   →  Cargo crate on disk
+            └── build_sidecar() → JSON metadata for consumers
+</code></pre>
+<h2 id="key-types"><a class="header" href="#key-types">Key types</a></h2>
+<h3 id="rustprojection"><a class="header" href="#rustprojection"><code>RustProjection</code></a></h3>
+<p>The central IR type. Contains:</p>
+<ul>
+<li><code>items: Vec&lt;RustItem&gt;</code> — functions, records, enums, type aliases, constants,
+statics, unsupported markers</li>
+<li><code>modules: Vec&lt;RustModule&gt;</code> — optional module organization</li>
+<li><code>link_requirements: Vec&lt;RustLinkRequirement&gt;</code> — native link metadata</li>
+<li><code>notes: Vec&lt;ProjectionNote&gt;</code> — provenance and diagnostic notes</li>
+</ul>
+<h3 id="rusttype"><a class="header" href="#rusttype"><code>RustType</code></a></h3>
+<p>Enum covering all Rust FFI-safe types:</p>
+<ul>
+<li>Primitives: <code>Void</code>, <code>Bool</code>, <code>CChar</code>, <code>CInt</code>, <code>CUInt</code>, <code>CLong</code>, etc.</li>
+<li>Compound: <code>Pointer</code>, <code>Array</code>, <code>FnPointer</code></li>
+<li>References: <code>Named(String)</code> for typedefs/records/enums</li>
+<li>Special: <code>OpaquePtr</code> for <code>void*</code>, <code>Unknown</code> for unmappable types</li>
+</ul>
+<h3 id="gatedecision"><a class="header" href="#gatedecision"><code>GateDecision</code></a></h3>
+<p>Either <code>Accept</code> or <code>Reject(reason)</code>. Items that are rejected produce
+diagnostics but no Rust code.</p>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="api-reference"><a class="header" href="#api-reference">API Reference</a></h1>
+<h2 id="api-tiers"><a class="header" href="#api-tiers">API tiers</a></h2>
+<p><code>gec</code> organizes its public API into two tiers:</p>
+<ul>
+<li><strong>Tier 1 (stable)</strong>: <code>generate()</code>, <code>generate_from_source()</code>, <code>GecConfig</code>, <code>GecInput</code>, <code>GecOutput</code>,
+<code>GecOutputMeta</code>, <code>SCHEMA_VERSION</code></li>
+<li><strong>Tier 2 (public but less stable)</strong>: individual modules (<code>lower</code>, <code>gate</code>,
+<code>emit</code>, <code>typemap</code>, <code>linkgen</code>, <code>crategen</code>, <code>consumer</code>)</li>
+</ul>
+<h2 id="primary-workflow"><a class="header" href="#primary-workflow">Primary workflow</a></h2>
+<p><code>generate_from_source()</code> is the preferred entrypoint when the caller already
+has a <code>linc::SourcePackage</code>. Use <code>GecInput</code> directly when attaching optional
+validation or resolved link evidence.</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use gec::{generate_from_source, GecConfig, GecInput, generate};
+
+// 1a. Build input from a linc BindingPackage
+let input = GecInput::from_package(pkg);
+
+// 1b. Or generate directly from a linc SourcePackage
+let output = generate_from_source(source, &amp;GecConfig::new("mylib_sys")).unwrap();
+
+// 2. Attach optional evidence for the explicit-input path
+let input = input.with_validation(report).with_link_plan(plan);
+
+// 3. Configure generation for the explicit-input path
+let config = GecConfig::new("mylib_sys");
+
+// 4. Run the pipeline
+let output = generate(&amp;input, &amp;config).unwrap();
+
+// 5. Use the output
+let source = gec::emit::emit_source(&amp;output.projection);
+<span class="boring">}</span></code></pre>
+<p><code>GecInput</code> also exposes explicit JSON constructors:</p>
+<ul>
+<li><code>GecInput::from_binding_json(...)</code></li>
+<li><code>GecInput::from_source_json(...)</code></li>
+</ul>
+<p>When validation evidence is attached, <code>generate()</code> filters out declarations
+that fail validation gating instead of emitting speculative Rust bindings.</p>
+<h2 id="configuration"><a class="header" href="#configuration">Configuration</a></h2>
+<p><code>GecConfig</code> controls what gets generated:</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Field</th><th>Default</th><th>Description</th></tr>
+</thead>
+<tbody>
+<tr><td><code>crate_name</code></td><td><code>"gec_output"</code></td><td>Name for the generated crate</td></tr>
+<tr><td><code>crate_version</code></td><td><code>"0.1.0"</code></td><td>Version string</td></tr>
+<tr><td><code>emit_functions</code></td><td><code>true</code></td><td>Emit <code>extern "C"</code> function declarations</td></tr>
+<tr><td><code>emit_records</code></td><td><code>true</code></td><td>Emit <code>#[repr(C)]</code> struct/union types</td></tr>
+<tr><td><code>emit_enums</code></td><td><code>true</code></td><td>Emit enum types</td></tr>
+<tr><td><code>emit_type_aliases</code></td><td><code>true</code></td><td>Emit type aliases</td></tr>
+<tr><td><code>emit_variables</code></td><td><code>true</code></td><td>Emit static variable declarations</td></tr>
+<tr><td><code>emit_constants</code></td><td><code>true</code></td><td>Emit constant definitions</td></tr>
+<tr><td><code>emit_build_script</code></td><td><code>true</code></td><td>Emit <code>build.rs</code> with link metadata</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="error-handling"><a class="header" href="#error-handling">Error handling</a></h2>
+<p>All fallible operations return <code>GecResult&lt;T&gt;</code>, which is
+<code>Result&lt;T, GecError&gt;</code>.</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>pub enum GecError {
+    EmptyInput,
+    InvalidConfig { reason: String },
+    Io(std::io::Error),
+    Serialization(String),
+}
+<span class="boring">}</span></code></pre>
+<h2 id="json-contract"><a class="header" href="#json-contract">JSON contract</a></h2>
+<p>Output metadata can be serialized for downstream tooling:</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use gec::contract::{output_meta, meta_to_json};
+
+let meta = output_meta(&amp;config, &amp;output);
+let json = meta_to_json(&amp;meta).unwrap();
+<span class="boring">}</span></code></pre>
+<p>The JSON includes <code>schema_version</code> for forward compatibility.
+<code>meta_from_json()</code> rejects metadata with a schema version newer than the
+current build supports.</p>
+<h2 id="consumer-contract"><a class="header" href="#consumer-contract">Consumer contract</a></h2>
+<p>Downstream tools implement the <code>GecConsumer</code> trait:</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use gec::consumer::{GecConsumer, ConsumerReport};
+use gec::ir::RustProjection;
+
+struct MyConsumer;
+
+impl GecConsumer for MyConsumer {
+    fn inspect(&amp;self, proj: &amp;RustProjection) -&gt; ConsumerReport {
+        // inspect the projection...
+        ConsumerReport::default()
+    }
+}
+<span class="boring">}</span></code></pre>
+<p>A <code>MetadataSidecar</code> (JSON) can be generated alongside the crate for tools
+that don’t need to parse Rust source:</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use gec::consumer::{build_sidecar, sidecar_to_json};
+
+let sidecar = build_sidecar("mylib_sys", &amp;output.projection);
+let json = sidecar_to_json(&amp;sidecar).unwrap();
+<span class="boring">}</span></code></pre>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="intake-contract"><a class="header" href="#intake-contract">Intake Contract</a></h1>
+<h2 id="primary-input"><a class="header" href="#primary-input">Primary input</a></h2>
+<p><code>gec</code> accepts two explicit intake forms:</p>
+<ul>
+<li><code>linc::BindingPackage</code> via <code>GecInput::from_package(...)</code></li>
+<li><code>linc::SourcePackage</code> via <code>GecInput::from_source_package(...)</code></li>
+</ul>
+<p>The source-package path is the preferred starting point when the caller already
+has <code>parc</code>/<code>linc</code> source contracts. It keeps <code>gec</code> on the split-pipeline path
+and lets the crate adapt source declarations into bindings internally.</p>
+<p>The binding-package path is the richer machine contract and contains:</p>
+<ul>
+<li><strong>Items</strong> — function declarations, record (struct/union) definitions, enum
+definitions, type aliases, variable declarations, and unsupported markers</li>
+<li><strong>Diagnostics</strong> — warnings and errors from upstream analysis</li>
+<li><strong>Macros</strong> — C preprocessor macro definitions (integer literals become Rust
+constants)</li>
+<li><strong>Layouts</strong> — ABI layout information for records</li>
+<li><strong>Link surface</strong> — native library requirements, search paths, artifacts</li>
+</ul>
+<h2 id="optional-enrichment"><a class="header" href="#optional-enrichment">Optional enrichment</a></h2>
+<p>Two additional <code>linc</code> outputs can optionally be attached:</p>
+<h3 id="validationreport"><a class="header" href="#validationreport"><code>ValidationReport</code></a></h3>
+<p>Declaration-vs-artifact validation evidence. When present, <code>gec</code> uses
+validation findings to drive safety gating decisions.</p>
+<p>Attached validation evidence is not advisory. <code>gec</code> rejects functions and
+variables that are missing validation matches or that only have unusable
+matches such as ABI mismatches, duplicate providers, hidden providers,
+decoration mismatches, or wrong-kind matches.</p>
+<h3 id="resolvedlinkplan"><a class="header" href="#resolvedlinkplan"><code>ResolvedLinkPlan</code></a></h3>
+<p>Resolved native link requirements. When present, <code>gec</code> uses the resolved
+plan (with concrete artifact paths and search directories) instead of the
+raw link surface from the binding package.</p>
+<h2 id="building-a-gecinput"><a class="header" href="#building-a-gecinput">Building a <code>GecInput</code></a></h2>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use gec::intake::GecInput;
+
+use linc::SourcePackage;
+
+// Source-package intake
+let input = GecInput::from_source_package(SourcePackage::default());
+
+// Binding-package intake
+let input = GecInput::from_package(pkg);
+
+// Optional enrichment (builder pattern)
+let input = GecInput::from_package(pkg)
+    .with_validation(report)
+    .with_link_plan(plan);
+
+// Explicit JSON entrypoints
+let input = GecInput::from_binding_json(binding_json).unwrap();
+let input = GecInput::from_source_json(source_json).unwrap();
+<span class="boring">}</span></code></pre>
+<h2 id="normalization"><a class="header" href="#normalization">Normalization</a></h2>
+<p><code>GecInput::normalize()</code> is called automatically during <code>generate()</code>. It:</p>
+<ul>
+<li>Deduplicates function declarations by name (last-wins)</li>
+<li>Aligns provenance markers</li>
+<li>Is idempotent (safe to call multiple times)</li>
+</ul>
+<h2 id="what-gec-does-not-accept"><a class="header" href="#what-gec-does-not-accept">What gec does NOT accept</a></h2>
+<p><code>gec</code> does not accept raw C source code or header files directly. Source
+extraction belongs in <code>parc</code>, and transitional raw-header scanning belongs in
+<code>linc::HeaderConfig</code>.</p>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="code-generation"><a class="header" href="#code-generation">Code Generation</a></h1>
+<h2 id="pipeline-stages"><a class="header" href="#pipeline-stages">Pipeline stages</a></h2>
+<p>Code generation in <code>gec</code> proceeds through several stages:</p>
+<h3 id="1-safety-gating-gate"><a class="header" href="#1-safety-gating-gate">1. Safety gating (<code>gate</code>)</a></h3>
+<p>Each item in the <code>BindingPackage</code> is evaluated against generation rules:</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Rule</th><th>Effect</th></tr>
+</thead>
+<tbody>
+<tr><td>Bitfield records</td><td>Rejected — no safe <code>repr(C)</code> representation</td></tr>
+<tr><td>Anonymous records</td><td>Rejected — Rust requires named types</td></tr>
+<tr><td>Anonymous enums</td><td>Rejected — Rust requires named types</td></tr>
+<tr><td>Incomplete/opaque fields</td><td>Rejected — cannot determine layout</td></tr>
+<tr><td><code>linc::Unsupported</code> items</td><td>Rejected — explicitly unsupported upstream</td></tr>
+</tbody>
+</table>
+</div>
+<p>Rejected items produce diagnostics in the output but no Rust code.</p>
+<h3 id="2-type-mapping-typemap"><a class="header" href="#2-type-mapping-typemap">2. Type mapping (<code>typemap</code>)</a></h3>
+<p>C types are mapped to Rust FFI-safe equivalents:</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>C type</th><th>Rust type</th></tr>
+</thead>
+<tbody>
+<tr><td><code>void</code></td><td><code>()</code> (or omitted)</td></tr>
+<tr><td><code>_Bool</code></td><td><code>bool</code></td></tr>
+<tr><td><code>int</code></td><td><code>core::ffi::c_int</code></td></tr>
+<tr><td><code>unsigned int</code></td><td><code>core::ffi::c_uint</code></td></tr>
+<tr><td><code>long</code></td><td><code>core::ffi::c_long</code></td></tr>
+<tr><td><code>float</code> / <code>double</code></td><td><code>core::ffi::c_float</code> / <code>core::ffi::c_double</code></td></tr>
+<tr><td><code>void*</code></td><td><code>*mut core::ffi::c_void</code></td></tr>
+<tr><td><code>const void*</code></td><td><code>*const core::ffi::c_void</code></td></tr>
+<tr><td><code>T*</code></td><td><code>*mut T</code> / <code>*const T</code></td></tr>
+<tr><td><code>T[N]</code></td><td><code>[T; N]</code></td></tr>
+<tr><td><code>T[]</code> (flexible array)</td><td><code>[T; 0]</code></td></tr>
+<tr><td><code>int (*)(int)</code></td><td><code>Option&lt;unsafe extern "C" fn(c_int) -&gt; c_int&gt;</code></td></tr>
+<tr><td><code>long double</code></td><td><code>Unknown</code> (not representable in Rust)</td></tr>
+</tbody>
+</table>
+</div>
+<h3 id="3-lowering-lower"><a class="header" href="#3-lowering-lower">3. Lowering (<code>lower</code>)</a></h3>
+<p>Accepted items are lowered from <code>linc</code> types to <code>gec</code>’s internal IR:</p>
+<ul>
+<li><strong>Functions</strong> → <code>RustFunction</code> (name, parameters, return type, variadic flag)</li>
+<li><strong>Structs</strong> → <code>RustRecord</code> with <code>RustRecordKind::Struct</code></li>
+<li><strong>Unions</strong> → <code>RustRecord</code> with <code>RustRecordKind::Union</code></li>
+<li><strong>Opaque records</strong> → <code>RustRecord</code> with <code>is_opaque: true</code></li>
+<li><strong>Enums</strong> → <code>RustEnum</code> with variants and repr selection (<code>c_int</code> or <code>c_uint</code>)</li>
+<li><strong>Type aliases</strong> → <code>RustTypeAlias</code></li>
+<li><strong>Variables</strong> → <code>RustStatic</code></li>
+<li><strong>Integer macros</strong> → <code>RustConstant</code></li>
+</ul>
+<h3 id="4-source-emission-emit"><a class="header" href="#4-source-emission-emit">4. Source emission (<code>emit</code>)</a></h3>
+<p>The IR is rendered into Rust source in a deterministic order:</p>
+<ol>
+<li>Constants (<code>pub const NAME: TYPE = VALUE;</code>)</li>
+<li>Type aliases (<code>pub type NAME = TARGET;</code>)</li>
+<li>Enums (<code>#[repr(REPR)] pub enum NAME { ... }</code>)</li>
+<li>Records — structs (<code>#[repr(C)] pub struct NAME { ... }</code>), unions, and
+opaque structs (<code>pub struct NAME { _opaque: [u8; 0] }</code>)</li>
+<li><code>extern "C"</code> block containing function declarations and statics</li>
+</ol>
+<p>This ordering is stable and deterministic: the same input always produces
+the same output.</p>
+<h2 id="link-metadata-linkgen"><a class="header" href="#link-metadata-linkgen">Link metadata (<code>linkgen</code>)</a></h2>
+<p><code>linc</code> link evidence is lowered into Cargo-compatible <code>build.rs</code> directives:</p>
+<ul>
+<li><code>cargo:rustc-link-lib=NAME</code> — link a library</li>
+<li><code>cargo:rustc-link-lib=static=NAME</code> — link a static library</li>
+<li><code>cargo:rustc-link-lib=dylib=NAME</code> — link a dynamic library</li>
+<li><code>cargo:rustc-link-lib=framework=NAME</code> — link a macOS framework</li>
+<li><code>cargo:rustc-link-search=native=PATH</code> — add a library search path</li>
+</ul>
+<p>Platform filtering is supported via <code>cfg!()</code> guards when platform constraints
+are specified.</p>
+<p>When a resolved <code>ResolvedLinkPlan</code> is attached to <code>GecInput</code>, <code>gec</code> prefers
+that evidence over the raw package link surface.</p>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="emitted-crate"><a class="header" href="#emitted-crate">Emitted Crate</a></h1>
+<h2 id="output-modes"><a class="header" href="#output-modes">Output modes</a></h2>
+<p><code>gec</code> supports two output modes via <code>crategen::OutputMode</code>:</p>
+<h3 id="crate-mode"><a class="header" href="#crate-mode">Crate mode</a></h3>
+<p>Writes a complete Cargo-compatible crate directory:</p>
+<pre><code class="language-text">output_dir/
+├── Cargo.toml
+├── build.rs          (if link requirements exist and build_script enabled)
+└── src/
+    └── lib.rs
+</code></pre>
+<h3 id="source-bundle-mode"><a class="header" href="#source-bundle-mode">Source bundle mode</a></h3>
+<p>Writes only the Rust source file (no <code>Cargo.toml</code> or <code>build.rs</code>):</p>
+<pre><code class="language-text">output_dir/
+└── src/
+    └── lib.rs
+</code></pre>
+<h2 id="cargotoml"><a class="header" href="#cargotoml">Cargo.toml</a></h2>
+<p>The generated <code>Cargo.toml</code> includes:</p>
+<pre><code class="language-toml">[package]
+name = "mylib-sys"
+version = "0.1.0"
+edition = "2021"
+# Auto-generated by gec &lt;version&gt;
+</code></pre>
+<h2 id="buildrs"><a class="header" href="#buildrs">build.rs</a></h2>
+<p>When link requirements exist, <code>gec</code> generates a <code>build.rs</code> that emits
+Cargo link directives:</p>
+<pre class="playground"><code class="language-rust">fn main() {
+    println!("cargo:rustc-link-lib=mylib");
+    println!("cargo:rustc-link-search=native=/usr/lib");
+}</code></pre>
+<h2 id="overwrite-policies"><a class="header" href="#overwrite-policies">Overwrite policies</a></h2>
+<p><code>crategen::OverwritePolicy</code> controls behavior when the output directory
+already exists:</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Policy</th><th>Behavior</th></tr>
+</thead>
+<tbody>
+<tr><td><code>Fail</code></td><td>Return an error if the directory is not empty</td></tr>
+<tr><td><code>Clean</code></td><td>Remove existing contents before writing</td></tr>
+<tr><td><code>Overwrite</code></td><td>Write over existing files without removing extras</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="crate-naming"><a class="header" href="#crate-naming">Crate naming</a></h2>
+<p><code>crategen::normalize_crate_name()</code> ensures valid Cargo package names:</p>
+<ul>
+<li>Replaces non-alphanumeric characters (except <code>_</code>) with <code>_</code></li>
+<li>Rejects empty names</li>
+<li>Rejects names starting with a digit</li>
+</ul>
+<h2 id="usage"><a class="header" href="#usage">Usage</a></h2>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use gec::crategen::{emit_crate, OutputMode, OverwritePolicy};
+
+let emitted = emit_crate(
+    &amp;output.projection,
+    &amp;config,
+    "/tmp/mylib_sys",
+    OutputMode::Crate,
+    OverwritePolicy::Clean,
+).unwrap();
+
+assert!(emitted.cargo_toml.is_some());
+assert!(emitted.lib_rs.exists());
+<span class="boring">}</span></code></pre>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+
+            </nav>
+
+        </div>
+
+        <template id=fa-eye><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M288 32c-80.8 0-145.5 36.8-192.6 80.6C48.6 156 17.3 208 2.5 243.7c-3.3 7.9-3.3 16.7 0 24.6C17.3 304 48.6 356 95.4 399.4C142.5 443.2 207.2 480 288 480s145.5-36.8 192.6-80.6c46.8-43.5 78.1-95.4 93-131.1c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C433.5 68.8 368.8 32 288 32zM432 256c0 79.5-64.5 144-144 144s-144-64.5-144-144s64.5-144 144-144s144 64.5 144 144zM288 192c0 35.3-28.7 64-64 64c-11.5 0-22.3-3-31.6-8.4c-.2 2.8-.4 5.5-.4 8.4c0 53 43 96 96 96s96-43 96-96s-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6z"/></svg></span></template>
+        <template id=fa-eye-slash><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M38.8 5.1C28.4-3.1 13.3-1.2 5.1 9.2S-1.2 34.7 9.2 42.9l592 464c10.4 8.2 25.5 6.3 33.7-4.1s6.3-25.5-4.1-33.7L525.6 386.7c39.6-40.6 66.4-86.1 79.9-118.4c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C465.5 68.8 400.8 32 320 32c-68.2 0-125 26.3-169.3 60.8L38.8 5.1zM223.1 149.5C248.6 126.2 282.7 112 320 112c79.5 0 144 64.5 144 144c0 24.9-6.3 48.3-17.4 68.7L408 294.5c5.2-11.8 8-24.8 8-38.5c0-53-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6c0 10.2-2.4 19.8-6.6 28.3l-90.3-70.8zm223.1 298L373 389.9c-16.4 6.5-34.3 10.1-53 10.1c-79.5 0-144-64.5-144-144c0-6.9 .5-13.6 1.4-20.2L83.1 161.5C60.3 191.2 44 220.8 34.5 243.7c-3.3 7.9-3.3 16.7 0 24.6c14.9 35.7 46.2 87.7 93 131.1C174.5 443.2 239.2 480 320 480c47.8 0 89.9-12.9 126.2-32.5z"/></svg></span></template>
+        <template id=fa-copy><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M502.6 70.63l-61.25-61.25C435.4 3.371 427.2 0 418.7 0H255.1c-35.35 0-64 28.66-64 64l.0195 256C192 355.4 220.7 384 256 384h192c35.2 0 64-28.8 64-64V93.25C512 84.77 508.6 76.63 502.6 70.63zM464 320c0 8.836-7.164 16-16 16H255.1c-8.838 0-16-7.164-16-16L239.1 64.13c0-8.836 7.164-16 16-16h128L384 96c0 17.67 14.33 32 32 32h47.1V320zM272 448c0 8.836-7.164 16-16 16H63.1c-8.838 0-16-7.164-16-16L47.98 192.1c0-8.836 7.164-16 16-16H160V128H63.99c-35.35 0-64 28.65-64 64l.0098 256C.002 483.3 28.66 512 64 512h192c35.2 0 64-28.8 64-64v-32h-47.1L272 448z"/></svg></span></template>
+        <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
+        <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="elasticlunr-ef4e11c1.min.js"></script>
+        <script src="mark-09e88c2c.min.js"></script>
+        <script src="searcher-c2a407aa.js"></script>
+
+        <script src="clipboard-1626706a.min.js"></script>
+        <script src="highlight-abc7f01d.js"></script>
+        <script src="book-a0b12cfe.js"></script>
+
+        <!-- Custom JS scripts -->
+
+        <script>
+        window.addEventListener('load', function() {
+            window.setTimeout(window.print, 100);
+        });
+        </script>
+
+
+    </div>
+    </body>
+</html>
