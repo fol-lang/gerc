@@ -48,7 +48,7 @@ fn gate_item(item: &BindingItem, _validation: Option<&ValidationReport>) -> Gate
         BindingItem::Record(r) => gate_record(r),
         BindingItem::Enum(e) => gate_enum(e),
         BindingItem::TypeAlias(_) => GateDecision::Accept,
-        BindingItem::Variable(_) => GateDecision::Accept,
+        BindingItem::Variable(v) => gate_variable(v, _validation),
         BindingItem::Unsupported(u) => {
             GateDecision::Reject(format!("linc marked as unsupported: {}", u.reason))
         }
@@ -86,6 +86,29 @@ fn validation_match_for_function<'a>(
         .matches
         .iter()
         .find(|m| m.item_kind == linc::ItemKind::Function && m.name == name)
+}
+
+fn gate_variable(v: &linc::VariableBinding, validation: Option<&ValidationReport>) -> GateDecision {
+    if let Some(report) = validation {
+        if validation_match_for_variable(report, &v.name).is_none() {
+            return GateDecision::Reject(format!(
+                "variable '{}' lacks validation evidence",
+                v.name
+            ));
+        }
+    }
+
+    GateDecision::Accept
+}
+
+fn validation_match_for_variable<'a>(
+    report: &'a ValidationReport,
+    name: &str,
+) -> Option<&'a linc::SymbolMatch> {
+    report
+        .matches
+        .iter()
+        .find(|m| m.item_kind == linc::ItemKind::Variable && m.name == name)
 }
 
 /// 6.1: Required evidence rules for by-value structs.
@@ -297,6 +320,55 @@ mod tests {
             matches: vec![SymbolMatch {
                 name: "foo".into(),
                 item_kind: ItemKind::Function,
+                status: MatchStatus::Matched,
+                visibility: None,
+                provider_artifacts: Vec::new(),
+                confidence: MatchConfidence::High,
+                evidence_kind: EvidenceKind::ExactExported,
+            }],
+        };
+
+        let (decisions, diags) = gate_package(&pkg, Some(&report));
+        assert_eq!(decisions[0], GateDecision::Accept);
+        assert!(diags.is_empty());
+    }
+
+    #[test]
+    fn reject_variable_without_validation_match() {
+        let pkg = make_package(vec![BindingItem::Variable(VariableBinding {
+            name: "GLOBAL".into(),
+            ty: BindingType::Int,
+            source_offset: None,
+        })]);
+        let report = ValidationReport {
+            phases: Vec::new(),
+            entries: Vec::new(),
+            summary: ValidationSummary::default(),
+            matches: Vec::new(),
+        };
+
+        let (decisions, diags) = gate_package(&pkg, Some(&report));
+        assert_eq!(
+            decisions[0],
+            GateDecision::Reject("variable 'GLOBAL' lacks validation evidence".into())
+        );
+        assert_eq!(diags.len(), 1);
+    }
+
+    #[test]
+    fn accept_variable_with_validation_match() {
+        let pkg = make_package(vec![BindingItem::Variable(VariableBinding {
+            name: "GLOBAL".into(),
+            ty: BindingType::Int,
+            source_offset: None,
+        })]);
+        let report = ValidationReport {
+            phases: Vec::new(),
+            entries: Vec::new(),
+            summary: ValidationSummary::default(),
+            matches: vec![SymbolMatch {
+                name: "GLOBAL".into(),
+                item_kind: ItemKind::Variable,
                 status: MatchStatus::Matched,
                 visibility: None,
                 provider_artifacts: Vec::new(),
