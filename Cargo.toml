@@ -3,12 +3,12 @@ name = "gec"
 version = "0.1.0"
 edition = "2021"
 authors = ["Trim Bresilla"]
-description = "Rust projection layer on top of bic — generates Rust FFI bindings from C analysis"
+description = "Rust projection layer in the PARC/LINC pipeline — generates Rust FFI bindings from C analysis"
 license = "MIT/Apache-2.0"
 keywords = ["c", "ffi", "bindings", "codegen"]
 categories = ["development-tools::ffi", "code-generation"]
 
 [dependencies]
-bic = { path = "../bic" }
+linc = { path = "../linc", features = ["parc"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"

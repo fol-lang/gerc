@@ -1,22 +1,22 @@
 //! Integration tests exercising realistic library surfaces through the full
 //! gec pipeline: intake → gate → lower → emit → crate generation.
 
-#[path = "../test/stress/zlib.rs"]
-mod zlib;
-#[path = "../test/stress/sqlite.rs"]
-mod sqlite;
-#[path = "../test/stress/openssl.rs"]
-mod openssl;
 #[path = "../test/stress/freetype.rs"]
 mod freetype;
+#[path = "../test/stress/openssl.rs"]
+mod openssl;
+#[path = "../test/stress/sqlite.rs"]
+mod sqlite;
+#[path = "../test/stress/zlib.rs"]
+mod zlib;
 
 use gec::config::GecConfig;
 use gec::consumer::{build_sidecar, sidecar_to_json, GecConsumer, PassthroughConsumer};
-use gec::contract::{generate, output_meta, meta_to_json, projection_to_json};
+use gec::contract::{generate, meta_to_json, output_meta, projection_to_json};
 use gec::emit::emit_source;
 use gec::intake::GecInput;
 
-fn run_full_pipeline(pkg: bic::BindingPackage, crate_name: &str) -> PipelineResult {
+fn run_full_pipeline(pkg: linc::BindingPackage, crate_name: &str) -> PipelineResult {
     let input = GecInput::from_package(pkg);
     let cfg = GecConfig::new(crate_name);
     let output = generate(&input, &cfg).unwrap();
@@ -60,7 +60,11 @@ fn zlib_full_pipeline() {
     let r = run_full_pipeline(zlib::zlib_package(), "zlib_sys");
 
     // zlib has 5 typedefs + 2 structs + 14 functions + bindable macros
-    assert!(r.item_count >= 20, "expected ≥20 items, got {}", r.item_count);
+    assert!(
+        r.item_count >= 20,
+        "expected ≥20 items, got {}",
+        r.item_count
+    );
     assert!(r.source.contains("pub fn deflate"));
     assert!(r.source.contains("pub fn inflate"));
     assert!(r.source.contains("pub fn compress"));
@@ -77,8 +81,16 @@ fn zlib_full_pipeline() {
 #[test]
 fn zlib_deterministic() {
     let pkg = zlib::zlib_package();
-    let s1 = emit_source(&generate(&GecInput::from_package(pkg.clone()), &GecConfig::new("z")).unwrap().projection);
-    let s2 = emit_source(&generate(&GecInput::from_package(pkg), &GecConfig::new("z")).unwrap().projection);
+    let s1 = emit_source(
+        &generate(&GecInput::from_package(pkg.clone()), &GecConfig::new("z"))
+            .unwrap()
+            .projection,
+    );
+    let s2 = emit_source(
+        &generate(&GecInput::from_package(pkg), &GecConfig::new("z"))
+            .unwrap()
+            .projection,
+    );
     assert_eq!(s1, s2);
 }
 
@@ -97,7 +109,11 @@ fn sqlite3_full_pipeline() {
     let r = run_full_pipeline(sqlite::sqlite3_package(), "sqlite3_sys");
 
     // SQLite: ~10 opaque structs + 4 typedefs + ~42 functions + 1 enum + macros
-    assert!(r.item_count >= 50, "expected ≥50 items, got {}", r.item_count);
+    assert!(
+        r.item_count >= 50,
+        "expected ≥50 items, got {}",
+        r.item_count
+    );
     assert!(r.source.contains("pub fn sqlite3_open"));
     assert!(r.source.contains("pub fn sqlite3_close"));
     assert!(r.source.contains("pub fn sqlite3_exec"));
@@ -106,7 +122,7 @@ fn sqlite3_full_pipeline() {
     assert!(r.source.contains("pub fn sqlite3_finalize"));
     assert!(r.source.contains("pub fn sqlite3_bind_text"));
     assert!(r.source.contains("pub fn sqlite3_column_text"));
-    assert!(r.source.contains("pub fn sqlite3_mprintf"));  // variadic
+    assert!(r.source.contains("pub fn sqlite3_mprintf")); // variadic
     assert!(r.source.contains("pub fn sqlite3_malloc"));
     assert!(r.source.contains("pub fn sqlite3_free"));
     // opaque handles
@@ -131,7 +147,7 @@ fn sqlite3_opaque_handles_are_zero_sized() {
 fn sqlite3_variadic_functions() {
     let r = run_full_pipeline(sqlite::sqlite3_package(), "sqlite3_sys");
     assert!(r.source.contains("sqlite3_mprintf"));
-    assert!(r.source.contains("..."));  // variadic marker
+    assert!(r.source.contains("...")); // variadic marker
 }
 
 #[test]
@@ -158,7 +174,11 @@ fn sqlite3_sidecar_completeness() {
 fn openssl_full_pipeline() {
     let r = run_full_pipeline(openssl::openssl_package(), "openssl_sys");
 
-    assert!(r.item_count >= 60, "expected ≥60 items, got {}", r.item_count);
+    assert!(
+        r.item_count >= 60,
+        "expected ≥60 items, got {}",
+        r.item_count
+    );
     assert!(r.source.contains("pub fn SSL_CTX_new"));
     assert!(r.source.contains("pub fn SSL_new"));
     assert!(r.source.contains("pub fn SSL_read"));
@@ -184,7 +204,10 @@ fn openssl_mostly_opaque() {
     let r = run_full_pipeline(openssl::openssl_package(), "openssl_sys");
     // OpenSSL is almost entirely opaque — most structs should use _opaque pattern
     let opaque_count = r.source.matches("_opaque: [u8; 0]").count();
-    assert!(opaque_count >= 20, "expected ≥20 opaque structs, got {opaque_count}");
+    assert!(
+        opaque_count >= 20,
+        "expected ≥20 opaque structs, got {opaque_count}"
+    );
 }
 
 // ---- freetype ----
@@ -193,7 +216,11 @@ fn openssl_mostly_opaque() {
 fn freetype_full_pipeline() {
     let r = run_full_pipeline(freetype::freetype_package(), "freetype_sys");
 
-    assert!(r.item_count >= 30, "expected ≥30 items, got {}", r.item_count);
+    assert!(
+        r.item_count >= 30,
+        "expected ≥30 items, got {}",
+        r.item_count
+    );
     assert!(r.source.contains("pub fn FT_Init_FreeType"));
     assert!(r.source.contains("pub fn FT_Done_FreeType"));
     assert!(r.source.contains("pub fn FT_New_Face"));

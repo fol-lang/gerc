@@ -1,10 +1,10 @@
 //! Internal Rust projection IR.
 //!
 //! This module defines the intermediate representation that sits between
-//! `bic` intake and Rust code emission.  Items in this IR describe *what
+//! `linc` intake and Rust code emission.  Items in this IR describe *what
 //! Rust code should be generated*, not C declarations.
 //!
-//! The IR is intentionally separate from both `bic::ir` (the C-side model)
+//! The IR is intentionally separate from both `linc::ir` (the C-side model)
 //! and the final emitted source text.
 
 use serde::{Deserialize, Serialize};
@@ -286,8 +286,14 @@ mod tests {
             name: "Point".into(),
             kind: RustRecordKind::Struct,
             fields: vec![
-                RustField { name: "x".into(), ty: RustType::CInt },
-                RustField { name: "y".into(), ty: RustType::CInt },
+                RustField {
+                    name: "x".into(),
+                    ty: RustType::CInt,
+                },
+                RustField {
+                    name: "y".into(),
+                    ty: RustType::CInt,
+                },
             ],
             is_opaque: false,
             doc: None,
@@ -303,8 +309,14 @@ mod tests {
         proj.items.push(RustItem::Enum(RustEnum {
             name: "Color".into(),
             variants: vec![
-                RustEnumVariant { name: "Red".into(), value: Some(0) },
-                RustEnumVariant { name: "Green".into(), value: Some(1) },
+                RustEnumVariant {
+                    name: "Red".into(),
+                    value: Some(0),
+                },
+                RustEnumVariant {
+                    name: "Green".into(),
+                    value: Some(1),
+                },
             ],
             repr: "c_int".into(),
             doc: None,
@@ -366,7 +378,10 @@ mod tests {
         let json = serde_json::to_string(&proj).unwrap();
         let proj2: RustProjection = serde_json::from_str(&json).unwrap();
         assert_eq!(proj2.link_requirements.len(), 1);
-        assert_eq!(proj2.link_requirements[0].kind, RustLinkKind::DynamicLibrary);
+        assert_eq!(
+            proj2.link_requirements[0].kind,
+            RustLinkKind::DynamicLibrary
+        );
     }
 
     #[test]
@@ -445,9 +460,10 @@ mod tests {
         proj.items.push(RustItem::Record(RustRecord {
             name: "Config".into(),
             kind: RustRecordKind::Struct,
-            fields: vec![
-                RustField { name: "flags".into(), ty: RustType::CUInt },
-            ],
+            fields: vec![RustField {
+                name: "flags".into(),
+                ty: RustType::CUInt,
+            }],
             is_opaque: false,
             doc: None,
         }));

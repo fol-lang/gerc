@@ -45,7 +45,8 @@ pub fn generate(input: &GecInput, _config: &GecConfig) -> GecResult<GecOutput> {
         return Err(GecError::EmptyInput);
     }
 
-    let (decisions, gate_diags) = gate_package(&input_clone.package, input_clone.validation.as_ref());
+    let (decisions, gate_diags) =
+        gate_package(&input_clone.package, input_clone.validation.as_ref());
 
     // Filter items: only lower accepted items
     let mut filtered_pkg = input_clone.package.clone();
@@ -75,7 +76,9 @@ pub fn generate(input: &GecInput, _config: &GecConfig) -> GecResult<GecOutput> {
 
 /// Generate JSON-serializable output metadata.
 pub fn output_meta(config: &GecConfig, output: &GecOutput) -> GecOutputMeta {
-    let rejected = output.diagnostics.iter()
+    let rejected = output
+        .diagnostics
+        .iter()
         .filter(|d| d.severity == GecSeverity::Warning)
         .count();
     GecOutputMeta {
@@ -96,8 +99,8 @@ pub fn meta_to_json(meta: &GecOutputMeta) -> GecResult<String> {
 
 /// Deserialize output metadata from JSON.
 pub fn meta_from_json(json: &str) -> GecResult<GecOutputMeta> {
-    let meta: GecOutputMeta = serde_json::from_str(json)
-        .map_err(|e| GecError::Serialization(e.to_string()))?;
+    let meta: GecOutputMeta =
+        serde_json::from_str(json).map_err(|e| GecError::Serialization(e.to_string()))?;
     if meta.schema_version > SCHEMA_VERSION {
         return Err(GecError::InvalidConfig {
             reason: format!(
@@ -128,14 +131,17 @@ mod tests {
     use crate::config::GecConfig;
     use crate::error::GecError;
     use crate::intake::GecInput;
-    use bic::*;
+    use linc::*;
 
     fn sample_input() -> GecInput {
         let mut pkg = BindingPackage::new();
         pkg.items.push(BindingItem::Function(FunctionBinding {
             name: "foo".into(),
             calling_convention: CallingConvention::C,
-            parameters: vec![ParameterBinding { name: Some("x".into()), ty: BindingType::Int }],
+            parameters: vec![ParameterBinding {
+                name: Some("x".into()),
+                ty: BindingType::Int,
+            }],
             return_type: BindingType::Void,
             variadic: false,
             source_offset: None,
@@ -143,7 +149,12 @@ mod tests {
         pkg.items.push(BindingItem::Record(RecordBinding {
             kind: RecordKind::Struct,
             name: Some("Bar".into()),
-            fields: Some(vec![FieldBinding { name: Some("val".into()), ty: BindingType::Int, bit_width: None, layout: None }]),
+            fields: Some(vec![FieldBinding {
+                name: Some("val".into()),
+                ty: BindingType::Int,
+                bit_width: None,
+                layout: None,
+            }]),
             representation: None,
             abi_confidence: None,
             source_offset: None,

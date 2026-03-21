@@ -1,11 +1,11 @@
 //! ABI and safety gating for Rust projection.
 //!
 //! This module defines rules for when `gec` should refuse to generate Rust
-//! code because the `bic` evidence is insufficient for safe FFI.
+//! code because the `linc` evidence is insufficient for safe FFI.
 
-use bic::{
-    BindingItem, BindingPackage, EnumBinding, FieldBinding,
-    FunctionBinding, RecordBinding, ValidationReport,
+use linc::{
+    BindingItem, BindingPackage, EnumBinding, FieldBinding, FunctionBinding, RecordBinding,
+    ValidationReport,
 };
 
 use crate::output::{GecDiagnostic, GecSeverity};
@@ -49,10 +49,9 @@ fn gate_item(item: &BindingItem, _validation: Option<&ValidationReport>) -> Gate
         BindingItem::Enum(e) => gate_enum(e),
         BindingItem::TypeAlias(_) => GateDecision::Accept,
         BindingItem::Variable(_) => GateDecision::Accept,
-        BindingItem::Unsupported(u) => GateDecision::Reject(format!(
-            "bic marked as unsupported: {}",
-            u.reason
-        )),
+        BindingItem::Unsupported(u) => {
+            GateDecision::Reject(format!("linc marked as unsupported: {}", u.reason))
+        }
     }
 }
 
@@ -114,7 +113,7 @@ fn gate_enum(e: &EnumBinding) -> GateDecision {
     GateDecision::Accept
 }
 
-fn has_bitfield_in_signature(_ty: &bic::BindingType) -> bool {
+fn has_bitfield_in_signature(_ty: &linc::BindingType) -> bool {
     // Bitfields cannot appear directly in function signatures in C,
     // but structs containing bitfields can be passed by value.
     // This is a conservative check — we let the record gate handle it.
@@ -122,7 +121,7 @@ fn has_bitfield_in_signature(_ty: &bic::BindingType) -> bool {
 }
 
 fn field_is_incomplete(field: &FieldBinding) -> bool {
-    matches!(&field.ty, bic::BindingType::Opaque(_))
+    matches!(&field.ty, linc::BindingType::Opaque(_))
 }
 
 fn item_name(item: &BindingItem) -> Option<String> {
@@ -139,7 +138,7 @@ fn item_name(item: &BindingItem) -> Option<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use bic::*;
+    use linc::*;
 
     fn make_package(items: Vec<BindingItem>) -> BindingPackage {
         let mut pkg = BindingPackage::new();
@@ -153,14 +152,12 @@ mod tests {
         let pkg = make_package(vec![BindingItem::Record(RecordBinding {
             kind: RecordKind::Struct,
             name: Some("point".into()),
-            fields: Some(vec![
-                FieldBinding {
-                    name: Some("x".into()),
-                    ty: BindingType::Int,
-                    bit_width: None,
-                    layout: None,
-                },
-            ]),
+            fields: Some(vec![FieldBinding {
+                name: Some("x".into()),
+                ty: BindingType::Int,
+                bit_width: None,
+                layout: None,
+            }]),
             representation: None,
             abi_confidence: None,
             source_offset: None,
@@ -186,7 +183,10 @@ mod tests {
             source_offset: None,
         })]);
         let (decisions, diags) = gate_package(&pkg, None);
-        assert_eq!(decisions[0], GateDecision::Reject("record 'flags' contains bitfields — not projected".into()));
+        assert_eq!(
+            decisions[0],
+            GateDecision::Reject("record 'flags' contains bitfields — not projected".into())
+        );
         assert_eq!(diags.len(), 1);
     }
 

@@ -75,10 +75,7 @@ pub enum SidecarItemKind {
 }
 
 /// Build a metadata sidecar from a projection.
-pub fn build_sidecar(
-    crate_name: &str,
-    proj: &RustProjection,
-) -> MetadataSidecar {
+pub fn build_sidecar(crate_name: &str, proj: &RustProjection) -> MetadataSidecar {
     let items: Vec<SidecarItem> = proj
         .items
         .iter()
@@ -285,7 +282,10 @@ mod tests {
         let report = consumer.inspect(&proj);
         assert_eq!(report.consumer_name, "passthrough");
         assert_eq!(report.items_inspected, 3);
-        assert!(report.findings.iter().all(|f| f.kind == FindingKind::Usable));
+        assert!(report
+            .findings
+            .iter()
+            .all(|f| f.kind == FindingKind::Usable));
     }
 
     // 12.2: emitted surface conventions
@@ -340,14 +340,20 @@ mod tests {
         let mut proj = RustProjection::new();
         proj.items.push(RustItem::Function(RustFunction {
             name: "malloc".into(),
-            parameters: vec![RustParameter { name: "size".into(), ty: RustType::CULong }],
+            parameters: vec![RustParameter {
+                name: "size".into(),
+                ty: RustType::CULong,
+            }],
             return_type: RustType::OpaquePtr { is_const: false },
             variadic: false,
             doc: None,
         }));
         proj.items.push(RustItem::Function(RustFunction {
             name: "free".into(),
-            parameters: vec![RustParameter { name: "ptr".into(), ty: RustType::OpaquePtr { is_const: false } }],
+            parameters: vec![RustParameter {
+                name: "ptr".into(),
+                ty: RustType::OpaquePtr { is_const: false },
+            }],
             return_type: RustType::Void,
             variadic: false,
             doc: None,
@@ -367,7 +373,10 @@ mod tests {
         let report = consumer.inspect(&proj);
         assert_eq!(report.items_inspected, proj.len());
         // All items accepted
-        assert!(report.findings.iter().all(|f| f.kind == FindingKind::Usable));
+        assert!(report
+            .findings
+            .iter()
+            .all(|f| f.kind == FindingKind::Usable));
     }
 
     // 12.7: fol-oriented example
@@ -383,7 +392,10 @@ mod tests {
         }));
         proj.items.push(RustItem::Function(RustFunction {
             name: "compute".into(),
-            parameters: vec![RustParameter { name: "x".into(), ty: RustType::CInt }],
+            parameters: vec![RustParameter {
+                name: "x".into(),
+                ty: RustType::CInt,
+            }],
             return_type: RustType::CInt,
             variadic: false,
             doc: None,
@@ -398,8 +410,8 @@ mod tests {
         assert_eq!(report.consumer_name, "fol-interloop-rust");
         assert_eq!(report.findings.len(), 3);
         assert_eq!(report.findings[0].kind, FindingKind::NeedsWrapper); // alloc returns void*
-        assert_eq!(report.findings[1].kind, FindingKind::Usable);       // compute
-        assert_eq!(report.findings[2].kind, FindingKind::Unsupported);  // bad
+        assert_eq!(report.findings[1].kind, FindingKind::Usable); // compute
+        assert_eq!(report.findings[2].kind, FindingKind::Unsupported); // bad
     }
 
     // 12.8: documented consumption (tested via sidecar structure)
@@ -417,13 +429,13 @@ mod tests {
     // - runtime loader policy
     // The test proves the contract boundaries are clean.
     #[test]
-    fn gec_does_not_expose_bic_internals() {
-        // The consumer module uses only gec::ir types, not bic types
+    fn gec_does_not_expose_linc_internals() {
+        // The consumer module uses only gec::ir types, not linc types
         let proj = sample_projection();
         let sidecar = build_sidecar("boundary_test", &proj);
         // Sidecar is purely gec-typed
         let json = sidecar_to_json(&sidecar).unwrap();
-        assert!(!json.contains("BindingType")); // no bic types leak
+        assert!(!json.contains("BindingType")); // no linc types leak
         assert!(!json.contains("BindingItem"));
     }
 
@@ -431,10 +443,10 @@ mod tests {
     #[test]
     fn full_consumer_pipeline() {
         // Build a package, run full generate, then consumer inspect
-        use bic::*;
-        use crate::contract::generate;
         use crate::config::GecConfig;
+        use crate::contract::generate;
         use crate::intake::GecInput;
+        use linc::*;
 
         let mut pkg = BindingPackage::new();
         pkg.items.push(BindingItem::Function(FunctionBinding {

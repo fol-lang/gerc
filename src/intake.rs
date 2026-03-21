@@ -1,14 +1,14 @@
-use bic::{
+use linc::{
     BindingItem, BindingPackage, DeclarationProvenance, ResolvedLinkPlan, ValidationReport,
 };
 
 /// Primary input container for a `gec` generation run.
 ///
-/// Wraps a required `bic::BindingPackage` plus optional enrichment data.
+/// Wraps a required `linc::BindingPackage` plus optional enrichment data.
 /// The `BindingPackage` is the single source of truth for C declarations;
 /// validation and link-plan data are supplementary evidence.
 ///
-/// ## Required vs optional `bic` evidence
+/// ## Required vs optional `linc` evidence
 ///
 /// - **Required**: `BindingPackage` — always needed; contains items, diagnostics,
 ///   macros, layouts, and link surface.
@@ -19,7 +19,7 @@ use bic::{
 ///   When absent, `gec` uses the raw `BindingLinkSurface` from the package.
 #[derive(Debug, Clone)]
 pub struct GecInput {
-    /// The core `bic` analysis output — required.
+    /// The core `linc` analysis output — required.
     pub package: BindingPackage,
     /// Optional validation report (declaration-vs-artifact matching).
     pub validation: Option<ValidationReport>,
@@ -83,8 +83,7 @@ impl GecInput {
 
     /// Construct from a JSON string (deserializes a `BindingPackage`).
     pub fn from_json(json: &str) -> Result<Self, String> {
-        let package: BindingPackage =
-            serde_json::from_str(json).map_err(|e| e.to_string())?;
+        let package: BindingPackage = serde_json::from_str(json).map_err(|e| e.to_string())?;
         Ok(Self::from_package(package))
     }
 }
@@ -148,7 +147,7 @@ fn align_provenance(pkg: &mut BindingPackage) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use bic::*;
+    use linc::*;
 
     fn empty_package() -> BindingPackage {
         BindingPackage::new()
@@ -182,8 +181,8 @@ mod tests {
 
     #[test]
     fn with_link_plan() {
-        let input = GecInput::from_package(empty_package())
-            .with_link_plan(ResolvedLinkPlan::default());
+        let input =
+            GecInput::from_package(empty_package()).with_link_plan(ResolvedLinkPlan::default());
         assert!(input.has_link_plan());
         assert!(!input.has_validation());
     }
@@ -274,9 +273,6 @@ mod tests {
 
         let mut input = GecInput::from_package(pkg);
         input.normalize();
-        assert_eq!(
-            input.package.provenance[0].item_name.as_deref(),
-            Some("x")
-        );
+        assert_eq!(input.package.provenance[0].item_name.as_deref(), Some("x"));
     }
 }

@@ -18,7 +18,7 @@ pub struct GecConfig {
     pub emit_type_aliases: bool,
     /// Whether to emit global/static variable declarations.
     pub emit_variables: bool,
-    /// Whether to emit Rust constants from `bic` macro bindings.
+    /// Whether to emit Rust constants from `linc` macro bindings.
     pub emit_constants: bool,
     /// Whether to emit a `build.rs` with native link metadata.
     pub emit_build_script: bool,

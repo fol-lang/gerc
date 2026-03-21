@@ -1,14 +1,14 @@
-//! Type mapping from `bic::BindingType` to `gec::ir::RustType`.
+//! Type mapping from `linc::BindingType` to `gec::ir::RustType`.
 //!
 //! This module is the core C→Rust type projection.  It maps primitive types,
 //! pointers, arrays, function pointers, typedefs, and opaque handles into
 //! their Rust FFI equivalents.
 
-use bic::BindingType;
+use linc::BindingType;
 
 use crate::ir::RustType;
 
-/// Map a `bic::BindingType` to a `gec::ir::RustType`.
+/// Map a `linc::BindingType` to a `gec::ir::RustType`.
 pub fn map_type(ty: &BindingType) -> RustType {
     match ty {
         // 4.1: primitive integer and float types
@@ -82,7 +82,7 @@ pub fn map_type(ty: &BindingType) -> RustType {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use bic::{BindingType, TypeQualifiers};
+    use linc::{BindingType, TypeQualifiers};
 
     // 4.1: primitive types
     #[test]
@@ -334,12 +334,7 @@ mod tests {
             (BindingType::Double, RustType::F64),
         ];
         for (bic_ty, expected) in cases {
-            assert_eq!(
-                map_type(&bic_ty),
-                expected,
-                "failed for {:?}",
-                bic_ty
-            );
+            assert_eq!(map_type(&bic_ty), expected, "failed for {:?}", bic_ty);
         }
     }
 }

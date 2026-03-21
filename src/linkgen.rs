@@ -1,11 +1,11 @@
 //! Native link metadata lowering and `build.rs` emission.
 //!
-//! Turns `bic` link surfaces and resolved link plans into Rust-side
+//! Turns `linc` link surfaces and resolved link plans into Rust-side
 //! `RustLinkRequirement` values and emitted `build.rs` content.
 
-use bic::{
-    BindingLinkSurface, BindingPackage, LinkArtifact, LinkArtifactKind, LinkInput,
-    LinkLibrary, LinkLibraryKind, LinkResolutionMode, ResolvedLinkPlan,
+use linc::{
+    BindingLinkSurface, BindingPackage, LinkArtifact, LinkArtifactKind, LinkInput, LinkLibrary,
+    LinkLibraryKind, LinkResolutionMode, ResolvedLinkPlan,
 };
 
 use crate::ir::{RustLinkKind, RustLinkRequirement};
@@ -29,7 +29,10 @@ pub fn lower_resolved_plan(plan: &ResolvedLinkPlan) -> Vec<RustLinkRequirement> 
     for resolved in &plan.requirements {
         if let Some(req) = lower_link_input(&resolved.declared, plan.preferred_mode) {
             // Only add if not already present
-            if !reqs.iter().any(|r| r.name == req.name && r.kind == req.kind) {
+            if !reqs
+                .iter()
+                .any(|r| r.name == req.name && r.kind == req.kind)
+            {
                 reqs.push(req);
             }
         }
@@ -57,7 +60,10 @@ fn lower_binding_link_surface(link: &BindingLinkSurface) -> Vec<RustLinkRequirem
     // Ordered inputs (may overlap with above, dedup by name+kind)
     for input in &link.ordered_inputs {
         if let Some(req) = lower_link_input(input, link.preferred_mode) {
-            if !reqs.iter().any(|r| r.name == req.name && r.kind == req.kind) {
+            if !reqs
+                .iter()
+                .any(|r| r.name == req.name && r.kind == req.kind)
+            {
                 reqs.push(req);
             }
         }
@@ -70,7 +76,10 @@ fn lower_binding_link_surface(link: &BindingLinkSurface) -> Vec<RustLinkRequirem
             name: fw.name.clone(),
             search_path: None,
         };
-        if !reqs.iter().any(|r| r.name == req.name && r.kind == req.kind) {
+        if !reqs
+            .iter()
+            .any(|r| r.name == req.name && r.kind == req.kind)
+        {
             reqs.push(req);
         }
     }
@@ -199,7 +208,7 @@ pub fn emit_build_rs_filtered(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use bic::*;
+    use linc::*;
 
     fn empty_link_surface() -> BindingLinkSurface {
         BindingLinkSurface::default()

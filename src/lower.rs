@@ -1,12 +1,11 @@
-//! Item lowering from `bic` declarations to Rust projection IR.
+//! Item lowering from `linc` declarations to Rust projection IR.
 //!
-//! This module converts `bic::BindingItem` values into `gec::ir::RustItem`
+//! This module converts `linc::BindingItem` values into `gec::ir::RustItem`
 //! values, using the type mapping from `typemap`.
 
-use bic::{
-    BindingItem, BindingPackage, EnumBinding, FunctionBinding,
-    MacroBinding, MacroCategory, MacroValue, RecordBinding, RecordKind,
-    TypeAliasBinding, UnsupportedItem, VariableBinding,
+use linc::{
+    BindingItem, BindingPackage, EnumBinding, FunctionBinding, MacroBinding, MacroCategory,
+    MacroValue, RecordBinding, RecordKind, TypeAliasBinding, UnsupportedItem, VariableBinding,
 };
 
 use crate::ir::*;
@@ -27,26 +26,24 @@ pub fn lower_package(pkg: &BindingPackage) -> (RustProjection, Vec<GecDiagnostic
                 let name = rust_item_name(&rust_item);
                 proj.notes.push(ProjectionNote {
                     kind: NoteKind::Projected,
-                    message: format!("lowered from bic"),
+                    message: format!("lowered from linc"),
                     item_name: name,
                 });
                 proj.items.push(rust_item);
             }
             Err(reason) => {
-                let name = bic_item_name(item);
+                let name = binding_item_name(item);
                 diags.push(GecDiagnostic {
                     severity: GecSeverity::Warning,
                     message: reason.clone(),
                     item_name: name.clone(),
                 });
-                proj.items.push(RustItem::Unsupported(RustUnsupported {
-                    name,
-                    reason,
-                }));
+                proj.items
+                    .push(RustItem::Unsupported(RustUnsupported { name, reason }));
                 proj.notes.push(ProjectionNote {
                     kind: NoteKind::Unsupported,
                     message: "could not lower".into(),
-                    item_name: bic_item_name(item),
+                    item_name: binding_item_name(item),
                 });
             }
         }
@@ -62,7 +59,7 @@ pub fn lower_package(pkg: &BindingPackage) -> (RustProjection, Vec<GecDiagnostic
     (proj, diags)
 }
 
-/// Lower a single `bic::BindingItem` into a `RustItem`.
+/// Lower a single `linc::BindingItem` into a `RustItem`.
 fn lower_item(item: &BindingItem) -> Result<RustItem, String> {
     match item {
         BindingItem::Function(f) => lower_function(f),
@@ -81,10 +78,7 @@ fn lower_function(f: &FunctionBinding) -> Result<RustItem, String> {
         .iter()
         .enumerate()
         .map(|(i, p)| RustParameter {
-            name: p
-                .name
-                .clone()
-                .unwrap_or_else(|| format!("arg{}", i)),
+            name: p.name.clone().unwrap_or_else(|| format!("arg{}", i)),
             ty: map_type(&p.ty),
         })
         .collect();
@@ -126,10 +120,7 @@ fn lower_record(r: &RecordBinding) -> Result<RustItem, String> {
                 .iter()
                 .enumerate()
                 .map(|(i, f)| {
-                    let field_name = f
-                        .name
-                        .clone()
-                        .unwrap_or_else(|| format!("__field{}", i));
+                    let field_name = f.name.clone().unwrap_or_else(|| format!("__field{}", i));
                     RustField {
                         name: field_name,
                         ty: map_type(&f.ty),
@@ -245,7 +236,7 @@ fn rust_item_name(item: &RustItem) -> Option<String> {
     }
 }
 
-fn bic_item_name(item: &BindingItem) -> Option<String> {
+fn binding_item_name(item: &BindingItem) -> Option<String> {
     match item {
         BindingItem::Function(f) => Some(f.name.clone()),
         BindingItem::Record(r) => r.name.clone(),
@@ -259,7 +250,7 @@ fn bic_item_name(item: &BindingItem) -> Option<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use bic::*;
+    use linc::*;
 
     fn make_package(items: Vec<BindingItem>) -> BindingPackage {
         let mut pkg = BindingPackage::new();
@@ -608,8 +599,14 @@ mod tests {
             BindingItem::Enum(EnumBinding {
                 name: Some("status".into()),
                 variants: vec![
-                    EnumVariant { name: "OK".into(), value: Some(0) },
-                    EnumVariant { name: "ERR".into(), value: Some(1) },
+                    EnumVariant {
+                        name: "OK".into(),
+                        value: Some(0),
+                    },
+                    EnumVariant {
+                        name: "ERR".into(),
+                        value: Some(1),
+                    },
                 ],
                 representation: None,
                 abi_confidence: None,

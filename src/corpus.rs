@@ -4,17 +4,23 @@
 
 #[cfg(test)]
 mod tests {
-    use bic::*;
     use crate::emit::emit_source;
     use crate::gate::{gate_package, GateDecision};
-    use crate::lower::lower_package;
     use crate::linkgen::lower_link_surface;
+    use crate::lower::lower_package;
+    use linc::*;
 
     /// Helper: run the full pipeline on a BindingPackage.
     fn full_pipeline(pkg: &BindingPackage) -> (String, usize, usize) {
         let (decisions, _) = gate_package(pkg, None);
-        let accepted = decisions.iter().filter(|d| **d == GateDecision::Accept).count();
-        let rejected = decisions.iter().filter(|d| matches!(d, GateDecision::Reject(_))).count();
+        let accepted = decisions
+            .iter()
+            .filter(|d| **d == GateDecision::Accept)
+            .count();
+        let rejected = decisions
+            .iter()
+            .filter(|d| matches!(d, GateDecision::Reject(_)))
+            .count();
 
         let (mut proj, _diags) = lower_package(pkg);
         proj.link_requirements = lower_link_surface(pkg);
@@ -32,9 +38,9 @@ mod tests {
             calling_convention: CallingConvention::C,
             parameters: vec![ParameterBinding {
                 name: Some("p".into()),
-                ty: BindingType::ptr(BindingType::ptr(BindingType::ptr(
-                    BindingType::const_ptr(BindingType::Void),
-                ))),
+                ty: BindingType::ptr(BindingType::ptr(BindingType::ptr(BindingType::const_ptr(
+                    BindingType::Void,
+                )))),
             }],
             return_type: BindingType::Void,
             variadic: false,
@@ -94,7 +100,10 @@ mod tests {
         // Anonymous enum (should be gated)
         pkg.items.push(BindingItem::Enum(EnumBinding {
             name: None,
-            variants: vec![EnumVariant { name: "X".into(), value: Some(0) }],
+            variants: vec![EnumVariant {
+                name: "X".into(),
+                value: Some(0),
+            }],
             representation: None,
             abi_confidence: None,
             source_offset: None,
@@ -133,8 +142,16 @@ mod tests {
         });
 
         let (source, accepted, rejected) = full_pipeline(&pkg);
-        assert!(accepted >= 5, "expected at least 5 accepted, got {}", accepted);
-        assert!(rejected >= 2, "expected at least 2 rejected, got {}", rejected);
+        assert!(
+            accepted >= 5,
+            "expected at least 5 accepted, got {}",
+            accepted
+        );
+        assert!(
+            rejected >= 2,
+            "expected at least 2 rejected, got {}",
+            rejected
+        );
         assert!(source.contains("pub fn deep_ptr"));
         assert!(source.contains("pub fn variadic_fn"));
         assert!(source.contains("..."));
@@ -166,9 +183,24 @@ mod tests {
             kind: RecordKind::Struct,
             name: Some("z_stream".into()),
             fields: Some(vec![
-                FieldBinding { name: Some("next_in".into()), ty: BindingType::ptr(BindingType::TypedefRef("Bytef".into())), bit_width: None, layout: None },
-                FieldBinding { name: Some("avail_in".into()), ty: BindingType::UInt, bit_width: None, layout: None },
-                FieldBinding { name: Some("total_in".into()), ty: BindingType::TypedefRef("uLong".into()), bit_width: None, layout: None },
+                FieldBinding {
+                    name: Some("next_in".into()),
+                    ty: BindingType::ptr(BindingType::TypedefRef("Bytef".into())),
+                    bit_width: None,
+                    layout: None,
+                },
+                FieldBinding {
+                    name: Some("avail_in".into()),
+                    ty: BindingType::UInt,
+                    bit_width: None,
+                    layout: None,
+                },
+                FieldBinding {
+                    name: Some("total_in".into()),
+                    ty: BindingType::TypedefRef("uLong".into()),
+                    bit_width: None,
+                    layout: None,
+                },
             ]),
             representation: None,
             abi_confidence: None,
@@ -178,8 +210,14 @@ mod tests {
             name: "deflateInit".into(),
             calling_convention: CallingConvention::C,
             parameters: vec![
-                ParameterBinding { name: Some("strm".into()), ty: BindingType::ptr(BindingType::RecordRef("z_stream".into())) },
-                ParameterBinding { name: Some("level".into()), ty: BindingType::Int },
+                ParameterBinding {
+                    name: Some("strm".into()),
+                    ty: BindingType::ptr(BindingType::RecordRef("z_stream".into())),
+                },
+                ParameterBinding {
+                    name: Some("level".into()),
+                    ty: BindingType::Int,
+                },
             ],
             return_type: BindingType::Int,
             variadic: false,
@@ -189,8 +227,14 @@ mod tests {
             name: "inflate".into(),
             calling_convention: CallingConvention::C,
             parameters: vec![
-                ParameterBinding { name: Some("strm".into()), ty: BindingType::ptr(BindingType::RecordRef("z_stream".into())) },
-                ParameterBinding { name: Some("flush".into()), ty: BindingType::Int },
+                ParameterBinding {
+                    name: Some("strm".into()),
+                    ty: BindingType::ptr(BindingType::RecordRef("z_stream".into())),
+                },
+                ParameterBinding {
+                    name: Some("flush".into()),
+                    ty: BindingType::Int,
+                },
             ],
             return_type: BindingType::Int,
             variadic: false,
@@ -229,9 +273,24 @@ mod tests {
             kind: RecordKind::Struct,
             name: Some("can_frame".into()),
             fields: Some(vec![
-                FieldBinding { name: Some("can_id".into()), ty: BindingType::UInt, bit_width: None, layout: None },
-                FieldBinding { name: Some("can_dlc".into()), ty: BindingType::UChar, bit_width: None, layout: None },
-                FieldBinding { name: Some("data".into()), ty: BindingType::Array(Box::new(BindingType::UChar), Some(8)), bit_width: None, layout: None },
+                FieldBinding {
+                    name: Some("can_id".into()),
+                    ty: BindingType::UInt,
+                    bit_width: None,
+                    layout: None,
+                },
+                FieldBinding {
+                    name: Some("can_dlc".into()),
+                    ty: BindingType::UChar,
+                    bit_width: None,
+                    layout: None,
+                },
+                FieldBinding {
+                    name: Some("data".into()),
+                    ty: BindingType::Array(Box::new(BindingType::UChar), Some(8)),
+                    bit_width: None,
+                    layout: None,
+                },
             ]),
             representation: None,
             abi_confidence: None,
@@ -241,8 +300,18 @@ mod tests {
             kind: RecordKind::Struct,
             name: Some("sockaddr_can".into()),
             fields: Some(vec![
-                FieldBinding { name: Some("can_family".into()), ty: BindingType::UShort, bit_width: None, layout: None },
-                FieldBinding { name: Some("can_ifindex".into()), ty: BindingType::Int, bit_width: None, layout: None },
+                FieldBinding {
+                    name: Some("can_family".into()),
+                    ty: BindingType::UShort,
+                    bit_width: None,
+                    layout: None,
+                },
+                FieldBinding {
+                    name: Some("can_ifindex".into()),
+                    ty: BindingType::Int,
+                    bit_width: None,
+                    layout: None,
+                },
             ]),
             representation: None,
             abi_confidence: None,
@@ -289,11 +358,26 @@ mod tests {
             name: "pcap_open_live".into(),
             calling_convention: CallingConvention::C,
             parameters: vec![
-                ParameterBinding { name: Some("device".into()), ty: BindingType::const_ptr(BindingType::Char) },
-                ParameterBinding { name: Some("snaplen".into()), ty: BindingType::Int },
-                ParameterBinding { name: Some("promisc".into()), ty: BindingType::Int },
-                ParameterBinding { name: Some("to_ms".into()), ty: BindingType::Int },
-                ParameterBinding { name: Some("errbuf".into()), ty: BindingType::ptr(BindingType::Char) },
+                ParameterBinding {
+                    name: Some("device".into()),
+                    ty: BindingType::const_ptr(BindingType::Char),
+                },
+                ParameterBinding {
+                    name: Some("snaplen".into()),
+                    ty: BindingType::Int,
+                },
+                ParameterBinding {
+                    name: Some("promisc".into()),
+                    ty: BindingType::Int,
+                },
+                ParameterBinding {
+                    name: Some("to_ms".into()),
+                    ty: BindingType::Int,
+                },
+                ParameterBinding {
+                    name: Some("errbuf".into()),
+                    ty: BindingType::ptr(BindingType::Char),
+                },
             ],
             return_type: BindingType::ptr(BindingType::TypedefRef("pcap_t".into())),
             variadic: false,
@@ -302,7 +386,10 @@ mod tests {
         pkg.items.push(BindingItem::Function(FunctionBinding {
             name: "pcap_close".into(),
             calling_convention: CallingConvention::C,
-            parameters: vec![ParameterBinding { name: Some("p".into()), ty: BindingType::ptr(BindingType::TypedefRef("pcap_t".into())) }],
+            parameters: vec![ParameterBinding {
+                name: Some("p".into()),
+                ty: BindingType::ptr(BindingType::TypedefRef("pcap_t".into())),
+            }],
             return_type: BindingType::Void,
             variadic: false,
             source_offset: None,
@@ -336,9 +423,18 @@ mod tests {
         pkg.items.push(BindingItem::Enum(EnumBinding {
             name: Some("CURLcode".into()),
             variants: vec![
-                EnumVariant { name: "CURLE_OK".into(), value: Some(0) },
-                EnumVariant { name: "CURLE_UNSUPPORTED_PROTOCOL".into(), value: Some(1) },
-                EnumVariant { name: "CURLE_FAILED_INIT".into(), value: Some(2) },
+                EnumVariant {
+                    name: "CURLE_OK".into(),
+                    value: Some(0),
+                },
+                EnumVariant {
+                    name: "CURLE_UNSUPPORTED_PROTOCOL".into(),
+                    value: Some(1),
+                },
+                EnumVariant {
+                    name: "CURLE_FAILED_INIT".into(),
+                    value: Some(2),
+                },
             ],
             representation: None,
             abi_confidence: None,
@@ -355,7 +451,10 @@ mod tests {
         pkg.items.push(BindingItem::Function(FunctionBinding {
             name: "curl_easy_cleanup".into(),
             calling_convention: CallingConvention::C,
-            parameters: vec![ParameterBinding { name: Some("curl".into()), ty: BindingType::ptr(BindingType::RecordRef("CURL".into())) }],
+            parameters: vec![ParameterBinding {
+                name: Some("curl".into()),
+                ty: BindingType::ptr(BindingType::RecordRef("CURL".into())),
+            }],
             return_type: BindingType::Void,
             variadic: false,
             source_offset: None,
@@ -404,7 +503,10 @@ mod tests {
         pkg.items.push(BindingItem::Function(FunctionBinding {
             name: "SSL_new".into(),
             calling_convention: CallingConvention::C,
-            parameters: vec![ParameterBinding { name: Some("ctx".into()), ty: BindingType::ptr(BindingType::RecordRef("SSL_CTX".into())) }],
+            parameters: vec![ParameterBinding {
+                name: Some("ctx".into()),
+                ty: BindingType::ptr(BindingType::RecordRef("SSL_CTX".into())),
+            }],
             return_type: BindingType::ptr(BindingType::RecordRef("SSL".into())),
             variadic: false,
             source_offset: None,
@@ -412,13 +514,24 @@ mod tests {
         pkg.items.push(BindingItem::Function(FunctionBinding {
             name: "SSL_free".into(),
             calling_convention: CallingConvention::C,
-            parameters: vec![ParameterBinding { name: Some("ssl".into()), ty: BindingType::ptr(BindingType::RecordRef("SSL".into())) }],
+            parameters: vec![ParameterBinding {
+                name: Some("ssl".into()),
+                ty: BindingType::ptr(BindingType::RecordRef("SSL".into())),
+            }],
             return_type: BindingType::Void,
             variadic: false,
             source_offset: None,
         }));
-        pkg.link.libraries.push(LinkLibrary { name: "ssl".into(), kind: LinkLibraryKind::Dynamic, source: LinkRequirementSource::Declared });
-        pkg.link.libraries.push(LinkLibrary { name: "crypto".into(), kind: LinkLibraryKind::Dynamic, source: LinkRequirementSource::Declared });
+        pkg.link.libraries.push(LinkLibrary {
+            name: "ssl".into(),
+            kind: LinkLibraryKind::Dynamic,
+            source: LinkRequirementSource::Declared,
+        });
+        pkg.link.libraries.push(LinkLibrary {
+            name: "crypto".into(),
+            kind: LinkLibraryKind::Dynamic,
+            source: LinkRequirementSource::Declared,
+        });
 
         let (source, accepted, _) = full_pipeline(&pkg);
         assert_eq!(accepted, 8);
@@ -438,8 +551,14 @@ mod tests {
             name: "dlopen".into(),
             calling_convention: CallingConvention::C,
             parameters: vec![
-                ParameterBinding { name: Some("filename".into()), ty: BindingType::const_ptr(BindingType::Char) },
-                ParameterBinding { name: Some("flags".into()), ty: BindingType::Int },
+                ParameterBinding {
+                    name: Some("filename".into()),
+                    ty: BindingType::const_ptr(BindingType::Char),
+                },
+                ParameterBinding {
+                    name: Some("flags".into()),
+                    ty: BindingType::Int,
+                },
             ],
             return_type: BindingType::ptr(BindingType::Void),
             variadic: false,
@@ -449,8 +568,14 @@ mod tests {
             name: "dlsym".into(),
             calling_convention: CallingConvention::C,
             parameters: vec![
-                ParameterBinding { name: Some("handle".into()), ty: BindingType::ptr(BindingType::Void) },
-                ParameterBinding { name: Some("symbol".into()), ty: BindingType::const_ptr(BindingType::Char) },
+                ParameterBinding {
+                    name: Some("handle".into()),
+                    ty: BindingType::ptr(BindingType::Void),
+                },
+                ParameterBinding {
+                    name: Some("symbol".into()),
+                    ty: BindingType::const_ptr(BindingType::Char),
+                },
             ],
             return_type: BindingType::ptr(BindingType::Void),
             variadic: false,
@@ -459,7 +584,10 @@ mod tests {
         pkg.items.push(BindingItem::Function(FunctionBinding {
             name: "dlclose".into(),
             calling_convention: CallingConvention::C,
-            parameters: vec![ParameterBinding { name: Some("handle".into()), ty: BindingType::ptr(BindingType::Void) }],
+            parameters: vec![ParameterBinding {
+                name: Some("handle".into()),
+                ty: BindingType::ptr(BindingType::Void),
+            }],
             return_type: BindingType::Int,
             variadic: false,
             source_offset: None,
@@ -472,7 +600,11 @@ mod tests {
             variadic: false,
             source_offset: None,
         }));
-        pkg.link.libraries.push(LinkLibrary { name: "dl".into(), kind: LinkLibraryKind::Dynamic, source: LinkRequirementSource::Declared });
+        pkg.link.libraries.push(LinkLibrary {
+            name: "dl".into(),
+            kind: LinkLibraryKind::Dynamic,
+            source: LinkRequirementSource::Declared,
+        });
 
         let (source, accepted, _) = full_pipeline(&pkg);
         assert_eq!(accepted, 4);
@@ -499,8 +631,14 @@ mod tests {
         pkg.items.push(BindingItem::Enum(EnumBinding {
             name: Some("status".into()),
             variants: vec![
-                EnumVariant { name: "OK".into(), value: Some(0) },
-                EnumVariant { name: "ERR".into(), value: Some(1) },
+                EnumVariant {
+                    name: "OK".into(),
+                    value: Some(0),
+                },
+                EnumVariant {
+                    name: "ERR".into(),
+                    value: Some(1),
+                },
             ],
             representation: None,
             abi_confidence: None,
@@ -510,9 +648,12 @@ mod tests {
         pkg.items.push(BindingItem::Record(RecordBinding {
             kind: RecordKind::Struct,
             name: Some("config".into()),
-            fields: Some(vec![
-                FieldBinding { name: Some("flags".into()), ty: BindingType::UInt, bit_width: None, layout: None },
-            ]),
+            fields: Some(vec![FieldBinding {
+                name: Some("flags".into()),
+                ty: BindingType::UInt,
+                bit_width: None,
+                layout: None,
+            }]),
             representation: None,
             abi_confidence: None,
             source_offset: None,
@@ -522,8 +663,18 @@ mod tests {
             kind: RecordKind::Union,
             name: Some("data".into()),
             fields: Some(vec![
-                FieldBinding { name: Some("i".into()), ty: BindingType::Int, bit_width: None, layout: None },
-                FieldBinding { name: Some("f".into()), ty: BindingType::Float, bit_width: None, layout: None },
+                FieldBinding {
+                    name: Some("i".into()),
+                    ty: BindingType::Int,
+                    bit_width: None,
+                    layout: None,
+                },
+                FieldBinding {
+                    name: Some("f".into()),
+                    ty: BindingType::Float,
+                    bit_width: None,
+                    layout: None,
+                },
             ]),
             representation: None,
             abi_confidence: None,
@@ -542,7 +693,10 @@ mod tests {
         pkg.items.push(BindingItem::Function(FunctionBinding {
             name: "init".into(),
             calling_convention: CallingConvention::C,
-            parameters: vec![ParameterBinding { name: Some("c".into()), ty: BindingType::ptr(BindingType::RecordRef("config".into())) }],
+            parameters: vec![ParameterBinding {
+                name: Some("c".into()),
+                ty: BindingType::ptr(BindingType::RecordRef("config".into())),
+            }],
             return_type: BindingType::TypedefRef("status".into()),
             variadic: false,
             source_offset: None,
@@ -598,14 +752,22 @@ mod tests {
         pkg.items.push(BindingItem::Record(RecordBinding {
             kind: RecordKind::Struct,
             name: Some("S".into()),
-            fields: Some(vec![FieldBinding { name: Some("x".into()), ty: BindingType::Int, bit_width: None, layout: None }]),
+            fields: Some(vec![FieldBinding {
+                name: Some("x".into()),
+                ty: BindingType::Int,
+                bit_width: None,
+                layout: None,
+            }]),
             representation: None,
             abi_confidence: None,
             source_offset: None,
         }));
         pkg.items.push(BindingItem::Enum(EnumBinding {
             name: Some("E".into()),
-            variants: vec![EnumVariant { name: "A".into(), value: Some(0) }],
+            variants: vec![EnumVariant {
+                name: "A".into(),
+                value: Some(0),
+            }],
             representation: None,
             abi_confidence: None,
             source_offset: None,
@@ -625,7 +787,12 @@ mod tests {
         pkg.items.push(BindingItem::Record(RecordBinding {
             kind: RecordKind::Struct,
             name: Some("bf".into()),
-            fields: Some(vec![FieldBinding { name: Some("x".into()), ty: BindingType::UInt, bit_width: Some(4), layout: None }]),
+            fields: Some(vec![FieldBinding {
+                name: Some("x".into()),
+                ty: BindingType::UInt,
+                bit_width: Some(4),
+                layout: None,
+            }]),
             representation: None,
             abi_confidence: None,
             source_offset: None,
@@ -657,7 +824,10 @@ mod tests {
         pkg.items.push(BindingItem::Function(FunctionBinding {
             name: "ld_fn".into(),
             calling_convention: CallingConvention::C,
-            parameters: vec![ParameterBinding { name: Some("x".into()), ty: BindingType::LongDouble }],
+            parameters: vec![ParameterBinding {
+                name: Some("x".into()),
+                ty: BindingType::LongDouble,
+            }],
             return_type: BindingType::Void,
             variadic: false,
             source_offset: None,
@@ -674,6 +844,10 @@ mod tests {
             .collect();
 
         // At least 3 rejections: bitfield, anonymous record, anonymous enum, unsupported
-        assert!(rejected.len() >= 3, "expected >=3 rejections, got {}", rejected.len());
+        assert!(
+            rejected.len() >= 3,
+            "expected >=3 rejections, got {}",
+            rejected.len()
+        );
     }
 }
