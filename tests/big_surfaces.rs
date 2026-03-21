@@ -13,8 +13,10 @@ mod linux_kernel;
 mod torture;
 
 use gec::config::GecConfig;
-use gec::consumer::{build_sidecar, sidecar_to_json, sidecar_from_json, FolConsumer, GecConsumer};
-use gec::contract::{generate, output_meta, meta_to_json, meta_from_json, projection_to_json, projection_from_json};
+use gec::consumer::{build_sidecar, sidecar_from_json, sidecar_to_json, FolConsumer, GecConsumer};
+use gec::contract::{
+    generate, meta_from_json, meta_to_json, output_meta, projection_from_json, projection_to_json,
+};
 use gec::emit::emit_source;
 use gec::intake::GecInput;
 
@@ -29,7 +31,11 @@ fn ffmpeg_full_pipeline() {
     let source = emit_source(&output.projection);
 
     // FFmpeg fixture: ~19 opaque + 3 by-value + 4 enums + 2 typedef + ~50 functions + macros
-    assert!(output.item_count() >= 60, "expected ≥60 items, got {}", output.item_count());
+    assert!(
+        output.item_count() >= 60,
+        "expected ≥60 items, got {}",
+        output.item_count()
+    );
 
     // key avformat functions
     assert!(source.contains("pub fn avformat_open_input"));
@@ -85,12 +91,18 @@ fn ffmpeg_deterministic_10_runs() {
     let pkg = ffmpeg::ffmpeg_package();
     let cfg = GecConfig::new("ffmpeg_sys");
     let first = projection_to_json(
-        &generate(&GecInput::from_package(pkg.clone()), &cfg).unwrap().projection
-    ).unwrap();
+        &generate(&GecInput::from_package(pkg.clone()), &cfg)
+            .unwrap()
+            .projection,
+    )
+    .unwrap();
     for _ in 0..9 {
         let json = projection_to_json(
-            &generate(&GecInput::from_package(pkg.clone()), &cfg).unwrap().projection
-        ).unwrap();
+            &generate(&GecInput::from_package(pkg.clone()), &cfg)
+                .unwrap()
+                .projection,
+        )
+        .unwrap();
         assert_eq!(first, json, "non-deterministic ffmpeg output");
     }
 }
@@ -132,7 +144,9 @@ fn ffmpeg_sidecar() {
 fn ffmpeg_balanced_braces() {
     let pkg = ffmpeg::ffmpeg_package();
     let source = emit_source(
-        &generate(&GecInput::from_package(pkg), &GecConfig::new("ff")).unwrap().projection
+        &generate(&GecInput::from_package(pkg), &GecConfig::new("ff"))
+            .unwrap()
+            .projection,
     );
     let opens = source.matches('{').count();
     let closes = source.matches('}').count();
@@ -160,7 +174,11 @@ fn linux_kernel_full_pipeline() {
     let output = generate(&input, &cfg).unwrap();
     let source = emit_source(&output.projection);
 
-    assert!(output.item_count() >= 50, "expected ≥50 items, got {}", output.item_count());
+    assert!(
+        output.item_count() >= 50,
+        "expected ≥50 items, got {}",
+        output.item_count()
+    );
 
     // typedefs
     assert!(source.contains("pub type size_t"));
@@ -231,7 +249,9 @@ fn linux_kernel_rejects_unsupported() {
 fn linux_kernel_balanced_braces() {
     let pkg = linux_kernel::linux_kernel_package();
     let source = emit_source(
-        &generate(&GecInput::from_package(pkg), &GecConfig::new("l")).unwrap().projection
+        &generate(&GecInput::from_package(pkg), &GecConfig::new("l"))
+            .unwrap()
+            .projection,
     );
     let opens = source.matches('{').count();
     let closes = source.matches('}').count();
@@ -242,8 +262,16 @@ fn linux_kernel_balanced_braces() {
 fn linux_kernel_deterministic() {
     let pkg = linux_kernel::linux_kernel_package();
     let cfg = GecConfig::new("linux_sys");
-    let s1 = emit_source(&generate(&GecInput::from_package(pkg.clone()), &cfg).unwrap().projection);
-    let s2 = emit_source(&generate(&GecInput::from_package(pkg), &cfg).unwrap().projection);
+    let s1 = emit_source(
+        &generate(&GecInput::from_package(pkg.clone()), &cfg)
+            .unwrap()
+            .projection,
+    );
+    let s2 = emit_source(
+        &generate(&GecInput::from_package(pkg), &cfg)
+            .unwrap()
+            .projection,
+    );
     assert_eq!(s1, s2);
 }
 
@@ -267,8 +295,15 @@ fn torture_full_pipeline() {
     let source = emit_source(&output.projection);
 
     // Torture has a mix of accepted and rejected items
-    assert!(output.item_count() >= 10, "expected ≥10 items, got {}", output.item_count());
-    assert!(output.has_diagnostics(), "torture should have diagnostics for rejected items");
+    assert!(
+        output.item_count() >= 10,
+        "expected ≥10 items, got {}",
+        output.item_count()
+    );
+    assert!(
+        output.has_diagnostics(),
+        "torture should have diagnostics for rejected items"
+    );
 
     // accepted functions
     assert!(source.contains("pub fn deep_ptr_fn"));
@@ -299,7 +334,10 @@ fn torture_full_pipeline() {
     assert!(source.contains("pub const TORTURE_MAGIC"));
 
     // REJECTED: should NOT appear in source
-    assert!(!source.contains("pub struct bitfield_torture"), "bitfield should be rejected");
+    assert!(
+        !source.contains("pub struct bitfield_torture"),
+        "bitfield should be rejected"
+    );
     // anonymous items also rejected — no way to name them so they won't appear
 }
 
@@ -318,7 +356,9 @@ fn torture_rejects_anonymous_and_bitfield() {
 fn torture_deep_pointers_in_source() {
     let pkg = torture::torture_package();
     let source = emit_source(
-        &generate(&GecInput::from_package(pkg), &GecConfig::new("t")).unwrap().projection
+        &generate(&GecInput::from_package(pkg), &GecConfig::new("t"))
+            .unwrap()
+            .projection,
     );
     // deep_ptr_fn takes *mut *mut *mut *mut *mut c_int
     // Should contain multiple pointer levels
@@ -329,7 +369,9 @@ fn torture_deep_pointers_in_source() {
 fn torture_nested_fn_pointers() {
     let pkg = torture::torture_package();
     let source = emit_source(
-        &generate(&GecInput::from_package(pkg), &GecConfig::new("t")).unwrap().projection
+        &generate(&GecInput::from_package(pkg), &GecConfig::new("t"))
+            .unwrap()
+            .projection,
     );
     assert!(source.contains("nested_callback"));
     // Should have Option<unsafe extern "C" fn(...)> patterns
@@ -340,7 +382,9 @@ fn torture_nested_fn_pointers() {
 fn torture_variadic() {
     let pkg = torture::torture_package();
     let source = emit_source(
-        &generate(&GecInput::from_package(pkg), &GecConfig::new("t")).unwrap().projection
+        &generate(&GecInput::from_package(pkg), &GecConfig::new("t"))
+            .unwrap()
+            .projection,
     );
     assert!(source.contains("torture_printf"));
     assert!(source.contains("..."));
@@ -350,12 +394,16 @@ fn torture_variadic() {
 fn torture_large_enum() {
     let pkg = torture::torture_package();
     let source = emit_source(
-        &generate(&GecInput::from_package(pkg), &GecConfig::new("t")).unwrap().projection
+        &generate(&GecInput::from_package(pkg), &GecConfig::new("t"))
+            .unwrap()
+            .projection,
     );
     // 50-variant enum
     for i in 0..50 {
-        assert!(source.contains(&format!("TORTURE_VARIANT_{i}")),
-            "missing TORTURE_VARIANT_{i}");
+        assert!(
+            source.contains(&format!("TORTURE_VARIANT_{i}")),
+            "missing TORTURE_VARIANT_{i}"
+        );
     }
 }
 
@@ -363,7 +411,9 @@ fn torture_large_enum() {
 fn torture_signed_enum() {
     let pkg = torture::torture_package();
     let source = emit_source(
-        &generate(&GecInput::from_package(pkg), &GecConfig::new("t")).unwrap().projection
+        &generate(&GecInput::from_package(pkg), &GecConfig::new("t"))
+            .unwrap()
+            .projection,
     );
     assert!(source.contains("NEG_THREE"));
     assert!(source.contains("NEG_ONE"));
@@ -374,7 +424,9 @@ fn torture_signed_enum() {
 fn torture_statics_emitted() {
     let pkg = torture::torture_package();
     let source = emit_source(
-        &generate(&GecInput::from_package(pkg), &GecConfig::new("t")).unwrap().projection
+        &generate(&GecInput::from_package(pkg), &GecConfig::new("t"))
+            .unwrap()
+            .projection,
     );
     assert!(source.contains("torture_global_state"));
     assert!(source.contains("torture_version_string"));
@@ -384,9 +436,17 @@ fn torture_statics_emitted() {
 fn torture_deterministic_10_runs() {
     let pkg = torture::torture_package();
     let cfg = GecConfig::new("t");
-    let first = emit_source(&generate(&GecInput::from_package(pkg.clone()), &cfg).unwrap().projection);
+    let first = emit_source(
+        &generate(&GecInput::from_package(pkg.clone()), &cfg)
+            .unwrap()
+            .projection,
+    );
     for _ in 0..9 {
-        let s = emit_source(&generate(&GecInput::from_package(pkg.clone()), &cfg).unwrap().projection);
+        let s = emit_source(
+            &generate(&GecInput::from_package(pkg.clone()), &cfg)
+                .unwrap()
+                .projection,
+        );
         assert_eq!(first, s, "non-deterministic torture output");
     }
 }
@@ -395,7 +455,9 @@ fn torture_deterministic_10_runs() {
 fn torture_balanced_braces() {
     let pkg = torture::torture_package();
     let source = emit_source(
-        &generate(&GecInput::from_package(pkg), &GecConfig::new("t")).unwrap().projection
+        &generate(&GecInput::from_package(pkg), &GecConfig::new("t"))
+            .unwrap()
+            .projection,
     );
     let opens = source.matches('{').count();
     let closes = source.matches('}').count();
