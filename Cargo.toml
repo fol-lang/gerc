@@ -9,9 +9,9 @@ keywords = ["c", "ffi", "bindings", "codegen"]
 categories = ["development-tools::ffi", "code-generation"]
 
 [dependencies]
-linc = { path = "../linc" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "=1.0.145"
 
 [dev-dependencies]
+linc = { path = "../linc" }
 parc = { path = "../parc" }
