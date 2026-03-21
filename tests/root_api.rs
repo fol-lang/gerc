@@ -28,6 +28,29 @@ fn root_reexports_source_emit_helpers() {
 }
 
 #[test]
+fn root_reexports_legacy_binding_adapters() {
+    let mut pkg = linc::BindingPackage::new();
+    pkg.items.push(linc::BindingItem::Function(linc::FunctionBinding {
+        name: "legacy_demo".into(),
+        calling_convention: linc::CallingConvention::C,
+        parameters: vec![],
+        return_type: linc::BindingType::Void,
+        variadic: false,
+        source_offset: None,
+    }));
+
+    let input = gec::input_from_binding_package(pkg.clone());
+    assert_eq!(input.item_count(), 1);
+
+    let json = serde_json::to_string(&pkg).unwrap();
+    let from_json = gec::input_from_binding_json(&json).unwrap();
+    assert_eq!(from_json.item_count(), 1);
+
+    let source = gec::source_from_binding_package(&pkg);
+    assert_eq!(source.declarations.len(), 1);
+}
+
+#[test]
 fn root_reexports_crate_emit_helpers() {
     let dir = tempdir("root_emit_crate");
     let mut projection = RustProjection::new();

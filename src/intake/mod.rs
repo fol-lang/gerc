@@ -8,6 +8,7 @@ use linc::{
 };
 
 pub use evidence::EvidenceInputs;
+pub use adapters::{input_from_binding_json, input_from_binding_package, source_from_binding_package};
 
 /// Primary input container for a `gec` generation run.
 ///
@@ -45,6 +46,9 @@ impl GecInput {
     }
 
     /// Transitional adapter from a legacy `BindingPackage`.
+    ///
+    /// New code should prefer `from_source_package`. This exists so the old
+    /// all-in-one `linc` contract can be phased out without blocking `gerc`.
     pub fn from_package(package: BindingPackage) -> Self {
         Self {
             source: source::source_package_from_binding(&package),
@@ -118,10 +122,9 @@ impl GecInput {
         package.provenance.len() == package.items.len()
     }
 
-    /// Construct from a JSON string containing a `BindingPackage`.
+    /// Construct from a JSON string containing a legacy `BindingPackage`.
     pub fn from_binding_json(json: &str) -> Result<Self, String> {
-        let package = adapters::binding_package_from_json(json)?;
-        Ok(Self::from_package(package))
+        adapters::input_from_binding_json(json)
     }
 
     /// Construct from a JSON string containing a `SourcePackage`.
