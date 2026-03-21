@@ -1,3 +1,6 @@
+mod adapters;
+mod source;
+
 use linc::{
     BindingItem, BindingPackage, DeclarationProvenance, ResolvedLinkPlan, SourcePackage,
     ValidationReport,
@@ -40,7 +43,7 @@ impl GecInput {
 
     /// Create a new input from a source contract by adapting it through LINC.
     pub fn from_source_package(source: SourcePackage) -> Self {
-        Self::from_package(linc::from_source_package(&source))
+        Self::from_package(source::binding_package_from_source(&source))
     }
 
     /// Attach a validation report.
@@ -89,13 +92,13 @@ impl GecInput {
 
     /// Construct from a JSON string containing a `BindingPackage`.
     pub fn from_binding_json(json: &str) -> Result<Self, String> {
-        let package: BindingPackage = serde_json::from_str(json).map_err(|e| e.to_string())?;
+        let package = adapters::binding_package_from_json(json)?;
         Ok(Self::from_package(package))
     }
 
     /// Construct from a JSON string containing a `SourcePackage`.
     pub fn from_source_json(json: &str) -> Result<Self, String> {
-        let source: SourcePackage = serde_json::from_str(json).map_err(|e| e.to_string())?;
+        let source = source::source_package_from_json(json)?;
         Ok(Self::from_source_package(source))
     }
 }
@@ -153,7 +156,6 @@ fn item_identity(item: &BindingItem) -> String {
 /// Ensure provenance vec is aligned with items (pad with defaults if short).
 fn align_provenance(pkg: &mut BindingPackage) {
     if pkg.provenance.is_empty() && !pkg.items.is_empty() {
-        // No provenance at all — leave empty (not all packages have it)
         return;
     }
     while pkg.provenance.len() < pkg.items.len() {
@@ -248,7 +250,7 @@ mod tests {
     fn normalize_dedup_functions() {
         let mut pkg = empty_package();
         pkg.items.push(sample_function("foo"));
-        pkg.items.push(sample_function("foo")); // duplicate
+        pkg.items.push(sample_function("foo"));
         pkg.items.push(sample_function("bar"));
 
         let mut input = GecInput::from_package(pkg);
@@ -266,7 +268,6 @@ mod tests {
             item_name: Some("a".into()),
             ..Default::default()
         });
-        // provenance shorter than items
 
         let mut input = GecInput::from_package(pkg);
         input.normalize();
@@ -346,14 +347,18 @@ mod tests {
     #[test]
     fn provenance_preserved_through_normalize() {
         let mut pkg = empty_package();
-        pkg.items.push(sample_function("x"));
+        pkg.items.push(sample_function("foo"));
         pkg.provenance.push(DeclarationProvenance {
-            item_name: Some("x".into()),
+            item_name: Some("foo".into()),
             ..Default::default()
         });
 
         let mut input = GecInput::from_package(pkg);
         input.normalize();
-        assert_eq!(input.package.provenance[0].item_name.as_deref(), Some("x"));
+        assert_eq!(input.package.provenance.len(), 1);
+        assert_eq!(
+            input.package.provenance[0].item_name.as_deref(),
+            Some("foo")
+        );
     }
 }
