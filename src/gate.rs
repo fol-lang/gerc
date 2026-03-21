@@ -76,6 +76,12 @@ fn gate_function(f: &FunctionBinding, validation: Option<&ValidationReport>) -> 
                 f.name
             ));
         }
+        if let Some(reason) = unusable_function_validation_reason(&symbol_match.status) {
+            return GateDecision::Reject(format!(
+                "function '{}' has unusable validation evidence ({reason})",
+                f.name
+            ));
+        }
     }
 
     // Check for unsupported parameter types
@@ -120,6 +126,12 @@ fn gate_variable(v: &linc::VariableBinding, validation: Option<&ValidationReport
                 v.name
             ));
         }
+        if let Some(reason) = unusable_variable_validation_reason(&symbol_match.status) {
+            return GateDecision::Reject(format!(
+                "variable '{}' has unusable validation evidence ({reason})",
+                v.name
+            ));
+        }
     }
 
     GateDecision::Accept
@@ -133,6 +145,24 @@ fn validation_match_for_variable<'a>(
         .matches
         .iter()
         .find(|m| m.item_kind == linc::ItemKind::Variable && m.name == name)
+}
+
+fn unusable_function_validation_reason(status: &linc::MatchStatus) -> Option<&'static str> {
+    match status {
+        linc::MatchStatus::Hidden => Some("Hidden"),
+        linc::MatchStatus::DecorationMismatch => Some("DecorationMismatch"),
+        linc::MatchStatus::NotAFunction => Some("NotAFunction"),
+        _ => None,
+    }
+}
+
+fn unusable_variable_validation_reason(status: &linc::MatchStatus) -> Option<&'static str> {
+    match status {
+        linc::MatchStatus::Hidden => Some("Hidden"),
+        linc::MatchStatus::DecorationMismatch => Some("DecorationMismatch"),
+        linc::MatchStatus::NotAVariable => Some("NotAVariable"),
+        _ => None,
+    }
 }
 
 /// 6.1: Required evidence rules for by-value structs.
@@ -528,6 +558,199 @@ mod tests {
             decisions[0],
             GateDecision::Reject(
                 "variable 'GLOBAL' has duplicate provider validation evidence".into()
+            )
+        );
+    }
+
+    #[test]
+    fn reject_function_with_hidden_validation() {
+        let pkg = make_package(vec![BindingItem::Function(FunctionBinding {
+            name: "foo".into(),
+            calling_convention: CallingConvention::C,
+            parameters: vec![],
+            return_type: BindingType::Void,
+            variadic: false,
+            source_offset: None,
+        })]);
+        let report = ValidationReport {
+            phases: Vec::new(),
+            entries: Vec::new(),
+            summary: ValidationSummary::default(),
+            matches: vec![SymbolMatch {
+                name: "foo".into(),
+                item_kind: ItemKind::Function,
+                status: MatchStatus::Hidden,
+                visibility: Some(SymbolVisibility::Hidden),
+                provider_artifacts: vec!["libhidden.a".into()],
+                confidence: MatchConfidence::Low,
+                evidence_kind: EvidenceKind::HiddenProvider,
+            }],
+        };
+
+        let (decisions, _) = gate_package(&pkg, Some(&report));
+        assert_eq!(
+            decisions[0],
+            GateDecision::Reject("function 'foo' has unusable validation evidence (Hidden)".into())
+        );
+    }
+
+    #[test]
+    fn reject_function_with_decoration_mismatch_validation() {
+        let pkg = make_package(vec![BindingItem::Function(FunctionBinding {
+            name: "foo".into(),
+            calling_convention: CallingConvention::C,
+            parameters: vec![],
+            return_type: BindingType::Void,
+            variadic: false,
+            source_offset: None,
+        })]);
+        let report = ValidationReport {
+            phases: Vec::new(),
+            entries: Vec::new(),
+            summary: ValidationSummary::default(),
+            matches: vec![SymbolMatch {
+                name: "foo".into(),
+                item_kind: ItemKind::Function,
+                status: MatchStatus::DecorationMismatch,
+                visibility: None,
+                provider_artifacts: vec!["libdecorated.a".into()],
+                confidence: MatchConfidence::Low,
+                evidence_kind: EvidenceKind::DecoratedCandidate,
+            }],
+        };
+
+        let (decisions, _) = gate_package(&pkg, Some(&report));
+        assert_eq!(
+            decisions[0],
+            GateDecision::Reject(
+                "function 'foo' has unusable validation evidence (DecorationMismatch)".into()
+            )
+        );
+    }
+
+    #[test]
+    fn reject_function_with_kind_mismatch_validation() {
+        let pkg = make_package(vec![BindingItem::Function(FunctionBinding {
+            name: "foo".into(),
+            calling_convention: CallingConvention::C,
+            parameters: vec![],
+            return_type: BindingType::Void,
+            variadic: false,
+            source_offset: None,
+        })]);
+        let report = ValidationReport {
+            phases: Vec::new(),
+            entries: Vec::new(),
+            summary: ValidationSummary::default(),
+            matches: vec![SymbolMatch {
+                name: "foo".into(),
+                item_kind: ItemKind::Function,
+                status: MatchStatus::NotAFunction,
+                visibility: Some(SymbolVisibility::Default),
+                provider_artifacts: vec!["libvars.a".into()],
+                confidence: MatchConfidence::Low,
+                evidence_kind: EvidenceKind::KindMismatch,
+            }],
+        };
+
+        let (decisions, _) = gate_package(&pkg, Some(&report));
+        assert_eq!(
+            decisions[0],
+            GateDecision::Reject(
+                "function 'foo' has unusable validation evidence (NotAFunction)".into()
+            )
+        );
+    }
+
+    #[test]
+    fn reject_variable_with_hidden_validation() {
+        let pkg = make_package(vec![BindingItem::Variable(VariableBinding {
+            name: "GLOBAL".into(),
+            ty: BindingType::Int,
+            source_offset: None,
+        })]);
+        let report = ValidationReport {
+            phases: Vec::new(),
+            entries: Vec::new(),
+            summary: ValidationSummary::default(),
+            matches: vec![SymbolMatch {
+                name: "GLOBAL".into(),
+                item_kind: ItemKind::Variable,
+                status: MatchStatus::Hidden,
+                visibility: Some(SymbolVisibility::Hidden),
+                provider_artifacts: vec!["libhidden.a".into()],
+                confidence: MatchConfidence::Low,
+                evidence_kind: EvidenceKind::HiddenProvider,
+            }],
+        };
+
+        let (decisions, _) = gate_package(&pkg, Some(&report));
+        assert_eq!(
+            decisions[0],
+            GateDecision::Reject(
+                "variable 'GLOBAL' has unusable validation evidence (Hidden)".into()
+            )
+        );
+    }
+
+    #[test]
+    fn reject_variable_with_decoration_mismatch_validation() {
+        let pkg = make_package(vec![BindingItem::Variable(VariableBinding {
+            name: "GLOBAL".into(),
+            ty: BindingType::Int,
+            source_offset: None,
+        })]);
+        let report = ValidationReport {
+            phases: Vec::new(),
+            entries: Vec::new(),
+            summary: ValidationSummary::default(),
+            matches: vec![SymbolMatch {
+                name: "GLOBAL".into(),
+                item_kind: ItemKind::Variable,
+                status: MatchStatus::DecorationMismatch,
+                visibility: None,
+                provider_artifacts: vec!["libdecorated.a".into()],
+                confidence: MatchConfidence::Low,
+                evidence_kind: EvidenceKind::DecoratedCandidate,
+            }],
+        };
+
+        let (decisions, _) = gate_package(&pkg, Some(&report));
+        assert_eq!(
+            decisions[0],
+            GateDecision::Reject(
+                "variable 'GLOBAL' has unusable validation evidence (DecorationMismatch)".into()
+            )
+        );
+    }
+
+    #[test]
+    fn reject_variable_with_kind_mismatch_validation() {
+        let pkg = make_package(vec![BindingItem::Variable(VariableBinding {
+            name: "GLOBAL".into(),
+            ty: BindingType::Int,
+            source_offset: None,
+        })]);
+        let report = ValidationReport {
+            phases: Vec::new(),
+            entries: Vec::new(),
+            summary: ValidationSummary::default(),
+            matches: vec![SymbolMatch {
+                name: "GLOBAL".into(),
+                item_kind: ItemKind::Variable,
+                status: MatchStatus::NotAVariable,
+                visibility: Some(SymbolVisibility::Default),
+                provider_artifacts: vec!["libfuncs.a".into()],
+                confidence: MatchConfidence::Low,
+                evidence_kind: EvidenceKind::KindMismatch,
+            }],
+        };
+
+        let (decisions, _) = gate_package(&pkg, Some(&report));
+        assert_eq!(
+            decisions[0],
+            GateDecision::Reject(
+                "variable 'GLOBAL' has unusable validation evidence (NotAVariable)".into()
             )
         );
     }
