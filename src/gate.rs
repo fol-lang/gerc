@@ -1,12 +1,11 @@
 //! ABI and safety gating for Rust projection.
 //!
 //! This module defines rules for when `gec` should refuse to generate Rust
-//! code because the `linc` evidence is insufficient for safe FFI.
+//! code because the attached evidence is insufficient for safe FFI.
 
-use linc::ValidationReport;
-use linc::ir::{
+use crate::c::{
     BindingItem, BindingPackage, BindingType, EnumBinding, FieldBinding, FunctionBinding,
-    RecordBinding, VariableBinding,
+    ItemKind, MatchStatus, SymbolMatch, ValidationReport, VariableBinding, RecordBinding,
 };
 
 use crate::output::{GecDiagnostic, GecSeverity};
@@ -51,7 +50,7 @@ fn gate_item(item: &BindingItem, _validation: Option<&ValidationReport>) -> Gate
         BindingItem::TypeAlias(_) => GateDecision::Accept,
         BindingItem::Variable(v) => gate_variable(v, _validation),
         BindingItem::Unsupported(u) => {
-            GateDecision::Reject(format!("linc marked as unsupported: {}", u.reason))
+            GateDecision::Reject(format!("unsupported declaration: {}", u.reason))
         }
     }
 }
@@ -65,13 +64,13 @@ fn gate_function(f: &FunctionBinding, validation: Option<&ValidationReport>) -> 
                 f.name
             ));
         };
-        if symbol_match.status == linc::MatchStatus::AbiShapeMismatch {
+        if symbol_match.status == MatchStatus::AbiShapeMismatch {
             return GateDecision::Reject(format!(
                 "function '{}' has ABI mismatch validation evidence",
                 f.name
             ));
         }
-        if symbol_match.status == linc::MatchStatus::DuplicateProviders {
+        if symbol_match.status == MatchStatus::DuplicateProviders {
             return GateDecision::Reject(format!(
                 "function '{}' has duplicate provider validation evidence",
                 f.name
@@ -100,11 +99,11 @@ fn gate_function(f: &FunctionBinding, validation: Option<&ValidationReport>) -> 
 fn validation_match_for_function<'a>(
     report: &'a ValidationReport,
     name: &str,
-) -> Option<&'a linc::SymbolMatch> {
+) -> Option<&'a SymbolMatch> {
     report
         .matches
         .iter()
-        .find(|m| m.item_kind == linc::ItemKind::Function && m.name == name)
+        .find(|m| m.item_kind == ItemKind::Function && m.name == name)
 }
 
 fn gate_variable(v: &VariableBinding, validation: Option<&ValidationReport>) -> GateDecision {
@@ -115,13 +114,13 @@ fn gate_variable(v: &VariableBinding, validation: Option<&ValidationReport>) -> 
                 v.name
             ));
         };
-        if symbol_match.status == linc::MatchStatus::AbiShapeMismatch {
+        if symbol_match.status == MatchStatus::AbiShapeMismatch {
             return GateDecision::Reject(format!(
                 "variable '{}' has ABI mismatch validation evidence",
                 v.name
             ));
         }
-        if symbol_match.status == linc::MatchStatus::DuplicateProviders {
+        if symbol_match.status == MatchStatus::DuplicateProviders {
             return GateDecision::Reject(format!(
                 "variable '{}' has duplicate provider validation evidence",
                 v.name
@@ -141,27 +140,27 @@ fn gate_variable(v: &VariableBinding, validation: Option<&ValidationReport>) -> 
 fn validation_match_for_variable<'a>(
     report: &'a ValidationReport,
     name: &str,
-) -> Option<&'a linc::SymbolMatch> {
+) -> Option<&'a SymbolMatch> {
     report
         .matches
         .iter()
-        .find(|m| m.item_kind == linc::ItemKind::Variable && m.name == name)
+        .find(|m| m.item_kind == ItemKind::Variable && m.name == name)
 }
 
-fn unusable_function_validation_reason(status: &linc::MatchStatus) -> Option<&'static str> {
+fn unusable_function_validation_reason(status: &MatchStatus) -> Option<&'static str> {
     match status {
-        linc::MatchStatus::Hidden => Some("Hidden"),
-        linc::MatchStatus::DecorationMismatch => Some("DecorationMismatch"),
-        linc::MatchStatus::NotAFunction => Some("NotAFunction"),
+        MatchStatus::Hidden => Some("Hidden"),
+        MatchStatus::DecorationMismatch => Some("DecorationMismatch"),
+        MatchStatus::NotAFunction => Some("NotAFunction"),
         _ => None,
     }
 }
 
-fn unusable_variable_validation_reason(status: &linc::MatchStatus) -> Option<&'static str> {
+fn unusable_variable_validation_reason(status: &MatchStatus) -> Option<&'static str> {
     match status {
-        linc::MatchStatus::Hidden => Some("Hidden"),
-        linc::MatchStatus::DecorationMismatch => Some("DecorationMismatch"),
-        linc::MatchStatus::NotAVariable => Some("NotAVariable"),
+        MatchStatus::Hidden => Some("Hidden"),
+        MatchStatus::DecorationMismatch => Some("DecorationMismatch"),
+        MatchStatus::NotAVariable => Some("NotAVariable"),
         _ => None,
     }
 }
@@ -257,8 +256,7 @@ fn item_name(item: &BindingItem) -> Option<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use linc::*;
-    use linc::ir::*;
+    use crate::c::*;
 
     fn make_package(items: Vec<BindingItem>) -> BindingPackage {
         let mut pkg = BindingPackage::new();

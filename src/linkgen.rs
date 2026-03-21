@@ -1,12 +1,11 @@
 //! Native link metadata lowering and `build.rs` emission.
 //!
-//! Turns `linc` link surfaces and resolved link plans into Rust-side
+//! Turns `gec`'s C-side link surfaces and resolved link plans into Rust-side
 //! `RustLinkRequirement` values and emitted `build.rs` content.
 
-use linc::ResolvedLinkPlan;
-use linc::ir::{
+use crate::c::{
     BindingLinkSurface, BindingPackage, LinkArtifact, LinkArtifactKind, LinkInput, LinkLibrary,
-    LinkLibraryKind, LinkResolutionMode,
+    LinkLibraryKind, LinkResolutionMode, ResolvedLinkPlan,
 };
 
 use crate::ir::{RustLinkKind, RustLinkRequirement};
@@ -234,7 +233,7 @@ pub fn emit_rustc_link_args(reqs: &[RustLinkRequirement]) -> Vec<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use linc::ir::*;
+    use crate::c::*;
 
     fn empty_link_surface() -> BindingLinkSurface {
         BindingLinkSurface::default()

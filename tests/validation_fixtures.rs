@@ -131,7 +131,8 @@ fn fixture_validation() -> ValidationReport {
 
 #[test]
 fn validation_fixture_filters_unusable_function_states() {
-    let input = input_from_binding(fixture_package()).with_validation(fixture_validation());
+    let input = input_from_binding(fixture_package())
+        .with_validation(common::from_linc_validation(&fixture_validation()));
     let output = generate(&input, &GecConfig::new("demo_sys")).unwrap();
 
     assert!(output
@@ -159,7 +160,8 @@ fn validation_fixture_filters_unusable_function_states() {
 
 #[test]
 fn validation_fixture_filters_unusable_variable_states() {
-    let input = input_from_binding(fixture_package()).with_validation(fixture_validation());
+    let input = input_from_binding(fixture_package())
+        .with_validation(common::from_linc_validation(&fixture_validation()));
     let output = generate(&input, &GecConfig::new("demo_sys")).unwrap();
 
     assert!(output

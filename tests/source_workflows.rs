@@ -1,3 +1,5 @@
+mod common;
+
 use gec::emit::emit_source;
 use gec::{
     generate, generate_from_source, GecConfig, GecInput, SourceDeclaration, SourceFunction,
@@ -70,7 +72,7 @@ fn gec_input_from_source_accepts_evidence() {
     source.link_requirements[0].name = "rawdemo".into();
 
     let input = GecInput::from_source_package(source)
-        .with_validation(ValidationReport {
+        .with_validation(common::from_linc_validation(&ValidationReport {
             phases: Vec::new(),
             entries: Vec::new(),
             summary: ValidationSummary::default(),
@@ -94,8 +96,8 @@ fn gec_input_from_source_accepts_evidence() {
                     evidence_kind: EvidenceKind::HiddenProvider,
                 },
             ],
-        })
-        .with_link_plan(ResolvedLinkPlan {
+        }))
+        .with_link_plan(common::from_linc_link_plan(&ResolvedLinkPlan {
             preferred_mode: LinkResolutionMode::Default,
             native_surface_kind: NativeSurfaceKind::LibraryNames,
             platform_constraints: Vec::new(),
@@ -106,7 +108,7 @@ fn gec_input_from_source_accepts_evidence() {
             })],
             requirements: Vec::new(),
             transitive_dependencies: Vec::new(),
-        });
+        }));
 
     let output = generate(&input, &GecConfig::new("demo_sys")).unwrap();
     let emitted = emit_source(&output.projection);
@@ -179,7 +181,7 @@ fn generate_prefers_parallel_linc_analysis_evidence() {
     };
 
     let output = generate(
-        &GecInput::from_source_package(source).with_analysis(analysis),
+        &GecInput::from_source_package(source).with_analysis(common::from_linc_analysis(&analysis)),
         &GecConfig::new("demo_sys"),
     )
     .unwrap();

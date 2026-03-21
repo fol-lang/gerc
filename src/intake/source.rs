@@ -1,9 +1,10 @@
-use linc::ir::{
-    self, BindingDefine, BindingInputs, BindingPackage, BindingTarget, CallingConvention,
+use serde::{Deserialize, Serialize};
+
+use crate::c::{
+    self as ir, BindingDefine, BindingInputs, BindingPackage, BindingTarget, CallingConvention,
     LinkFramework, LinkInput, LinkLibrary, LinkLibraryKind, LinkRequirementSource, MacroBinding,
     MacroCategory, MacroForm, MacroKind, RecordKind, TypeQualifiers,
 };
-use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 pub struct SourcePackage {

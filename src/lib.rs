@@ -1,12 +1,12 @@
 //! `GERC` implementation crate, currently published as `gec`.
 //!
-//! This crate consumes `linc` analysis results and generates Rust FFI-facing
+//! This crate consumes translated source/evidence inputs and generates Rust FFI-facing
 //! code from C declarations.  It is designed as a library-first crate: the
 //! primary entry point is the public Rust API, not a CLI binary.
 //!
 //! # What `GERC` does
 //!
-//! - Consumes source contracts directly plus optional `linc` evidence.
+//! - Consumes source contracts directly plus optional translated evidence.
 //! - Maps C types to Rust FFI-safe types.
 //! - Lowers `linc` declarations into an internal Rust projection IR.
 //! - Emits deterministic Rust source files and Cargo-compatible crate structures.
@@ -15,7 +15,7 @@
 //! # What `GERC` does **not** do
 //!
 //! - Parse C source — that is `parc`'s job.
-//! - Duplicate ABI/layout/link discovery logic already in `linc`.
+//! - Duplicate ABI/layout/link discovery logic already owned upstream.
 //! - Own `fol`-specific surface generation.
 //! - Own final deployment/runtime loader policy.
 //!
@@ -47,6 +47,7 @@
 //! All public types live in the crate root or in clearly named submodules.
 
 pub mod config;
+pub mod c;
 pub mod consumer;
 pub mod contract;
 #[cfg(test)]
@@ -68,6 +69,13 @@ pub use contract::{
 };
 
 pub use config::GecConfig;
+pub use c::{
+    BindingItem, BindingLinkSurface, BindingPackage, BindingType, EvidenceKind, ItemKind,
+    LinkAnalysisPackage, LinkArtifact, LinkArtifactKind, LinkFramework, LinkInput, LinkLibrary,
+    LinkLibraryKind, LinkRequirementSource, LinkResolutionMode, MatchConfidence, MatchStatus,
+    NativeSurfaceKind, ResolvedLinkPlan, SymbolMatch, SymbolVisibility, ValidationReport,
+    ValidationSummary,
+};
 pub use consumer::{
     build_sidecar, extern_function_names, record_names, sidecar_from_json, sidecar_to_json,
     type_alias_names, ConsumerFinding, ConsumerReport, FindingKind, FolConsumer, GecConsumer,

@@ -1,9 +1,9 @@
-//! Item lowering from `linc` declarations to Rust projection IR.
+//! Item lowering from `gec`'s C-side declarations to Rust projection IR.
 //!
-//! This module converts `linc::BindingItem` values into `gec::ir::RustItem`
+//! This module converts `BindingItem` values into `gec::ir::RustItem`
 //! values, using the type mapping from `typemap`.
 
-use linc::ir::{
+use crate::c::{
     BindingItem, BindingPackage, DeclarationProvenance, EnumBinding, FunctionBinding, MacroBinding,
     MacroCategory, MacroValue, RecordBinding, RecordKind, TypeAliasBinding, UnsupportedItem,
     VariableBinding,
@@ -27,7 +27,7 @@ pub fn lower_package(pkg: &BindingPackage) -> (RustProjection, Vec<GecDiagnostic
                 let name = rust_item_name(&rust_item);
                 proj.notes.push(ProjectionNote {
                     kind: NoteKind::Projected,
-                    message: format!("lowered from linc"),
+                    message: "lowered from gec C model".into(),
                     item_name: name.clone(),
                 });
                 proj.items.push(rust_item);
@@ -68,7 +68,7 @@ pub fn lower_package(pkg: &BindingPackage) -> (RustProjection, Vec<GecDiagnostic
     (proj, diags)
 }
 
-/// Lower a single `linc::BindingItem` into a `RustItem`.
+/// Lower a single declaration item into a `RustItem`.
 fn lower_item(item: &BindingItem) -> Result<RustItem, String> {
     match item {
         BindingItem::Function(f) => lower_function(f),
@@ -303,8 +303,7 @@ fn format_provenance_message(provenance: &DeclarationProvenance) -> Option<Strin
 #[cfg(test)]
 mod tests {
     use super::*;
-    use linc::line_markers::{SourceLocation, SourceOrigin};
-    use linc::ir::*;
+    use crate::c::*;
 
     fn make_package(items: Vec<BindingItem>) -> BindingPackage {
         let mut pkg = BindingPackage::new();

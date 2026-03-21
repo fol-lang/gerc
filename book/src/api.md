@@ -34,8 +34,8 @@ For staged inspection, import the modules explicitly:
 ## Primary workflow
 
 `generate_from_source()` is the preferred entrypoint when the caller already
-has a `linc::SourcePackage`. Use `GecInput` directly when attaching optional
-`linc` evidence in parallel with source.
+has a `gec::SourcePackage`. Use `GecInput` directly when attaching optional
+translated evidence in parallel with source.
 
 ```rust
 use gec::{

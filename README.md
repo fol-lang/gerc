@@ -3,14 +3,14 @@
 `gec` is the current crate name for `GERC`, the Rust generation layer in the
 `PARC -> LINC -> GERC` pipeline.
 
-It consumes `linc` source/link/evidence contracts and produces deterministic
-Rust FFI output: a projected Rust IR, emitted Rust source, and optionally a
-Cargo-compatible crate bundle with `build.rs`.
+It consumes `gec`'s own source/evidence intake contracts and produces
+deterministic Rust FFI output: a projected Rust IR, emitted Rust source, and
+optionally a Cargo-compatible crate bundle with `build.rs`.
 
 ## Responsibilities
 
-- source-first intake from `linc::SourcePackage`
-- optional `linc::LinkAnalysisPackage`, `ValidationReport`, and `ResolvedLinkPlan` evidence
+- source-first intake from `gec::SourcePackage`
+- optional `gec::LinkAnalysisPackage`, `ValidationReport`, and `ResolvedLinkPlan` evidence
 - conservative gating of unsupported or under-evidenced declarations
 - lowering into Rust projection IR
 - deterministic Rust source emission
@@ -44,7 +44,7 @@ name mismatch is packaging: the crate is still published and imported as
 
 ```rust
 use gec::{emit_crate, emit_source, generate_from_source, GecConfig, OutputMode, OverwritePolicy};
-use linc::{SourceDeclaration, SourceFunction, SourcePackage, SourceType};
+use gec::{SourceDeclaration, SourceFunction, SourcePackage, SourceType};
 
 let mut source = SourcePackage::default();
 source.declarations.push(SourceDeclaration::Function(SourceFunction {

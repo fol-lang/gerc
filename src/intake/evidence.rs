@@ -1,4 +1,4 @@
-use linc::{LinkAnalysisPackage, ResolvedLinkPlan, ValidationReport};
+use crate::c::{LinkAnalysisPackage, ResolvedLinkPlan, ValidationReport};
 
 /// Optional upstream evidence attached to a generation run.
 ///

@@ -1,8 +1,10 @@
 mod evidence;
 mod source;
 
-use linc::{LinkAnalysisPackage, ResolvedLinkPlan, ValidationReport};
-use linc::ir::{BindingItem, BindingPackage, DeclarationProvenance};
+use crate::c::{
+    BindingItem, BindingPackage, DeclarationProvenance, LinkAnalysisPackage,
+    ResolvedLinkPlan, ValidationReport,
+};
 
 pub use evidence::EvidenceInputs;
 pub use source::{
@@ -10,6 +12,7 @@ pub use source::{
     SourceLinkRequirement, SourceMacro, SourcePackage, SourceParameter, SourceRecord, SourceType,
     SourceTypeAlias, SourceVariable,
 };
+#[allow(dead_code)]
 pub(crate) fn source_package_from_binding(package: &BindingPackage) -> SourcePackage {
     source::source_package_from_binding(package)
 }
@@ -24,7 +27,7 @@ pub(crate) fn source_package_from_binding(package: &BindingPackage) -> SourcePac
 ///
 /// - **Required**: `SourcePackage` — always needed; contains declarations,
 ///   macros, and source-side link declarations.
-/// - **Optional**: `LinkAnalysisPackage` — link/binary evidence from `linc`.
+/// - **Optional**: `LinkAnalysisPackage` — link/binary evidence.
 /// - **Optional**: `ValidationReport` — symbol-level validation evidence.
 ///   Useful for gating generation on verified symbols but not required for
 ///   basic projection.
@@ -180,8 +183,7 @@ fn align_provenance(pkg: &mut BindingPackage) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use linc::ir::*;
-    use linc::ValidationSummary;
+    use crate::c::*;
     use serde_json::to_string_pretty;
 
     fn empty_package() -> BindingPackage {

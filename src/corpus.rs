@@ -8,7 +8,7 @@ mod tests {
     use crate::gate::{gate_package, GateDecision};
     use crate::linkgen::lower_link_surface;
     use crate::lower::lower_package;
-    use linc::ir::*;
+    use crate::c::*;
 
     /// Helper: run the full pipeline on a BindingPackage.
     fn full_pipeline(pkg: &BindingPackage) -> (String, usize, usize) {

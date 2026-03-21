@@ -144,7 +144,7 @@ fn vendored_zlib_parc_linc_gec_resolved_link_plan() {
     let plan = linc::resolve_link_plan(&result.package);
     let output = generate(
         &GecInput::from_source_package(common::from_binding_package(&result.package))
-        .with_link_plan(plan.clone()),
+            .with_link_plan(common::from_linc_link_plan(&plan)),
         &GecConfig::new("zlib_sys"),
     )
     .unwrap();

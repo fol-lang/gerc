@@ -446,7 +446,7 @@ mod tests {
         use crate::config::GecConfig;
         use crate::contract::generate;
         use crate::intake::GecInput;
-        use linc::ir::*;
+        use crate::c::*;
 
         let mut pkg = BindingPackage::new();
         pkg.items.push(BindingItem::Function(FunctionBinding {

@@ -176,11 +176,7 @@ mod tests {
         GecInput, SourceDeclaration, SourceFunction, SourcePackage, SourceType,
     };
     use crate::ir::RustItem;
-    use linc::ir::*;
-    use linc::{
-        EvidenceKind, ItemKind, MatchConfidence, MatchStatus, ResolvedLinkPlan, SymbolMatch,
-        SymbolVisibility, ValidationReport, ValidationSummary,
-    };
+    use crate::c::*;
 
     fn sample_input() -> GecInput {
         let mut pkg = BindingPackage::new();
