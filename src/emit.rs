@@ -81,8 +81,25 @@ pub fn emit_source(proj: &RustProjection) -> String {
     out
 }
 
+fn emit_doc_comment(out: &mut String, doc: Option<&str>, indent: &str) {
+    let Some(doc) = doc else {
+        return;
+    };
+
+    for line in doc.lines() {
+        out.push_str(indent);
+        out.push_str("///");
+        if !line.is_empty() {
+            out.push(' ');
+            out.push_str(line);
+        }
+        out.push('\n');
+    }
+}
+
 /// 7.2: Emit function declaration inside extern "C" block.
 fn emit_function_decl(out: &mut String, f: &RustFunction) {
+    emit_doc_comment(out, f.doc.as_deref(), "    ");
     out.push_str("    pub fn ");
     out.push_str(&f.name);
     out.push('(');
@@ -292,6 +309,20 @@ mod tests {
     }
 
     #[test]
+    fn emit_function_doc_comment() {
+        let proj = make_projection(vec![RustItem::Function(RustFunction {
+            name: "foo".into(),
+            parameters: vec![],
+            return_type: RustType::Void,
+            variadic: false,
+            doc: Some("Initialize foo".into()),
+        })]);
+        let src = emit_source(&proj);
+        assert!(src.contains("    /// Initialize foo"));
+        assert!(src.contains("    pub fn foo();"));
+    }
+
+    #[test]
     fn emit_void_return_function() {
         let proj = make_projection(vec![RustItem::Function(RustFunction {
             name: "bar".into(),
@@ -321,7 +352,9 @@ mod tests {
             doc: None,
         })]);
         let src = emit_source(&proj);
-        assert!(src.contains("pub fn printf(fmt: *const core::ffi::c_char, ...) -> core::ffi::c_int;"));
+        assert!(
+            src.contains("pub fn printf(fmt: *const core::ffi::c_char, ...) -> core::ffi::c_int;")
+        );
     }
 
     // 7.3: constants
@@ -506,8 +539,14 @@ mod tests {
             RustItem::Enum(RustEnum {
                 name: "status".into(),
                 variants: vec![
-                    RustEnumVariant { name: "OK".into(), value: Some(0) },
-                    RustEnumVariant { name: "ERR".into(), value: Some(1) },
+                    RustEnumVariant {
+                        name: "OK".into(),
+                        value: Some(0),
+                    },
+                    RustEnumVariant {
+                        name: "ERR".into(),
+                        value: Some(1),
+                    },
                 ],
                 repr: "c_int".into(),
                 doc: None,
@@ -516,8 +555,14 @@ mod tests {
                 name: "Point".into(),
                 kind: RustRecordKind::Struct,
                 fields: vec![
-                    RustField { name: "x".into(), ty: RustType::CInt },
-                    RustField { name: "y".into(), ty: RustType::CInt },
+                    RustField {
+                        name: "x".into(),
+                        ty: RustType::CInt,
+                    },
+                    RustField {
+                        name: "y".into(),
+                        ty: RustType::CInt,
+                    },
                 ],
                 is_opaque: false,
                 doc: None,
@@ -569,8 +614,14 @@ mod tests {
     // Emit type unit tests
     #[test]
     fn emit_type_void_ptr() {
-        assert_eq!(emit_type(&RustType::OpaquePtr { is_const: false }), "*mut core::ffi::c_void");
-        assert_eq!(emit_type(&RustType::OpaquePtr { is_const: true }), "*const core::ffi::c_void");
+        assert_eq!(
+            emit_type(&RustType::OpaquePtr { is_const: false }),
+            "*mut core::ffi::c_void"
+        );
+        assert_eq!(
+            emit_type(&RustType::OpaquePtr { is_const: true }),
+            "*const core::ffi::c_void"
+        );
     }
 
     #[test]
@@ -580,7 +631,10 @@ mod tests {
             ret: Box::new(RustType::Void),
             variadic: false,
         };
-        assert_eq!(emit_type(&ty), "Option<unsafe extern \"C\" fn(core::ffi::c_int)>");
+        assert_eq!(
+            emit_type(&ty),
+            "Option<unsafe extern \"C\" fn(core::ffi::c_int)>"
+        );
     }
 
     #[test]
