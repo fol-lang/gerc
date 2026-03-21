@@ -1,6 +1,7 @@
 use gec::{emit_source, generate, GecConfig, GecInput};
 use linc::{
-    BindingItem, BindingPackage, BindingType, FieldBinding, RecordBinding, RecordKind,
+    BindingItem, BindingPackage, BindingType, CallingConvention, FieldBinding, FunctionBinding,
+    ParameterBinding, RecordBinding, RecordKind,
 };
 
 fn generate_source(pkg: BindingPackage) -> String {
@@ -37,4 +38,37 @@ fn legacy_unnamed_record_fields_get_deterministic_fallback_names() {
     assert!(source.contains("pub struct legacy_buf"));
     assert!(source.contains("pub __field0: core::ffi::c_int,"));
     assert!(source.contains("pub len: core::ffi::c_uint,"));
+}
+
+#[test]
+fn legacy_memcpy_style_void_pointer_signatures_stay_explicit() {
+    let mut pkg = BindingPackage::new();
+    pkg.items.push(BindingItem::Function(FunctionBinding {
+        name: "memcpy".into(),
+        calling_convention: CallingConvention::C,
+        parameters: vec![
+            ParameterBinding {
+                name: Some("dest".into()),
+                ty: BindingType::ptr(BindingType::Void),
+            },
+            ParameterBinding {
+                name: Some("src".into()),
+                ty: BindingType::const_ptr(BindingType::Void),
+            },
+            ParameterBinding {
+                name: Some("n".into()),
+                ty: BindingType::ULong,
+            },
+        ],
+        return_type: BindingType::ptr(BindingType::Void),
+        variadic: false,
+        source_offset: None,
+    }));
+
+    let source = generate_source(pkg);
+    assert!(source.contains("pub fn memcpy("));
+    assert!(source.contains("dest: *mut core::ffi::c_void"));
+    assert!(source.contains("src: *const core::ffi::c_void"));
+    assert!(source.contains("n: core::ffi::c_ulong"));
+    assert!(source.contains("-> *mut core::ffi::c_void;"));
 }
