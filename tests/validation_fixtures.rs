@@ -1,5 +1,7 @@
 //! Validation-driven regression tests patterned after `linc` fixture states.
 
+mod common;
+
 use gec::config::GecConfig;
 use gec::contract::generate;
 use gec::intake::GecInput;
@@ -13,7 +15,7 @@ use linc::ir::{
 };
 
 fn input_from_binding(pkg: BindingPackage) -> GecInput {
-    GecInput::from_source_package(linc::intake::adapters::from_binding_package(&pkg))
+    GecInput::from_source_package(common::from_binding_package(&pkg))
 }
 
 fn fixture_package() -> BindingPackage {

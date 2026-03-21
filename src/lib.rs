@@ -80,6 +80,10 @@ pub use crategen::{
 pub use emit::{emit_source, emit_type};
 pub use error::{GecError, GecResult};
 pub use gate::GateDecision;
-pub use intake::{EvidenceInputs, GecInput};
+pub use intake::{
+    EvidenceInputs, GecInput, SourceDeclaration, SourceEnum, SourceEnumVariant, SourceField,
+    SourceFunction, SourceLinkKind, SourceLinkRequirement, SourceMacro, SourcePackage,
+    SourceParameter, SourceRecord, SourceType, SourceTypeAlias, SourceVariable,
+};
 pub use linkgen::emit_rustc_link_args;
 pub use output::GecOutput;

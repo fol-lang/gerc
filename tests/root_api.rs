@@ -1,6 +1,8 @@
+mod common;
+
 use gec::ir::{RustFunction, RustItem, RustProjection, RustType};
 use gec::GecConsumer;
-use linc::{SourceDeclaration, SourceFunction, SourcePackage, SourceType};
+use gec::{SourceDeclaration, SourceFunction, SourcePackage, SourceType};
 
 #[test]
 fn root_reexports_source_emit_helpers() {
@@ -135,7 +137,15 @@ fn gate_and_lower_modules_support_explicit_staged_workflow() {
 
     let input =
         gec::GecInput::from_source_package(source).with_evidence(gec::EvidenceInputs::default());
-    let package = linc::intake::adapters::to_binding_package(&input.source);
+    let mut package = linc::ir::BindingPackage::new();
+    package.items.push(linc::ir::BindingItem::Function(linc::ir::FunctionBinding {
+        name: "workflow_gate".into(),
+        calling_convention: linc::ir::CallingConvention::C,
+        parameters: vec![],
+        return_type: linc::ir::BindingType::Int,
+        variadic: false,
+        source_offset: None,
+    }));
     let (decisions, gate_diags) =
         gec::gate::gate_package(&package, input.evidence.validation.as_ref());
     assert!(gate_diags.is_empty());

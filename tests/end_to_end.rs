@@ -16,6 +16,8 @@
 //!   - POSIX/libc: stdio, stdlib, string, math, pthreads, dlfcn, signal, mman, epoll
 //!   - Combined multi-header surfaces
 
+mod common;
+
 #[path = "../../linc/tests/common/mod.rs"]
 mod linc_common;
 
@@ -58,9 +60,7 @@ fn bic_to_gec(
     }
 
     let linc_result = linc_common::process(&cfg).ok()?;
-    let input = GecInput::from_source_package(linc::intake::adapters::from_binding_package(
-        &linc_result.package,
-    ));
+    let input = GecInput::from_source_package(common::from_binding_package(&linc_result.package));
     let gec_cfg = GecConfig::new(crate_name);
     let output = generate(&input, &gec_cfg).ok()?;
     let source = emit_source(&output.projection);
@@ -106,9 +106,7 @@ fn bic_to_gec_multi(
     }
 
     let linc_result = linc_common::process(&cfg).ok()?;
-    let input = GecInput::from_source_package(linc::intake::adapters::from_binding_package(
-        &linc_result.package,
-    ));
+    let input = GecInput::from_source_package(common::from_binding_package(&linc_result.package));
     let gec_cfg = GecConfig::new(crate_name);
     let output = generate(&input, &gec_cfg).ok()?;
     let source = emit_source(&output.projection);

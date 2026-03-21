@@ -5,6 +5,8 @@
 //! mixed accept/reject decisions, deep type hierarchies, and complex
 //! link surfaces without panicking or producing malformed output.
 
+mod common;
+
 #[path = "../test/stress/ffmpeg.rs"]
 mod ffmpeg;
 #[path = "../test/stress/linux_kernel.rs"]
@@ -21,7 +23,7 @@ use gec::emit::emit_source;
 use gec::intake::GecInput;
 
 fn input_from_binding(pkg: linc::ir::BindingPackage) -> GecInput {
-    GecInput::from_source_package(linc::intake::adapters::from_binding_package(&pkg))
+    GecInput::from_source_package(common::from_binding_package(&pkg))
 }
 
 // ======== FFmpeg ========

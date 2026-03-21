@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use crate::config::GecConfig;
 use crate::error::{GecError, GecResult};
 use crate::gate::{gate_package, GateDecision};
-use crate::intake::GecInput;
+use crate::intake::{GecInput, SourcePackage};
 use crate::ir::RustProjection;
 use crate::linkgen::{lower_declared_link_surface, lower_link_surface, lower_resolved_plan};
 use crate::lower::lower_package;
@@ -107,9 +107,9 @@ pub fn generate(input: &GecInput, _config: &GecConfig) -> GecResult<GecOutput> {
     })
 }
 
-/// Generate directly from a `linc::SourcePackage`.
+/// Generate directly from a `gec` source package.
 pub fn generate_from_source(
-    source: linc::SourcePackage,
+    source: SourcePackage,
     config: &GecConfig,
 ) -> GecResult<GecOutput> {
     let input = GecInput::from_source_package(source);
@@ -172,10 +172,15 @@ mod tests {
     };
     use crate::config::GecConfig;
     use crate::error::GecError;
-    use crate::intake::GecInput;
+    use crate::intake::{
+        GecInput, SourceDeclaration, SourceFunction, SourcePackage, SourceType,
+    };
     use crate::ir::RustItem;
-    use linc::*;
     use linc::ir::*;
+    use linc::{
+        EvidenceKind, ItemKind, MatchConfidence, MatchStatus, ResolvedLinkPlan, SymbolMatch,
+        SymbolVisibility, ValidationReport, ValidationSummary,
+    };
 
     fn sample_input() -> GecInput {
         let mut pkg = BindingPackage::new();
@@ -210,7 +215,7 @@ mod tests {
             abi_confidence: None,
             source_offset: None,
         }));
-        GecInput::from_source_package(linc::intake::adapters::from_binding_package(&pkg))
+        GecInput::from_source_package(crate::intake::source_package_from_binding(&pkg))
     }
 
     // 11.1: root-level public API tiers
@@ -273,7 +278,7 @@ mod tests {
             source: LinkRequirementSource::Declared,
         });
 
-        let input = GecInput::from_source_package(linc::intake::adapters::from_binding_package(&pkg)).with_link_plan(ResolvedLinkPlan {
+        let input = GecInput::from_source_package(crate::intake::source_package_from_binding(&pkg)).with_link_plan(ResolvedLinkPlan {
             preferred_mode: LinkResolutionMode::Default,
             native_surface_kind: NativeSurfaceKind::LibraryNames,
             platform_constraints: Vec::new(),
@@ -311,7 +316,7 @@ mod tests {
             source_offset: None,
         }));
 
-        let input = GecInput::from_source_package(linc::intake::adapters::from_binding_package(&pkg)).with_link_plan(ResolvedLinkPlan {
+        let input = GecInput::from_source_package(crate::intake::source_package_from_binding(&pkg)).with_link_plan(ResolvedLinkPlan {
             preferred_mode: LinkResolutionMode::PreferStatic,
             native_surface_kind: NativeSurfaceKind::Mixed,
             platform_constraints: Vec::new(),
@@ -433,7 +438,7 @@ mod tests {
             source_offset: None,
         }));
 
-        let input = GecInput::from_source_package(linc::intake::adapters::from_binding_package(&pkg));
+        let input = GecInput::from_source_package(crate::intake::source_package_from_binding(&pkg));
         let output = generate(&input, &GecConfig::default()).unwrap();
         // Only the function should be in the projection (bitfield filtered out)
         assert_eq!(output.item_count(), 1);
@@ -486,7 +491,7 @@ mod tests {
             ],
         };
 
-        let input = GecInput::from_source_package(linc::intake::adapters::from_binding_package(&pkg)).with_validation(report);
+        let input = GecInput::from_source_package(crate::intake::source_package_from_binding(&pkg)).with_validation(report);
         let output = generate(&input, &GecConfig::default()).unwrap();
 
         assert_eq!(output.item_count(), 1);
@@ -542,7 +547,7 @@ mod tests {
             ],
         };
 
-        let input = GecInput::from_source_package(linc::intake::adapters::from_binding_package(&pkg)).with_validation(report);
+        let input = GecInput::from_source_package(crate::intake::source_package_from_binding(&pkg)).with_validation(report);
         let output = generate(&input, &GecConfig::default()).unwrap();
 
         assert_eq!(output.item_count(), 1);
@@ -603,7 +608,7 @@ mod tests {
             source: LinkRequirementSource::Declared,
         });
 
-        let input = GecInput::from_source_package(linc::intake::adapters::from_binding_package(&pkg));
+        let input = GecInput::from_source_package(crate::intake::source_package_from_binding(&pkg));
         let cfg = GecConfig::new("mylib_sys");
         let output = generate(&input, &cfg).unwrap();
 

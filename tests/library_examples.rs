@@ -1,6 +1,8 @@
 //! Integration tests exercising realistic library surfaces through the full
 //! gec pipeline: intake → gate → lower → emit → crate generation.
 
+mod common;
+
 #[path = "../test/stress/freetype.rs"]
 mod freetype;
 #[path = "../test/stress/openssl.rs"]
@@ -17,7 +19,7 @@ use gec::emit::emit_source;
 use gec::intake::GecInput;
 
 fn run_full_pipeline(pkg: linc::ir::BindingPackage, crate_name: &str) -> PipelineResult {
-    let input = GecInput::from_source_package(linc::intake::adapters::from_binding_package(&pkg));
+    let input = GecInput::from_source_package(common::from_binding_package(&pkg));
     let cfg = GecConfig::new(crate_name);
     let output = generate(&input, &cfg).unwrap();
     let source = emit_source(&output.projection);
@@ -82,7 +84,7 @@ fn zlib_deterministic() {
     let pkg = zlib::zlib_package();
     let s1 = emit_source(
         &generate(
-            &GecInput::from_source_package(linc::intake::adapters::from_binding_package(&pkg.clone())),
+            &GecInput::from_source_package(common::from_binding_package(&pkg.clone())),
             &GecConfig::new("z"),
         )
             .unwrap()
@@ -90,7 +92,7 @@ fn zlib_deterministic() {
     );
     let s2 = emit_source(
         &generate(
-            &GecInput::from_source_package(linc::intake::adapters::from_binding_package(&pkg)),
+            &GecInput::from_source_package(common::from_binding_package(&pkg)),
             &GecConfig::new("z"),
         )
             .unwrap()
@@ -154,7 +156,7 @@ fn sqlite3_variadic_functions() {
 fn sqlite3_json_roundtrip() {
     let pkg = sqlite::sqlite3_package();
     let output = generate(
-        &GecInput::from_source_package(linc::intake::adapters::from_binding_package(&pkg)),
+        &GecInput::from_source_package(common::from_binding_package(&pkg)),
         &GecConfig::new("sqlite3_sys"),
     )
     .unwrap();
@@ -167,7 +169,7 @@ fn sqlite3_json_roundtrip() {
 fn sqlite3_sidecar_completeness() {
     let pkg = sqlite::sqlite3_package();
     let output = generate(
-        &GecInput::from_source_package(linc::intake::adapters::from_binding_package(&pkg)),
+        &GecInput::from_source_package(common::from_binding_package(&pkg)),
         &GecConfig::new("sqlite3_sys"),
     )
     .unwrap();

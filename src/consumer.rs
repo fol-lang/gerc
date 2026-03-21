@@ -459,7 +459,7 @@ mod tests {
         }));
 
         let input =
-            GecInput::from_source_package(linc::intake::adapters::from_binding_package(&pkg));
+            GecInput::from_source_package(crate::intake::source_package_from_binding(&pkg));
         let cfg = GecConfig::new("final_test");
         let output = generate(&input, &cfg).unwrap();
 

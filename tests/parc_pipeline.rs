@@ -1,3 +1,5 @@
+mod common;
+
 #[path = "../../linc/tests/common/mod.rs"]
 mod linc_common;
 
@@ -12,7 +14,7 @@ fn vendored_root(name: &str) -> PathBuf {
         .join("header")
 }
 
-fn parse_vendored_source(entry: &Path, include_dirs: &[PathBuf]) -> Option<linc::SourcePackage> {
+fn parse_vendored_source(entry: &Path, include_dirs: &[PathBuf]) -> Option<gec::SourcePackage> {
     let mut cpp_options = vec!["-E".to_string()];
     for dir in include_dirs {
         cpp_options.push(format!("-I{}", dir.display()));
@@ -27,7 +29,7 @@ fn parse_vendored_source(entry: &Path, include_dirs: &[PathBuf]) -> Option<linc:
     let parsed = parc::driver::parse(&config, entry).ok()?;
     let extracted = parc::extract::extract_from_translation_unit(&parsed.unit, None);
     let binding = linc_common::from_parc_package(&extracted);
-    Some(linc::intake::adapters::from_binding_package(&binding))
+    Some(common::from_binding_package(&binding))
 }
 
 #[test]
@@ -110,9 +112,7 @@ fn vendored_zlib_parc_linc_gec_link_surface() {
     .unwrap();
 
     let output = generate(
-        &GecInput::from_source_package(linc::intake::adapters::from_binding_package(
-            &result.package,
-        )),
+        &GecInput::from_source_package(common::from_binding_package(&result.package)),
         &GecConfig::new("zlib_sys"),
     )
     .unwrap();
@@ -143,9 +143,7 @@ fn vendored_zlib_parc_linc_gec_resolved_link_plan() {
 
     let plan = linc::resolve_link_plan(&result.package);
     let output = generate(
-        &GecInput::from_source_package(linc::intake::adapters::from_binding_package(
-            &result.package,
-        ))
+        &GecInput::from_source_package(common::from_binding_package(&result.package))
         .with_link_plan(plan.clone()),
         &GecConfig::new("zlib_sys"),
     )
@@ -176,9 +174,7 @@ fn vendored_libpng_parc_linc_gec_link_surface() {
     .unwrap();
 
     let output = generate(
-        &GecInput::from_source_package(linc::intake::adapters::from_binding_package(
-            &result.package,
-        )),
+        &GecInput::from_source_package(common::from_binding_package(&result.package)),
         &GecConfig::new("png_sys"),
     )
     .unwrap();

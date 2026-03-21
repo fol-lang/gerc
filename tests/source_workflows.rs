@@ -1,10 +1,12 @@
 use gec::emit::emit_source;
-use gec::{generate, generate_from_source, GecConfig, GecInput};
+use gec::{
+    generate, generate_from_source, GecConfig, GecInput, SourceDeclaration, SourceFunction,
+    SourceLinkKind, SourceLinkRequirement, SourcePackage, SourceRecord, SourceType,
+    SourceVariable,
+};
 use linc::{
-    intake::source::SourceLinkKind, EvidenceKind, ItemKind, LinkAnalysisPackage,
-    MatchConfidence, MatchStatus, ResolvedLinkPlan, SourceDeclaration, SourceFunction,
-    SourceLinkRequirement, SourcePackage, SourceRecord, SourceType, SourceVariable, SymbolMatch,
-    SymbolVisibility, ValidationReport, ValidationSummary,
+    EvidenceKind, ItemKind, LinkAnalysisPackage, MatchConfidence, MatchStatus, ResolvedLinkPlan,
+    SymbolMatch, SymbolVisibility, ValidationReport, ValidationSummary,
 };
 use linc::ir::{
     LinkInput, LinkLibrary, LinkLibraryKind, LinkRequirementSource, LinkResolutionMode,

@@ -1,12 +1,18 @@
 mod evidence;
 mod source;
 
-use linc::{
-    LinkAnalysisPackage, ResolvedLinkPlan, SourcePackage, ValidationReport,
-};
+use linc::{LinkAnalysisPackage, ResolvedLinkPlan, ValidationReport};
 use linc::ir::{BindingItem, BindingPackage, DeclarationProvenance};
 
 pub use evidence::EvidenceInputs;
+pub use source::{
+    SourceDeclaration, SourceEnum, SourceEnumVariant, SourceField, SourceFunction, SourceLinkKind,
+    SourceLinkRequirement, SourceMacro, SourcePackage, SourceParameter, SourceRecord, SourceType,
+    SourceTypeAlias, SourceVariable,
+};
+pub(crate) fn source_package_from_binding(package: &BindingPackage) -> SourcePackage {
+    source::source_package_from_binding(package)
+}
 
 /// Primary input container for a `gec` generation run.
 ///
@@ -71,7 +77,7 @@ impl GecInput {
         let mut package = self.binding_package();
         dedup_items(&mut package);
         align_provenance(&mut package);
-        self.source = linc::intake::adapters::from_binding_package(&package);
+        self.source = source::source_package_from_binding(&package);
     }
 
     /// Returns `true` if the package contains no items and no diagnostics.
@@ -174,8 +180,8 @@ fn align_provenance(pkg: &mut BindingPackage) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use linc::*;
     use linc::ir::*;
+    use linc::ValidationSummary;
     use serde_json::to_string_pretty;
 
     fn empty_package() -> BindingPackage {
@@ -224,7 +230,7 @@ mod tests {
     }
 
     fn input_from_binding(pkg: BindingPackage) -> GecInput {
-        GecInput::from_source_package(linc::intake::adapters::from_binding_package(&pkg))
+        GecInput::from_source_package(source::source_package_from_binding(&pkg))
     }
 
     #[test]
