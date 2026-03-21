@@ -186,6 +186,12 @@ fn gate_record(r: &RecordBinding) -> GateDecision {
             r.name.as_deref().unwrap_or("<anon>")
         ));
     }
+    if matches!(r.representation.as_ref(), Some(rep) if rep.align.is_none()) {
+        return GateDecision::Reject(format!(
+            "record '{}' lacks representation alignment evidence",
+            r.name.as_deref().unwrap_or("<anon>")
+        ));
+    }
 
     // 6.5: Reject records with bitfields (conservative)
     if fields.iter().any(|f| f.is_bitfield()) {
@@ -823,6 +829,32 @@ mod tests {
         assert_eq!(
             decisions[0],
             GateDecision::Reject("record 'wrapper' lacks representation size evidence".into())
+        );
+    }
+
+    #[test]
+    fn reject_record_without_representation_alignment() {
+        let pkg = make_package(vec![BindingItem::Record(RecordBinding {
+            kind: RecordKind::Struct,
+            name: Some("wrapper".into()),
+            fields: Some(vec![FieldBinding {
+                name: Some("value".into()),
+                ty: BindingType::Int,
+                bit_width: None,
+                layout: None,
+            }]),
+            representation: Some(RecordRepresentation {
+                size: Some(4),
+                align: None,
+                completeness: Some("complete".into()),
+            }),
+            abi_confidence: None,
+            source_offset: None,
+        })]);
+        let (decisions, _) = gate_package(&pkg, None);
+        assert_eq!(
+            decisions[0],
+            GateDecision::Reject("record 'wrapper' lacks representation alignment evidence".into())
         );
     }
 
