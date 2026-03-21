@@ -52,3 +52,18 @@ fn vendored_zlib_parc_to_gec_source_only() {
     assert!(emitted.contains("pub fn inflate"));
     assert!(emitted.contains("pub type Bytef"));
 }
+
+#[test]
+fn vendored_zlib_parc_to_gec_is_deterministic() {
+    let root = vendored_root("zlib");
+    let include_dir = root.join("include");
+    let entry = root.join("main.c");
+
+    let make = || {
+        let source = parse_vendored_source(&entry, std::slice::from_ref(&include_dir)).unwrap();
+        let output = generate_from_source(source, &GecConfig::new("zlib_sys")).unwrap();
+        emit_source(&output.projection)
+    };
+
+    assert_eq!(make(), make());
+}
