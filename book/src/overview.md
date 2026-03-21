@@ -1,12 +1,12 @@
 # Overview
 
-`gec` sits between `bic` (C analysis) and downstream Rust tooling in the
+`gec` sits between `parc`, `linc`, and downstream Rust tooling in the
 following pipeline:
 
 ```text
-C headers / native artifacts
-    → bic          (C parsing, ABI extraction, link discovery)
-    → gec          (Rust projection, code generation)
+PARC         (source parsing and extraction)
+    → LINC   (link, validation, and ABI evidence)
+    → GERC   (Rust projection, code generation)
     → generated Rust bindings crate
     → fol-interloop-rust  (optional downstream consumer)
     → fol-visible surface
@@ -14,14 +14,14 @@ C headers / native artifacts
 
 ## What happens inside gec
 
-1. **Intake** — `gec` receives a `bic::BindingPackage` (plus optional
+1. **Intake** — `gec` receives a `linc::BindingPackage` (plus optional
    validation and link-plan data) via `GecInput`.
 
 2. **Safety gating** — Each declaration is checked against generation rules.
    Items that cannot be safely represented in Rust (bitfields, anonymous
    records, incomplete types) are rejected with diagnostics.
 
-3. **Lowering** — Accepted declarations are lowered from `bic` types into
+3. **Lowering** — Accepted declarations are lowered from `linc` types into
    `gec`'s internal Rust projection IR (`RustProjection`).
 
 4. **Type mapping** — C types (`int`, `void*`, pointers, arrays, function

@@ -4,14 +4,14 @@
 
 | Module | Purpose |
 |---|---|
-| `intake` | Consumes `bic::BindingPackage` and optional enrichment data |
-| `typemap` | Maps C types (`bic::BindingType`) to Rust FFI types (`RustType`) |
+| `intake` | Consumes `linc::BindingPackage` and optional enrichment data |
+| `typemap` | Maps C types (`linc::BindingType`) to Rust FFI types (`RustType`) |
 | `gate` | Safety gating — accepts or rejects each declaration |
-| `lower` | Lowers accepted `bic` items into Rust projection IR |
+| `lower` | Lowers accepted `linc` items into Rust projection IR |
 | `ir` | Internal Rust projection IR: `RustProjection`, `RustItem`, `RustType` |
 | `emit` | Renders the IR into deterministic Rust source code |
 | `crategen` | Writes a full Cargo-compatible crate directory to disk |
-| `linkgen` | Lowers `bic` link surfaces into `build.rs` link directives |
+| `linkgen` | Lowers `linc` link surfaces into `build.rs` link directives |
 | `contract` | Top-level `generate()` entry point and JSON output contract |
 | `consumer` | Generic downstream-consumer contract and metadata sidecar |
 | `config` | Generation configuration (`GecConfig`) |
@@ -21,7 +21,7 @@
 ## Data flow
 
 ```text
-GecInput (bic::BindingPackage + optional extras)
+GecInput (linc::BindingPackage + optional extras)
     │
     ├── gate_package()  →  Vec<GateDecision> + diagnostics
     │       │
