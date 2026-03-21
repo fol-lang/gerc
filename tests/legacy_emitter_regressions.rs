@@ -146,3 +146,23 @@ fn flexible_array_members_emit_as_zero_length_arrays() {
     let source = generate_source(pkg);
     assert!(source.contains("pub data: [core::ffi::c_uchar; 0],"));
 }
+
+#[test]
+fn long_double_falls_back_to_explicit_unknown_marker() {
+    let mut pkg = BindingPackage::new();
+    pkg.items.push(BindingItem::Function(FunctionBinding {
+        name: "ld_func".into(),
+        calling_convention: CallingConvention::C,
+        parameters: vec![ParameterBinding {
+            name: Some("x".into()),
+            ty: BindingType::LongDouble,
+        }],
+        return_type: BindingType::LongDouble,
+        variadic: false,
+        source_offset: None,
+    }));
+
+    let source = generate_source(pkg);
+    assert!(source.contains("x: /* unknown: c_longdouble */ ()"));
+    assert!(source.contains("-> /* unknown: c_longdouble */ ();"));
+}
