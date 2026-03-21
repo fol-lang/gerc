@@ -272,6 +272,49 @@ mod tests {
         assert!(!link_names.contains(&"rawlib"));
     }
 
+    #[test]
+    fn generate_lowers_resolved_plan_link_kinds() {
+        let mut pkg = BindingPackage::new();
+        pkg.items.push(BindingItem::Function(FunctionBinding {
+            name: "foo".into(),
+            calling_convention: CallingConvention::C,
+            parameters: vec![],
+            return_type: BindingType::Void,
+            variadic: false,
+            source_offset: None,
+        }));
+
+        let input = GecInput::from_package(pkg).with_link_plan(ResolvedLinkPlan {
+            preferred_mode: LinkResolutionMode::PreferStatic,
+            native_surface_kind: NativeSurfaceKind::Mixed,
+            platform_constraints: Vec::new(),
+            inputs: vec![
+                LinkInput::Library(LinkLibrary {
+                    name: "staticish".into(),
+                    kind: LinkLibraryKind::Default,
+                    source: LinkRequirementSource::Declared,
+                }),
+                LinkInput::Framework(LinkFramework {
+                    name: "CoreFoundation".into(),
+                    source: LinkRequirementSource::Declared,
+                }),
+            ],
+            requirements: Vec::new(),
+            transitive_dependencies: Vec::new(),
+        });
+
+        let cfg = GecConfig::default();
+        let output = generate(&input, &cfg).unwrap();
+
+        assert_eq!(output.projection.link_requirements.len(), 2);
+        assert!(output.projection.link_requirements.iter().any(|req| {
+            req.name == "staticish" && req.kind == crate::ir::RustLinkKind::StaticLibrary
+        }));
+        assert!(output.projection.link_requirements.iter().any(|req| {
+            req.name == "CoreFoundation" && req.kind == crate::ir::RustLinkKind::Framework
+        }));
+    }
+
     // 11.2: typed error taxonomy
     #[test]
     fn error_types_exhaustive() {
