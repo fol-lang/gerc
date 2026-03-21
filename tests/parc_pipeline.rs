@@ -67,3 +67,29 @@ fn vendored_zlib_parc_to_gec_is_deterministic() {
 
     assert_eq!(make(), make());
 }
+
+#[test]
+fn vendored_libpng_parc_to_gec_source_only() {
+    let root = vendored_root("libpng");
+    let include_dir = root.join("include");
+    let entry = root.join("main.c");
+
+    let Some(source) = parse_vendored_source(&entry, &[include_dir]) else {
+        return;
+    };
+
+    let output = generate_from_source(source, &GecConfig::new("png_sys")).unwrap();
+    let emitted = emit_source(&output.projection);
+
+    assert!(
+        output.item_count() >= 10,
+        "expected at least 10 vendored libpng items, got {}",
+        output.item_count()
+    );
+    assert!(emitted.contains("png_"));
+    assert!(
+        emitted.contains("pub fn png_create_read_struct")
+            || emitted.contains("pub fn png_read_png")
+            || emitted.contains("pub fn png_init_io")
+    );
+}
