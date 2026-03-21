@@ -127,6 +127,7 @@ fn emit_function_decl(out: &mut String, f: &RustFunction) {
 
 /// 7.3: Emit a Rust constant.
 fn emit_constant(out: &mut String, c: &RustConstant) {
+    emit_doc_comment(out, c.doc.as_deref(), "");
     out.push_str("pub const ");
     out.push_str(&c.name);
     out.push_str(": ");
@@ -193,6 +194,7 @@ fn emit_type_alias(out: &mut String, t: &RustTypeAlias) {
 
 /// 7.8: Emit static declaration inside extern "C" block.
 fn emit_static_decl(out: &mut String, s: &RustStatic) {
+    emit_doc_comment(out, s.doc.as_deref(), "    ");
     out.push_str("    pub static ");
     if s.mutable {
         out.push_str("mut ");
@@ -370,6 +372,19 @@ mod tests {
         assert!(src.contains("pub const API_VERSION: core::ffi::c_int = 3;"));
     }
 
+    #[test]
+    fn emit_constant_doc_comment() {
+        let proj = make_projection(vec![RustItem::Constant(RustConstant {
+            name: "API_VERSION".into(),
+            ty: RustType::CInt,
+            value: "3".into(),
+            doc: Some("API version constant".into()),
+        })]);
+        let src = emit_source(&proj);
+        assert!(src.contains("/// API version constant"));
+        assert!(src.contains("pub const API_VERSION: core::ffi::c_int = 3;"));
+    }
+
     // 7.4: struct
     #[test]
     fn emit_struct() {
@@ -481,6 +496,19 @@ mod tests {
         })]);
         let src = emit_source(&proj);
         assert!(src.contains("pub static mut errno: core::ffi::c_int;"));
+    }
+
+    #[test]
+    fn emit_static_doc_comment() {
+        let proj = make_projection(vec![RustItem::Static(RustStatic {
+            name: "errno".into(),
+            ty: RustType::CInt,
+            mutable: true,
+            doc: Some("Thread-local error code".into()),
+        })]);
+        let src = emit_source(&proj);
+        assert!(src.contains("    /// Thread-local error code"));
+        assert!(src.contains("    pub static mut errno: core::ffi::c_int;"));
     }
 
     // 7.9: deterministic ordering
