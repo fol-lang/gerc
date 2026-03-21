@@ -18,6 +18,10 @@
 | `output` | Generation output container (`GecOutput`, diagnostics) |
 | `error` | Crate error types (`GecError`, `GecResult`) |
 
+`gec` is the only Rust emitter in this pipeline layer. If older Rust-emission
+logic still exists elsewhere, the intended end state is to move the useful
+behavior here and delete the duplicate path.
+
 ## Data flow
 
 ```text

@@ -14,6 +14,7 @@ Cargo-compatible crate bundle with `build.rs`.
 - lowering into Rust projection IR
 - deterministic Rust source emission
 - emitted crate and build-script generation
+- ownership of Rust FFI emission for this pipeline layer
 
 ## Non-responsibilities
 
@@ -40,6 +41,7 @@ Current direction:
 - old `bic`-centric framing is being deleted
 - the crate is aligning to split `parc` + `linc` intake
 - backward compatibility is intentionally not a goal
+- legacy Rust emission behavior worth preserving is being rehomed here from `linc`
 
 ## Preferred usage
 
@@ -90,3 +92,17 @@ rejects that item instead of inventing layout facts.
 Generated Rust source now includes source-comment notes for preserved
 provenance and other non-routine projection notes, so downstream readers can
 see where declarations came from and why items were only partially supported.
+
+## Intentional output differences
+
+`gec` is the canonical Rust emitter in this pipeline now, so some differences
+from older `linc` Rust output are intentional:
+
+- opaque handles stay named Rust types (`pub struct NAME { _opaque: [u8; 0] }`)
+  instead of being erased into comments
+- enums emit as `#[repr(...)] pub enum` items instead of typedef-plus-const
+  blocks
+- function-pointer aliases emit as `Option<unsafe extern "C" fn(...)>` instead
+  of bare function-pointer aliases
+
+These are current `gec` decisions, not compatibility regressions.

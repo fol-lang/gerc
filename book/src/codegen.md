@@ -1,5 +1,9 @@
 # Code Generation
 
+`gec` owns Rust FFI emission in the split `PARC -> LINC -> GERC` pipeline.
+Useful legacy emitter behavior is rehomed here; obsolete output shapes are not
+kept just for compatibility.
+
 ## Pipeline stages
 
 Code generation in `gec` proceeds through several stages:
@@ -64,6 +68,16 @@ The IR is rendered into Rust source in a deterministic order:
 
 This ordering is stable and deterministic: the same input always produces
 the same output.
+
+## Intentional canonicalizations
+
+Some emitted forms intentionally differ from older `linc` Rust output:
+
+- named opaque handles emit as named zero-sized structs, not erased comments
+- enums emit as `#[repr(...)] pub enum NAME { ... }`, not typedef-plus-const groups
+- function-pointer aliases emit as `Option<unsafe extern "C" fn(...)>`
+
+These are the supported `gec` forms going forward.
 
 ## Link metadata (`linkgen`)
 
