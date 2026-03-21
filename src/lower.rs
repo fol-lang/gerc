@@ -4,8 +4,9 @@
 //! values, using the type mapping from `typemap`.
 
 use linc::{
-    BindingItem, BindingPackage, EnumBinding, FunctionBinding, MacroBinding, MacroCategory,
-    MacroValue, RecordBinding, RecordKind, TypeAliasBinding, UnsupportedItem, VariableBinding,
+    BindingItem, BindingPackage, DeclarationProvenance, EnumBinding, FunctionBinding, MacroBinding,
+    MacroCategory, MacroValue, RecordBinding, RecordKind, TypeAliasBinding, UnsupportedItem,
+    VariableBinding,
 };
 
 use crate::ir::*;
@@ -20,16 +21,19 @@ pub fn lower_package(pkg: &BindingPackage) -> (RustProjection, Vec<GecDiagnostic
     let mut diags = Vec::new();
 
     // Lower items
-    for item in &pkg.items {
+    for (index, item) in pkg.items.iter().enumerate() {
         match lower_item(item) {
             Ok(rust_item) => {
                 let name = rust_item_name(&rust_item);
                 proj.notes.push(ProjectionNote {
                     kind: NoteKind::Projected,
                     message: format!("lowered from linc"),
-                    item_name: name,
+                    item_name: name.clone(),
                 });
                 proj.items.push(rust_item);
+                if let Some(note) = provenance_note(pkg.provenance.get(index), name) {
+                    proj.notes.push(note);
+                }
             }
             Err(reason) => {
                 let name = binding_item_name(item);
@@ -38,13 +42,18 @@ pub fn lower_package(pkg: &BindingPackage) -> (RustProjection, Vec<GecDiagnostic
                     message: reason.clone(),
                     item_name: name.clone(),
                 });
-                proj.items
-                    .push(RustItem::Unsupported(RustUnsupported { name, reason }));
+                proj.items.push(RustItem::Unsupported(RustUnsupported {
+                    name: name.clone(),
+                    reason,
+                }));
                 proj.notes.push(ProjectionNote {
                     kind: NoteKind::Unsupported,
                     message: "could not lower".into(),
-                    item_name: binding_item_name(item),
+                    item_name: name.clone(),
                 });
+                if let Some(note) = provenance_note(pkg.provenance.get(index), name) {
+                    proj.notes.push(note);
+                }
             }
         }
     }
@@ -247,9 +256,54 @@ fn binding_item_name(item: &BindingItem) -> Option<String> {
     }
 }
 
+fn provenance_note(
+    provenance: Option<&DeclarationProvenance>,
+    item_name: Option<String>,
+) -> Option<ProjectionNote> {
+    let provenance = provenance?;
+    let message = format_provenance_message(provenance)?;
+    Some(ProjectionNote {
+        kind: NoteKind::Provenance,
+        message,
+        item_name,
+    })
+}
+
+fn format_provenance_message(provenance: &DeclarationProvenance) -> Option<String> {
+    let mut details = Vec::new();
+
+    if let Some(location) = &provenance.source_location {
+        let mut location_str = location.file.clone();
+        if let Some(line) = location.line {
+            location_str.push(':');
+            location_str.push_str(&line.to_string());
+            if let Some(column) = location.column {
+                location_str.push(':');
+                location_str.push_str(&column.to_string());
+            }
+        }
+        details.push(format!("declared at {location_str}"));
+    }
+
+    if let Some(origin) = &provenance.source_origin {
+        details.push(format!("origin {:?}", origin));
+    }
+
+    if let Some(offset) = provenance.source_offset {
+        details.push(format!("offset {offset}"));
+    }
+
+    if details.is_empty() {
+        return None;
+    }
+
+    Some(details.join(", "))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use linc::line_markers::{SourceLocation, SourceOrigin};
     use linc::*;
 
     fn make_package(items: Vec<BindingItem>) -> BindingPackage {
@@ -540,7 +594,7 @@ mod tests {
     // 5.9: provenance comments
     #[test]
     fn provenance_notes_generated() {
-        let pkg = make_package(vec![
+        let mut pkg = make_package(vec![
             BindingItem::Function(FunctionBinding {
                 name: "foo".into(),
                 calling_convention: CallingConvention::C,
@@ -555,10 +609,38 @@ mod tests {
                 source_offset: None,
             }),
         ]);
+        pkg.provenance.push(DeclarationProvenance {
+            item_name: Some("foo".into()),
+            item_kind: Some(BindingItemKind::Function),
+            source_offset: Some(12),
+            source_origin: Some(SourceOrigin::Entry),
+            source_location: Some(SourceLocation {
+                file: "demo.h".into(),
+                line: Some(7),
+                column: Some(3),
+            }),
+        });
+        pkg.provenance.push(DeclarationProvenance {
+            item_name: Some("bad".into()),
+            item_kind: Some(BindingItemKind::Unsupported),
+            source_offset: Some(18),
+            source_origin: Some(SourceOrigin::UserInclude),
+            source_location: Some(SourceLocation {
+                file: "detail.h".into(),
+                line: Some(9),
+                column: Some(1),
+            }),
+        });
+
         let (proj, _) = lower_package(&pkg);
-        assert_eq!(proj.notes.len(), 2);
+        assert_eq!(proj.notes.len(), 4);
         assert_eq!(proj.notes[0].kind, NoteKind::Projected);
-        assert_eq!(proj.notes[1].kind, NoteKind::Unsupported);
+        assert_eq!(proj.notes[1].kind, NoteKind::Provenance);
+        assert!(proj.notes[1].message.contains("demo.h:7:3"));
+        assert!(proj.notes[1].message.contains("origin Entry"));
+        assert_eq!(proj.notes[2].kind, NoteKind::Unsupported);
+        assert_eq!(proj.notes[3].kind, NoteKind::Provenance);
+        assert!(proj.notes[3].message.contains("detail.h:9:1"));
     }
 
     // 5.10: mixed header surface fixture
