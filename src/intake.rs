@@ -1,5 +1,6 @@
 use linc::{
-    BindingItem, BindingPackage, DeclarationProvenance, ResolvedLinkPlan, ValidationReport,
+    BindingItem, BindingPackage, DeclarationProvenance, ResolvedLinkPlan, SourcePackage,
+    ValidationReport,
 };
 
 /// Primary input container for a `gec` generation run.
@@ -35,6 +36,11 @@ impl GecInput {
             validation: None,
             link_plan: None,
         }
+    }
+
+    /// Create a new input from a source contract by adapting it through LINC.
+    pub fn from_source_package(source: SourcePackage) -> Self {
+        Self::from_package(linc::from_source_package(&source))
     }
 
     /// Attach a validation report.
@@ -91,6 +97,12 @@ impl GecInput {
 impl From<BindingPackage> for GecInput {
     fn from(package: BindingPackage) -> Self {
         Self::from_package(package)
+    }
+}
+
+impl From<SourcePackage> for GecInput {
+    fn from(source: SourcePackage) -> Self {
+        Self::from_source_package(source)
     }
 }
 
@@ -174,9 +186,48 @@ mod tests {
     }
 
     #[test]
+    fn from_source_package_basic() {
+        let mut source = SourcePackage::default();
+        source
+            .declarations
+            .push(SourceDeclaration::Function(SourceFunction {
+                name: "foo".into(),
+                parameters: vec![],
+                return_type: SourceType::Void,
+                variadic: false,
+                source_offset: None,
+            }));
+        source.macros.push(SourceMacro {
+            name: "FOO".into(),
+            body: "1".into(),
+            function_like: false,
+        });
+
+        let input = GecInput::from_source_package(source);
+        assert_eq!(input.item_count(), 1);
+        assert_eq!(input.package.macros.len(), 1);
+        assert_eq!(input.package.macros[0].name, "FOO");
+    }
+
+    #[test]
     fn from_trait() {
         let input: GecInput = empty_package().into();
         assert!(input.is_empty());
+    }
+
+    #[test]
+    fn from_source_trait() {
+        let mut source = SourcePackage::default();
+        source
+            .declarations
+            .push(SourceDeclaration::TypeAlias(SourceTypeAlias {
+                name: "size_t".into(),
+                target: SourceType::ULong,
+                source_offset: None,
+            }));
+
+        let input: GecInput = source.into();
+        assert_eq!(input.item_count(), 1);
     }
 
     #[test]
