@@ -535,6 +535,102 @@ mod tests {
         }));
     }
 
+    #[test]
+    fn generate_filters_records_rejected_by_representation_gating() {
+        let mut pkg = BindingPackage::new();
+        pkg.items.push(BindingItem::Record(RecordBinding {
+            kind: RecordKind::Struct,
+            name: Some("VisibleRecord".into()),
+            fields: Some(vec![FieldBinding {
+                name: Some("value".into()),
+                ty: BindingType::Int,
+                bit_width: None,
+                layout: None,
+            }]),
+            representation: None,
+            abi_confidence: None,
+            source_offset: None,
+        }));
+        pkg.items.push(BindingItem::Record(RecordBinding {
+            kind: RecordKind::Struct,
+            name: Some("MissingSize".into()),
+            fields: Some(vec![FieldBinding {
+                name: Some("value".into()),
+                ty: BindingType::Int,
+                bit_width: None,
+                layout: None,
+            }]),
+            representation: Some(RecordRepresentation {
+                size: None,
+                align: Some(4),
+                completeness: Some("complete".into()),
+            }),
+            abi_confidence: None,
+            source_offset: None,
+        }));
+
+        let output = generate(&GecInput::from_package(pkg), &GecConfig::default()).unwrap();
+
+        assert_eq!(output.item_count(), 1);
+        assert!(output.projection.items.iter().any(
+            |item| matches!(item, RustItem::Record(record) if record.name == "VisibleRecord")
+        ));
+        assert!(!output
+            .projection
+            .items
+            .iter()
+            .any(|item| matches!(item, RustItem::Record(record) if record.name == "MissingSize")));
+        assert!(output.diagnostics.iter().any(|diag| diag
+            .message
+            .contains("record 'MissingSize' lacks representation size evidence")));
+    }
+
+    #[test]
+    fn generate_filters_enums_rejected_by_representation_gating() {
+        let mut pkg = BindingPackage::new();
+        pkg.items.push(BindingItem::Enum(EnumBinding {
+            name: Some("VisibleEnum".into()),
+            variants: vec![EnumVariant {
+                name: "Ok".into(),
+                value: Some(0),
+            }],
+            representation: None,
+            abi_confidence: None,
+            source_offset: None,
+        }));
+        pkg.items.push(BindingItem::Enum(EnumBinding {
+            name: Some("MissingEnumSize".into()),
+            variants: vec![EnumVariant {
+                name: "Bad".into(),
+                value: Some(1),
+            }],
+            representation: Some(EnumRepresentation {
+                underlying_size: None,
+                is_signed: Some(false),
+            }),
+            abi_confidence: None,
+            source_offset: None,
+        }));
+
+        let output = generate(&GecInput::from_package(pkg), &GecConfig::default()).unwrap();
+
+        assert_eq!(output.item_count(), 1);
+        assert!(output
+            .projection
+            .items
+            .iter()
+            .any(|item| matches!(item, RustItem::Enum(enm) if enm.name == "VisibleEnum")));
+        assert!(!output
+            .projection
+            .items
+            .iter()
+            .any(|item| matches!(item, RustItem::Enum(enm) if enm.name == "MissingEnumSize")));
+        assert!(output.diagnostics.iter().any(|diag| {
+            diag.message
+                .contains("enum 'MissingEnumSize' lacks underlying-size representation evidence")
+        }));
+    }
+
     // 11.7: non-goals (informational — tested by absence)
     // gec does not parse C, does not own fol surface, etc.
     // This is enforced by the module structure.
