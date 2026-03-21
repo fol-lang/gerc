@@ -8,7 +8,8 @@ Cargo-compatible crate bundle with `build.rs`.
 
 ## Responsibilities
 
-- intake of `linc::BindingPackage` plus optional validation and link-plan evidence
+- source-first intake from `linc::SourcePackage`
+- explicit `linc::BindingPackage` intake plus optional validation and link-plan evidence
 - conservative gating of unsupported or under-evidenced declarations
 - lowering into Rust projection IR
 - deterministic Rust source emission
@@ -40,29 +41,32 @@ Current direction:
 - the crate is aligning to split `parc` + `linc` intake
 - backward compatibility is intentionally not a goal
 
-## Minimal usage
+## Preferred usage
 
 ```rust
-use gec::{generate, GecConfig, GecInput};
+use gec::{generate_from_source, GecConfig};
 use gec::emit::emit_source;
-use linc::{
-    BindingItem, BindingPackage, BindingType, CallingConvention, FunctionBinding,
-};
+use linc::{SourceDeclaration, SourceFunction, SourcePackage, SourceType};
 
-let mut pkg = BindingPackage::new();
-pkg.items.push(BindingItem::Function(FunctionBinding {
+let mut source = SourcePackage::default();
+source.declarations.push(SourceDeclaration::Function(SourceFunction {
     name: "init".into(),
-    calling_convention: CallingConvention::C,
     parameters: vec![],
-    return_type: BindingType::Int,
+    return_type: SourceType::Int,
     variadic: false,
     source_offset: None,
 }));
 
-let input = GecInput::from_package(pkg);
 let config = GecConfig::new("mylib_sys");
-let output = generate(&input, &config).unwrap();
+let output = generate_from_source(source, &config).unwrap();
 let source = emit_source(&output.projection);
 
 assert!(source.contains("pub fn init"));
 ```
+
+## Validation-gated generation
+
+When a `ValidationReport` is attached, `gec` only projects declarations with
+usable validation evidence. Missing matches, ABI mismatches, duplicate
+providers, hidden providers, decoration mismatches, and wrong-kind matches are
+rejected instead of being projected speculatively.

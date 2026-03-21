@@ -11,6 +11,10 @@
 
 ## Primary workflow
 
+`generate_from_source()` is the preferred entrypoint when the caller already
+has a `linc::SourcePackage`. Use `GecInput` directly when attaching optional
+validation or resolved link evidence.
+
 ```rust
 use gec::{generate_from_source, GecConfig, GecInput, generate};
 
@@ -20,13 +24,16 @@ let input = GecInput::from_package(pkg);
 // 1b. Or generate directly from a linc SourcePackage
 let output = generate_from_source(source, &GecConfig::new("mylib_sys")).unwrap();
 
-// 2. Configure generation for the explicit-input path
+// 2. Attach optional evidence for the explicit-input path
+let input = input.with_validation(report).with_link_plan(plan);
+
+// 3. Configure generation for the explicit-input path
 let config = GecConfig::new("mylib_sys");
 
-// 3. Run the pipeline
+// 4. Run the pipeline
 let output = generate(&input, &config).unwrap();
 
-// 4. Use the output
+// 5. Use the output
 let source = gec::emit::emit_source(&output.projection);
 ```
 
@@ -34,6 +41,9 @@ let source = gec::emit::emit_source(&output.projection);
 
 - `GecInput::from_binding_json(...)`
 - `GecInput::from_source_json(...)`
+
+When validation evidence is attached, `generate()` filters out declarations
+that fail validation gating instead of emitting speculative Rust bindings.
 
 ## Configuration
 

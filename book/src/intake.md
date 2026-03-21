@@ -7,6 +7,10 @@
 - `linc::BindingPackage` via `GecInput::from_package(...)`
 - `linc::SourcePackage` via `GecInput::from_source_package(...)`
 
+The source-package path is the preferred starting point when the caller already
+has `parc`/`linc` source contracts. It keeps `gec` on the split-pipeline path
+and lets the crate adapt source declarations into bindings internally.
+
 The binding-package path is the richer machine contract and contains:
 
 - **Items** — function declarations, record (struct/union) definitions, enum
@@ -24,7 +28,12 @@ Two additional `linc` outputs can optionally be attached:
 ### `ValidationReport`
 
 Declaration-vs-artifact validation evidence. When present, `gec` uses
-validation findings to influence safety gating decisions.
+validation findings to drive safety gating decisions.
+
+Attached validation evidence is not advisory. `gec` rejects functions and
+variables that are missing validation matches or that only have unusable
+matches such as ABI mismatches, duplicate providers, hidden providers,
+decoration mismatches, or wrong-kind matches.
 
 ### `ResolvedLinkPlan`
 
@@ -39,11 +48,11 @@ use gec::intake::GecInput;
 
 use linc::SourcePackage;
 
-// Binding-package intake
-let input = GecInput::from_package(pkg);
-
 // Source-package intake
 let input = GecInput::from_source_package(SourcePackage::default());
+
+// Binding-package intake
+let input = GecInput::from_package(pkg);
 
 // Optional enrichment (builder pattern)
 let input = GecInput::from_package(pkg)

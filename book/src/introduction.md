@@ -6,6 +6,10 @@ It consumes `linc` contracts and generates Rust FFI bindings from C
 declarations.  The output is a complete Cargo-compatible Rust crate (or a loose
 source bundle) that compiles cleanly with `cargo build`.
 
+The preferred library entrypoint is `generate_from_source(...)`. Attach a
+`ValidationReport` or `ResolvedLinkPlan` through `GecInput` when generation
+needs artifact-backed evidence.
+
 ## Audience
 
 This book is for developers who:
@@ -48,3 +52,7 @@ let output = generate_from_source(source, &config).unwrap();
 let source = emit_source(&output.projection);
 println!("{source}");
 ```
+
+If validation evidence is present, `gec` treats it as a hard gating input for
+functions and variables. Declarations without usable evidence are filtered out
+and reported through diagnostics instead of being emitted.
