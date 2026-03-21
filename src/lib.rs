@@ -85,5 +85,6 @@ pub use intake::{
     input_from_binding_json, input_from_binding_package, source_from_binding_package,
     EvidenceInputs, GecInput,
 };
+pub use linkgen::emit_rustc_link_args;
 pub use lower::lower_package;
 pub use output::GecOutput;

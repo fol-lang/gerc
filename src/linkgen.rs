@@ -210,6 +210,26 @@ pub fn emit_build_rs_filtered(
     out
 }
 
+/// Render direct `rustc` link arguments from link requirements.
+pub fn emit_rustc_link_args(reqs: &[RustLinkRequirement]) -> Vec<String> {
+    let mut args = Vec::new();
+
+    for req in reqs {
+        if let Some(ref path) = req.search_path {
+            args.push(format!("-Lnative={path}"));
+        }
+
+        let kind = match req.kind {
+            RustLinkKind::DynamicLibrary => "dylib",
+            RustLinkKind::StaticLibrary => "static",
+            RustLinkKind::Framework => "framework",
+        };
+        args.push(format!("-l{kind}={}", req.name));
+    }
+
+    args
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -392,6 +412,40 @@ mod tests {
         assert!(content.contains("cargo:rustc-link-lib=static=mylib"));
         assert!(content.contains("cargo:rustc-link-lib=framework=Security"));
         assert!(content.ends_with("}\n"));
+    }
+
+    #[test]
+    fn rustc_link_args_golden() {
+        let reqs = vec![
+            RustLinkRequirement {
+                kind: RustLinkKind::DynamicLibrary,
+                name: "z".into(),
+                search_path: Some("/usr/lib".into()),
+            },
+            RustLinkRequirement {
+                kind: RustLinkKind::StaticLibrary,
+                name: "mylib".into(),
+                search_path: Some("/opt/lib".into()),
+            },
+            RustLinkRequirement {
+                kind: RustLinkKind::Framework,
+                name: "Security".into(),
+                search_path: None,
+            },
+        ];
+
+        let args = emit_rustc_link_args(&reqs);
+
+        assert_eq!(
+            args,
+            vec![
+                "-Lnative=/usr/lib",
+                "-ldylib=z",
+                "-Lnative=/opt/lib",
+                "-lstatic=mylib",
+                "-lframework=Security",
+            ]
+        );
     }
 
     // 9.10: integration test — full pipeline from package to link directives

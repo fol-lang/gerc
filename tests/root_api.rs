@@ -51,6 +51,24 @@ fn root_reexports_legacy_binding_adapters() {
 }
 
 #[test]
+fn root_reexports_rustc_link_arg_renderer() {
+    let args = gec::emit_rustc_link_args(&[
+        gec::ir::RustLinkRequirement {
+            kind: gec::ir::RustLinkKind::DynamicLibrary,
+            name: "z".into(),
+            search_path: Some("/usr/lib".into()),
+        },
+        gec::ir::RustLinkRequirement {
+            kind: gec::ir::RustLinkKind::Framework,
+            name: "Security".into(),
+            search_path: None,
+        },
+    ]);
+
+    assert_eq!(args, vec!["-Lnative=/usr/lib", "-ldylib=z", "-lframework=Security"]);
+}
+
+#[test]
 fn root_reexports_crate_emit_helpers() {
     let dir = tempdir("root_emit_crate");
     let mut projection = RustProjection::new();
