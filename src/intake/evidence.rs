@@ -1,4 +1,4 @@
-use linc::{ResolvedLinkPlan, ValidationReport};
+use linc::{LinkAnalysisPackage, ResolvedLinkPlan, ValidationReport};
 
 /// Optional upstream evidence attached to a generation run.
 ///
@@ -6,6 +6,7 @@ use linc::{ResolvedLinkPlan, ValidationReport};
 /// evolve toward the split `source + evidence` model described in `PLAN.md`.
 #[derive(Debug, Clone, Default)]
 pub struct EvidenceInputs {
+    pub analysis: Option<LinkAnalysisPackage>,
     pub validation: Option<ValidationReport>,
     pub link_plan: Option<ResolvedLinkPlan>,
 }

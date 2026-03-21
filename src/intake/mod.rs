@@ -3,47 +3,54 @@ mod evidence;
 mod source;
 
 use linc::{
-    BindingItem, BindingPackage, DeclarationProvenance, ResolvedLinkPlan, SourcePackage,
-    ValidationReport,
+    BindingItem, BindingPackage, DeclarationProvenance, LinkAnalysisPackage, ResolvedLinkPlan,
+    SourcePackage, ValidationReport,
 };
 
 pub use evidence::EvidenceInputs;
 
 /// Primary input container for a `gec` generation run.
 ///
-/// Wraps a required `linc::BindingPackage` plus optional enrichment data.
-/// The `BindingPackage` is the single source of truth for C declarations;
-/// validation and link-plan data are supplementary evidence.
+/// Wraps a required source contract plus optional link/binary evidence.
+/// Source meaning comes from `SourcePackage`; binary/link evidence comes
+/// separately so `gec` does not have to receive source meaning through `linc`.
 ///
 /// ## Required vs optional `linc` evidence
 ///
-/// - **Required**: `BindingPackage` — always needed; contains items, diagnostics,
-///   macros, layouts, and link surface.
+/// - **Required**: `SourcePackage` — always needed; contains declarations,
+///   macros, and source-side link declarations.
+/// - **Optional**: `LinkAnalysisPackage` — link/binary evidence from `linc`.
 /// - **Optional**: `ValidationReport` — symbol-level validation evidence.
 ///   Useful for gating generation on verified symbols but not required for
 ///   basic projection.
 /// - **Optional**: `ResolvedLinkPlan` — resolved native link requirements.
-///   When absent, `gec` uses the raw `BindingLinkSurface` from the package.
+///   When absent, `gec` uses the source-derived raw link surface.
 #[derive(Debug, Clone)]
 pub struct GecInput {
-    /// The core `linc` analysis output — required.
-    pub package: BindingPackage,
+    /// Required source contract.
+    pub source: SourcePackage,
     /// Optional validation and link evidence.
     pub evidence: EvidenceInputs,
+    legacy_package: Option<BindingPackage>,
 }
 
 impl GecInput {
-    /// Create a new input from a `BindingPackage` alone.
-    pub fn from_package(package: BindingPackage) -> Self {
+    /// Create a new input from a `SourcePackage`.
+    pub fn from_source_package(source: SourcePackage) -> Self {
         Self {
-            package,
+            source,
             evidence: EvidenceInputs::default(),
+            legacy_package: None,
         }
     }
 
-    /// Create a new input from a source contract by adapting it through LINC.
-    pub fn from_source_package(source: SourcePackage) -> Self {
-        Self::from_package(source::binding_package_from_source(&source))
+    /// Transitional adapter from a legacy `BindingPackage`.
+    pub fn from_package(package: BindingPackage) -> Self {
+        Self {
+            source: source::source_package_from_binding(&package),
+            evidence: EvidenceInputs::default(),
+            legacy_package: Some(package),
+        }
     }
 
     /// Attach a validation report.
@@ -58,6 +65,12 @@ impl GecInput {
         self
     }
 
+    /// Attach a full link-analysis package.
+    pub fn with_analysis(mut self, analysis: LinkAnalysisPackage) -> Self {
+        self.evidence.analysis = Some(analysis);
+        self
+    }
+
     /// Attach evidence in one step.
     pub fn with_evidence(mut self, evidence: EvidenceInputs) -> Self {
         self.evidence = evidence;
@@ -67,18 +80,26 @@ impl GecInput {
     /// Normalize the intake: remove duplicate items and ensure provenance
     /// alignment with items. This is idempotent.
     pub fn normalize(&mut self) {
-        dedup_items(&mut self.package);
-        align_provenance(&mut self.package);
+        let mut package = self.binding_package();
+        dedup_items(&mut package);
+        align_provenance(&mut package);
+        self.source = source::source_package_from_binding(&package);
+        self.legacy_package = Some(package);
     }
 
     /// Returns `true` if the package contains no items and no diagnostics.
     pub fn is_empty(&self) -> bool {
-        self.package.is_empty()
+        self.binding_package().is_empty()
     }
 
     /// Number of declaration items in the underlying package.
     pub fn item_count(&self) -> usize {
-        self.package.item_count()
+        self.binding_package().item_count()
+    }
+
+    /// Whether link-analysis evidence is attached.
+    pub fn has_analysis(&self) -> bool {
+        self.evidence.analysis.is_some()
     }
 
     /// Whether validation evidence is attached.
@@ -93,7 +114,8 @@ impl GecInput {
 
     /// Whether the package has provenance entries aligned with items.
     pub fn has_aligned_provenance(&self) -> bool {
-        self.package.provenance.len() == self.package.items.len()
+        let package = self.binding_package();
+        package.provenance.len() == package.items.len()
     }
 
     /// Construct from a JSON string containing a `BindingPackage`.
@@ -106,6 +128,12 @@ impl GecInput {
     pub fn from_source_json(json: &str) -> Result<Self, String> {
         let source = source::source_package_from_json(json)?;
         Ok(Self::from_source_package(source))
+    }
+
+    pub(crate) fn binding_package(&self) -> BindingPackage {
+        self.legacy_package
+            .clone()
+            .unwrap_or_else(|| source::binding_package_from_source(&self.source))
     }
 }
 
@@ -274,6 +302,7 @@ mod tests {
         let input = GecInput::from_package(empty_package());
         assert!(input.is_empty());
         assert_eq!(input.item_count(), 0);
+        assert!(!input.has_analysis());
         assert!(!input.has_validation());
         assert!(!input.has_link_plan());
     }
@@ -298,8 +327,8 @@ mod tests {
 
         let input = GecInput::from_source_package(source);
         assert_eq!(input.item_count(), 1);
-        assert_eq!(input.package.macros.len(), 1);
-        assert_eq!(input.package.macros[0].name, "FOO");
+        assert_eq!(input.source.macros.len(), 1);
+        assert_eq!(input.source.macros[0].name, "FOO");
     }
 
     #[test]
@@ -328,12 +357,21 @@ mod tests {
         let input =
             GecInput::from_package(empty_package()).with_link_plan(ResolvedLinkPlan::default());
         assert!(input.has_link_plan());
+        assert!(!input.has_analysis());
         assert!(!input.has_validation());
+    }
+
+    #[test]
+    fn with_analysis() {
+        let input = GecInput::from_source_package(SourcePackage::default())
+            .with_analysis(LinkAnalysisPackage::default());
+        assert!(input.has_analysis());
     }
 
     #[test]
     fn with_evidence_sets_both_optional_inputs() {
         let input = GecInput::from_package(empty_package()).with_evidence(EvidenceInputs {
+            analysis: Some(LinkAnalysisPackage::default()),
             validation: Some(ValidationReport {
                 phases: Vec::new(),
                 entries: Vec::new(),
@@ -343,6 +381,7 @@ mod tests {
             link_plan: Some(ResolvedLinkPlan::default()),
         });
 
+        assert!(input.has_analysis());
         assert!(input.has_validation());
         assert!(input.has_link_plan());
     }
@@ -437,20 +476,18 @@ mod tests {
     fn from_binding_json_fixture_contract() {
         let json = to_string_pretty(&fixture_binding_package()).unwrap();
         let input = GecInput::from_binding_json(&json).unwrap();
+        let package = input.binding_package();
 
         assert_eq!(input.item_count(), 2);
-        assert_eq!(
-            input.package.source_path.as_deref(),
-            Some("fixtures/demo.h")
-        );
-        assert_eq!(input.package.macros.len(), 1);
-        assert_eq!(input.package.link.libraries.len(), 1);
+        assert_eq!(package.source_path.as_deref(), Some("fixtures/demo.h"));
+        assert_eq!(package.macros.len(), 1);
+        assert_eq!(package.link.libraries.len(), 1);
         assert!(matches!(
-            &input.package.items[0],
+            &package.items[0],
             BindingItem::Function(function) if function.name == "demo_init"
         ));
         assert!(matches!(
-            &input.package.items[1],
+            &package.items[1],
             BindingItem::Variable(variable) if variable.name == "demo_errno"
         ));
     }
@@ -459,19 +496,17 @@ mod tests {
     fn from_source_json_fixture_contract() {
         let json = to_string_pretty(&fixture_source_package()).unwrap();
         let input = GecInput::from_source_json(&json).unwrap();
+        let package = input.binding_package();
 
         assert_eq!(input.item_count(), 2);
-        assert_eq!(
-            input.package.source_path.as_deref(),
-            Some("fixtures/demo.h")
-        );
-        assert_eq!(input.package.macros.len(), 1);
+        assert_eq!(package.source_path.as_deref(), Some("fixtures/demo.h"));
+        assert_eq!(package.macros.len(), 1);
         assert!(matches!(
-            &input.package.items[0],
+            &package.items[0],
             BindingItem::Function(function) if function.name == "demo_init"
         ));
         assert!(matches!(
-            &input.package.items[1],
+            &package.items[1],
             BindingItem::Variable(variable) if variable.name == "demo_errno"
         ));
     }
@@ -499,9 +534,10 @@ mod tests {
 
         let mut input = GecInput::from_package(pkg);
         input.normalize();
-        assert_eq!(input.package.provenance.len(), 1);
+        let package = input.binding_package();
+        assert_eq!(package.provenance.len(), 1);
         assert_eq!(
-            input.package.provenance[0].item_name.as_deref(),
+            package.provenance[0].item_name.as_deref(),
             Some("foo")
         );
     }

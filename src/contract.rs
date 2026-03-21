@@ -40,18 +40,19 @@ pub struct GecOutputMeta {
 pub fn generate(input: &GecInput, _config: &GecConfig) -> GecResult<GecOutput> {
     let mut input_clone = input.clone();
     input_clone.normalize();
+    let package = input_clone.binding_package();
 
     if input_clone.is_empty() {
         return Err(GecError::EmptyInput);
     }
 
     let (decisions, gate_diags) = gate_package(
-        &input_clone.package,
+        &package,
         input_clone.evidence.validation.as_ref(),
     );
 
     // Filter items: only lower accepted items
-    let mut filtered_pkg = input_clone.package.clone();
+    let mut filtered_pkg = package.clone();
     let mut accepted_items = Vec::new();
     for (i, decision) in decisions.iter().enumerate() {
         if *decision == GateDecision::Accept {
@@ -71,7 +72,7 @@ pub fn generate(input: &GecInput, _config: &GecConfig) -> GecResult<GecOutput> {
         .link_plan
         .as_ref()
         .map(lower_resolved_plan)
-        .unwrap_or_else(|| lower_link_surface(&input_clone.package));
+        .unwrap_or_else(|| lower_link_surface(&package));
 
     let mut all_diags = gate_diags;
     all_diags.extend(lower_diags);
@@ -83,9 +84,6 @@ pub fn generate(input: &GecInput, _config: &GecConfig) -> GecResult<GecOutput> {
 }
 
 /// Generate directly from a `linc::SourcePackage`.
-///
-/// This is the preferred entrypoint when the caller has source contracts and
-/// wants `gec` to adapt them through LINC internally.
 pub fn generate_from_source(
     source: linc::SourcePackage,
     config: &GecConfig,

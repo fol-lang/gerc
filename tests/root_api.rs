@@ -127,11 +127,12 @@ fn root_helpers_support_intake_gate_lower_workflow() {
         }));
 
     let input = gec::GecInput::from_source_package(source).with_evidence(gec::EvidenceInputs::default());
-    let (decisions, gate_diags) = gec::gate_package(&input.package, input.evidence.validation.as_ref());
+    let package = linc::from_source_package(&input.source);
+    let (decisions, gate_diags) = gec::gate_package(&package, input.evidence.validation.as_ref());
     assert!(gate_diags.is_empty());
     assert!(matches!(decisions[0], gec::GateDecision::Accept));
 
-    let (projection, lower_diags) = gec::lower_package(&input.package);
+    let (projection, lower_diags) = gec::lower_package(&package);
     assert!(lower_diags.is_empty());
     assert!(gec::emit_source(&projection).contains("pub fn workflow_gate"));
 }
