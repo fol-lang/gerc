@@ -139,6 +139,7 @@ fn emit_constant(out: &mut String, c: &RustConstant) {
 
 /// 7.4 & 7.5: Emit struct or union.
 fn emit_record(out: &mut String, r: &RustRecord) {
+    emit_doc_comment(out, r.doc.as_deref(), "");
     if r.is_opaque {
         // Opaque type as an empty repr(C) struct
         out.push_str("#[repr(C)]\n");
@@ -167,6 +168,7 @@ fn emit_record(out: &mut String, r: &RustRecord) {
 
 /// 7.6: Emit enum with explicit representation.
 fn emit_enum(out: &mut String, e: &RustEnum) {
+    emit_doc_comment(out, e.doc.as_deref(), "");
     out.push_str(&format!("#[repr({})]\n", e.repr));
     out.push_str("#[derive(Debug, Clone, Copy, PartialEq, Eq)]\n");
     out.push_str("pub enum ");
@@ -185,6 +187,7 @@ fn emit_enum(out: &mut String, e: &RustEnum) {
 
 /// 7.7: Emit type alias.
 fn emit_type_alias(out: &mut String, t: &RustTypeAlias) {
+    emit_doc_comment(out, t.doc.as_deref(), "");
     out.push_str("pub type ");
     out.push_str(&t.name);
     out.push_str(" = ");
@@ -411,6 +414,20 @@ mod tests {
         assert!(src.contains("pub y: core::ffi::c_int,"));
     }
 
+    #[test]
+    fn emit_record_doc_comment() {
+        let proj = make_projection(vec![RustItem::Record(RustRecord {
+            name: "Point".into(),
+            kind: RustRecordKind::Struct,
+            fields: vec![],
+            is_opaque: false,
+            doc: Some("Cartesian point".into()),
+        })]);
+        let src = emit_source(&proj);
+        assert!(src.contains("/// Cartesian point"));
+        assert!(src.contains("pub struct Point"));
+    }
+
     // 7.5: union
     #[test]
     fn emit_union() {
@@ -473,6 +490,19 @@ mod tests {
         assert!(src.contains("GREEN = 1,"));
     }
 
+    #[test]
+    fn emit_enum_doc_comment() {
+        let proj = make_projection(vec![RustItem::Enum(RustEnum {
+            name: "Color".into(),
+            variants: vec![],
+            repr: "c_int".into(),
+            doc: Some("Color enum".into()),
+        })]);
+        let src = emit_source(&proj);
+        assert!(src.contains("/// Color enum"));
+        assert!(src.contains("pub enum Color"));
+    }
+
     // 7.7: type alias
     #[test]
     fn emit_type_alias() {
@@ -482,6 +512,18 @@ mod tests {
             doc: None,
         })]);
         let src = emit_source(&proj);
+        assert!(src.contains("pub type size_t = core::ffi::c_ulong;"));
+    }
+
+    #[test]
+    fn emit_type_alias_doc_comment() {
+        let proj = make_projection(vec![RustItem::TypeAlias(RustTypeAlias {
+            name: "size_t".into(),
+            target: RustType::CULong,
+            doc: Some("Platform size type".into()),
+        })]);
+        let src = emit_source(&proj);
+        assert!(src.contains("/// Platform size type"));
         assert!(src.contains("pub type size_t = core::ffi::c_ulong;"));
     }
 
