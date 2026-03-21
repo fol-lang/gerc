@@ -58,6 +58,10 @@ pub mod typemap;
 pub use contract::{generate, generate_from_source, GecOutputMeta, SCHEMA_VERSION};
 
 pub use config::GecConfig;
+pub use crategen::{
+    emit_build_rs, emit_crate, normalize_crate_name, CrateManifest, EmittedCrate, OutputMode,
+    OverwritePolicy,
+};
 pub use emit::{emit_source, emit_type};
 pub use error::{GecError, GecResult};
 pub use intake::GecInput;

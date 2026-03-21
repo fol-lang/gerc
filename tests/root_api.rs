@@ -21,3 +21,37 @@ fn root_reexports_source_emit_helpers() {
         "*mut core::ffi::c_char"
     );
 }
+
+#[test]
+fn root_reexports_crate_emit_helpers() {
+    let dir = tempdir("root_emit_crate");
+    let mut projection = RustProjection::new();
+    projection.items.push(RustItem::Function(RustFunction {
+        name: "demo_init".into(),
+        parameters: vec![],
+        return_type: RustType::CInt,
+        variadic: false,
+        doc: None,
+    }));
+
+    let emitted = gec::emit_crate(
+        &projection,
+        &gec::GecConfig::new("demo_sys"),
+        &dir,
+        gec::OutputMode::Crate,
+        gec::OverwritePolicy::Overwrite,
+    )
+    .unwrap();
+
+    assert!(dir.join("Cargo.toml").exists());
+    assert!(dir.join("src/lib.rs").exists());
+    assert_eq!(gec::normalize_crate_name("demo-sys").unwrap(), "demo_sys");
+    assert_eq!(emitted.root, dir);
+}
+
+fn tempdir(name: &str) -> std::path::PathBuf {
+    let dir = std::env::temp_dir().join(format!("gec_test_{name}"));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    dir
+}
