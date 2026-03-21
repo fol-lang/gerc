@@ -12,7 +12,12 @@ use crate::ir::{RustLinkKind, RustLinkRequirement};
 
 /// Lower a `BindingPackage`'s link surface into `RustLinkRequirement` values.
 pub fn lower_link_surface(pkg: &BindingPackage) -> Vec<RustLinkRequirement> {
-    lower_binding_link_surface(&pkg.link)
+    lower_declared_link_surface(&pkg.link)
+}
+
+/// Lower a declared link surface directly into `RustLinkRequirement` values.
+pub fn lower_declared_link_surface(link: &BindingLinkSurface) -> Vec<RustLinkRequirement> {
+    lower_binding_link_surface(link)
 }
 
 /// Lower from a resolved link plan (when available).

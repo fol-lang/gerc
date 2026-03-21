@@ -1,11 +1,11 @@
 use gec::emit::emit_source;
 use gec::{generate, generate_from_source, GecConfig, GecInput};
 use linc::{
-    intake::source::SourceLinkKind, EvidenceKind, ItemKind, LinkInput, LinkLibrary,
-    LinkLibraryKind, LinkRequirementSource, LinkResolutionMode, MatchConfidence, MatchStatus,
-    NativeSurfaceKind, SourceDeclaration, SourceFunction, SourceLinkRequirement, SourcePackage,
-    SourceRecord, SourceType, SourceVariable, SymbolMatch, SymbolVisibility, ValidationReport,
-    ValidationSummary, ResolvedLinkPlan,
+    intake::source::SourceLinkKind, EvidenceKind, ItemKind, LinkAnalysisPackage, LinkInput,
+    LinkLibrary, LinkLibraryKind, LinkRequirementSource, LinkResolutionMode, MatchConfidence,
+    MatchStatus, NativeSurfaceKind, ResolvedLinkPlan, SourceDeclaration, SourceFunction,
+    SourceLinkRequirement, SourcePackage, SourceRecord, SourceType, SourceVariable, SymbolMatch,
+    SymbolVisibility, ValidationReport, ValidationSummary,
 };
 
 fn source_fixture() -> SourcePackage {
@@ -113,6 +113,80 @@ fn gec_input_from_source_accepts_evidence() {
         .link_requirements
         .iter()
         .any(|req| req.name == "resolveddemo"));
+    assert!(!output
+        .projection
+        .link_requirements
+        .iter()
+        .any(|req| req.name == "rawdemo"));
+}
+
+#[test]
+fn generate_prefers_parallel_linc_analysis_evidence() {
+    let mut source = source_fixture();
+    source
+        .declarations
+        .push(SourceDeclaration::Variable(SourceVariable {
+            name: "hidden_value".into(),
+            ty: SourceType::Int,
+            source_offset: Some(40),
+        }));
+    source.link_requirements[0].name = "rawdemo".into();
+
+    let analysis = LinkAnalysisPackage {
+        resolved_link_plan: Some(ResolvedLinkPlan {
+            preferred_mode: LinkResolutionMode::Default,
+            native_surface_kind: NativeSurfaceKind::LibraryNames,
+            platform_constraints: Vec::new(),
+            inputs: vec![LinkInput::Library(LinkLibrary {
+                name: "analysisdemo".into(),
+                kind: LinkLibraryKind::Default,
+                source: LinkRequirementSource::Declared,
+            })],
+            requirements: Vec::new(),
+            transitive_dependencies: Vec::new(),
+        }),
+        validation: Some(ValidationReport {
+            phases: Vec::new(),
+            entries: Vec::new(),
+            summary: ValidationSummary::default(),
+            matches: vec![
+                SymbolMatch {
+                    name: "demo_init".into(),
+                    item_kind: ItemKind::Function,
+                    status: MatchStatus::Matched,
+                    visibility: Some(SymbolVisibility::Default),
+                    provider_artifacts: vec!["libanalysisdemo.so".into()],
+                    confidence: MatchConfidence::High,
+                    evidence_kind: EvidenceKind::ExactExported,
+                },
+                SymbolMatch {
+                    name: "hidden_value".into(),
+                    item_kind: ItemKind::Variable,
+                    status: MatchStatus::Hidden,
+                    visibility: Some(SymbolVisibility::Hidden),
+                    provider_artifacts: vec!["libanalysisdemo.so".into()],
+                    confidence: MatchConfidence::Low,
+                    evidence_kind: EvidenceKind::HiddenProvider,
+                },
+            ],
+        }),
+        ..LinkAnalysisPackage::default()
+    };
+
+    let output = generate(
+        &GecInput::from_source_package(source).with_analysis(analysis),
+        &GecConfig::new("demo_sys"),
+    )
+    .unwrap();
+    let emitted = emit_source(&output.projection);
+
+    assert!(emitted.contains("pub fn demo_init"));
+    assert!(!emitted.contains("hidden_value"));
+    assert!(output
+        .projection
+        .link_requirements
+        .iter()
+        .any(|req| req.name == "analysisdemo"));
     assert!(!output
         .projection
         .link_requirements

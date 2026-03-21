@@ -10,7 +10,7 @@ use crate::error::{GecError, GecResult};
 use crate::gate::{gate_package, GateDecision};
 use crate::intake::GecInput;
 use crate::ir::RustProjection;
-use crate::linkgen::{lower_link_surface, lower_resolved_plan};
+use crate::linkgen::{lower_declared_link_surface, lower_link_surface, lower_resolved_plan};
 use crate::lower::lower_package;
 use crate::output::{GecOutput, GecSeverity};
 
@@ -46,10 +46,19 @@ pub fn generate(input: &GecInput, _config: &GecConfig) -> GecResult<GecOutput> {
         return Err(GecError::EmptyInput);
     }
 
-    let (decisions, gate_diags) = gate_package(
-        &package,
-        input_clone.evidence.validation.as_ref(),
-    );
+    let validation = input_clone
+        .evidence
+        .validation
+        .as_ref()
+        .or_else(|| {
+            input_clone
+                .evidence
+                .analysis
+                .as_ref()
+                .and_then(|analysis| analysis.validation.as_ref())
+        });
+
+    let (decisions, gate_diags) = gate_package(&package, validation);
 
     // Filter items: only lower accepted items
     let mut filtered_pkg = package.clone();
@@ -72,6 +81,21 @@ pub fn generate(input: &GecInput, _config: &GecConfig) -> GecResult<GecOutput> {
         .link_plan
         .as_ref()
         .map(lower_resolved_plan)
+        .or_else(|| {
+            input_clone
+                .evidence
+                .analysis
+                .as_ref()
+                .and_then(|analysis| analysis.resolved_link_plan.as_ref())
+                .map(lower_resolved_plan)
+        })
+        .or_else(|| {
+            input_clone
+                .evidence
+                .analysis
+                .as_ref()
+                .map(|analysis| lower_declared_link_surface(&analysis.declared_link_surface))
+        })
         .unwrap_or_else(|| lower_link_surface(&package));
 
     let mut all_diags = gate_diags;
