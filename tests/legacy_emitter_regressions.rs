@@ -117,3 +117,32 @@ fn named_opaque_types_stay_named_instead_of_becoming_erased_comments() {
     assert!(source.contains("pub fn borrow_file(file: *mut FILE) -> core::ffi::c_int;"));
     assert!(!source.contains("opaque: FILE"));
 }
+
+#[test]
+fn flexible_array_members_emit_as_zero_length_arrays() {
+    let mut pkg = BindingPackage::new();
+    pkg.items.push(BindingItem::Record(RecordBinding {
+        kind: RecordKind::Struct,
+        name: Some("legacy_packet".into()),
+        fields: Some(vec![
+            FieldBinding {
+                name: Some("len".into()),
+                ty: BindingType::UInt,
+                bit_width: None,
+                layout: None,
+            },
+            FieldBinding {
+                name: Some("data".into()),
+                ty: BindingType::Array(Box::new(BindingType::UChar), None),
+                bit_width: None,
+                layout: None,
+            },
+        ]),
+        representation: None,
+        abi_confidence: None,
+        source_offset: None,
+    }));
+
+    let source = generate_source(pkg);
+    assert!(source.contains("pub data: [core::ffi::c_uchar; 0],"));
+}
