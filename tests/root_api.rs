@@ -69,6 +69,20 @@ fn root_reexports_rustc_link_arg_renderer() {
 }
 
 #[test]
+fn root_reexports_rustc_args_emitter() {
+    let mut proj = gec::ir::RustProjection::new();
+    proj.link_requirements.push(gec::ir::RustLinkRequirement {
+        kind: gec::ir::RustLinkKind::DynamicLibrary,
+        name: "z".into(),
+        search_path: Some("/usr/lib".into()),
+    });
+
+    let content = gec::emit_rustc_args(&proj);
+    assert!(content.contains("-Lnative=/usr/lib"));
+    assert!(content.contains("-ldylib=z"));
+}
+
+#[test]
 fn root_reexports_crate_emit_helpers() {
     let dir = tempdir("root_emit_crate");
     let mut projection = RustProjection::new();

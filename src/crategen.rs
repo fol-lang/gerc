@@ -10,7 +10,7 @@ use crate::config::GecConfig;
 use crate::emit::emit_source;
 use crate::error::{GecError, GecResult};
 use crate::ir::RustProjection;
-use crate::linkgen::emit_build_rs_filtered;
+use crate::linkgen::{emit_build_rs_filtered, emit_rustc_link_args};
 
 /// Model for the emitted crate manifest.
 #[derive(Debug, Clone)]
@@ -146,12 +146,17 @@ pub fn emit_crate(
     std::fs::write(&lib_rs, &lib_rs_content)?;
     emitted.files.push(lib_rs);
 
-    // Emit build.rs if link requirements exist and build script enabled
-    if cfg.emit_build_script && !proj.link_requirements.is_empty() {
-        let build_rs_content = emit_build_rs(proj);
-        let build_rs = output_dir.join("build.rs");
-        std::fs::write(&build_rs, &build_rs_content)?;
-        emitted.files.push(build_rs);
+    if !proj.link_requirements.is_empty() {
+        let rustc_args = output_dir.join("rustc-link-args.txt");
+        std::fs::write(&rustc_args, emit_rustc_args(proj))?;
+        emitted.files.push(rustc_args);
+
+        if cfg.emit_build_script {
+            let build_rs_content = emit_build_rs(proj);
+            let build_rs = output_dir.join("build.rs");
+            std::fs::write(&build_rs, &build_rs_content)?;
+            emitted.files.push(build_rs);
+        }
     }
 
     emitted.files.sort();
@@ -180,6 +185,15 @@ fn emit_lib_rs(proj: &RustProjection, crate_name: &str) -> String {
 /// Emit `build.rs` content from link requirements.
 pub fn emit_build_rs(proj: &RustProjection) -> String {
     emit_build_rs_filtered(&proj.link_requirements, &[])
+}
+
+/// Emit plain `rustc` link arguments from link requirements.
+pub fn emit_rustc_args(proj: &RustProjection) -> String {
+    let mut out = emit_rustc_link_args(&proj.link_requirements).join("\n");
+    if !out.is_empty() {
+        out.push('\n');
+    }
+    out
 }
 
 #[cfg(test)]
@@ -410,7 +424,10 @@ mod tests {
             .iter()
             .map(|path| path.strip_prefix(&dir).unwrap().display().to_string())
             .collect();
-        assert_eq!(ordered, vec!["Cargo.toml", "build.rs", "src/lib.rs"]);
+        assert_eq!(
+            ordered,
+            vec!["Cargo.toml", "build.rs", "rustc-link-args.txt", "src/lib.rs"]
+        );
     }
 
     #[test]
@@ -427,6 +444,7 @@ mod tests {
         )
         .unwrap();
         assert!(!dir.join("build.rs").exists());
+        assert!(!dir.join("rustc-link-args.txt").exists());
     }
 
     #[test]
@@ -449,6 +467,7 @@ mod tests {
         )
         .unwrap();
         assert!(!dir.join("build.rs").exists());
+        assert!(dir.join("rustc-link-args.txt").exists());
     }
 
     #[test]
@@ -512,6 +531,53 @@ mod tests {
         assert!(content.contains("cargo:rustc-link-search=native=/usr/lib"));
         assert!(content.contains("cargo:rustc-link-lib=dylib=z"));
         assert!(content.contains("cargo:rustc-link-lib=static=mylib"));
+    }
+
+    #[test]
+    fn rustc_args_content() {
+        let mut proj = RustProjection::new();
+        proj.link_requirements.push(RustLinkRequirement {
+            kind: RustLinkKind::DynamicLibrary,
+            name: "z".into(),
+            search_path: Some("/usr/lib".into()),
+        });
+        proj.link_requirements.push(RustLinkRequirement {
+            kind: RustLinkKind::StaticLibrary,
+            name: "mylib".into(),
+            search_path: None,
+        });
+
+        let content = emit_rustc_args(&proj);
+        assert!(content.contains("-Lnative=/usr/lib"));
+        assert!(content.contains("-ldylib=z"));
+        assert!(content.contains("-lstatic=mylib"));
+    }
+
+    #[test]
+    fn emit_crate_creates_rustc_args_file_when_linked() {
+        let dir = tempdir("emit_rustc_args");
+        let mut proj = sample_projection();
+        proj.link_requirements.push(RustLinkRequirement {
+            kind: RustLinkKind::DynamicLibrary,
+            name: "z".into(),
+            search_path: Some("/usr/lib".into()),
+        });
+
+        let result = emit_crate(
+            &proj,
+            &sample_config(),
+            &dir,
+            OutputMode::Crate,
+            OverwritePolicy::Overwrite,
+        )
+        .unwrap();
+
+        let rustc_args = dir.join("rustc-link-args.txt");
+        assert!(rustc_args.exists());
+        let content = std::fs::read_to_string(&rustc_args).unwrap();
+        assert!(content.contains("-Lnative=/usr/lib"));
+        assert!(content.contains("-ldylib=z"));
+        assert!(result.files.contains(&rustc_args));
     }
 
     #[test]

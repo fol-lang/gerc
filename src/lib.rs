@@ -75,8 +75,8 @@ pub use consumer::{
     MetadataSidecar, PassthroughConsumer, SidecarItem, SidecarItemKind,
 };
 pub use crategen::{
-    emit_build_rs, emit_crate, normalize_crate_name, CrateManifest, EmittedCrate, OutputMode,
-    OverwritePolicy,
+    emit_build_rs, emit_crate, emit_rustc_args, normalize_crate_name, CrateManifest,
+    EmittedCrate, OutputMode, OverwritePolicy,
 };
 pub use emit::{emit_source, emit_type};
 pub use error::{GecError, GecResult};
