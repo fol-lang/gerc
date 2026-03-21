@@ -56,8 +56,8 @@ pub mod output;
 pub mod typemap;
 
 pub use contract::{
-    generate, generate_from_source, meta_from_json, meta_to_json, output_meta, GecOutputMeta,
-    SCHEMA_VERSION,
+    generate, generate_from_source, meta_from_json, meta_to_json, output_meta,
+    projection_from_json, projection_to_json, GecOutputMeta, SCHEMA_VERSION,
 };
 
 pub use config::GecConfig;
