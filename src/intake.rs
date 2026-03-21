@@ -87,10 +87,16 @@ impl GecInput {
         self.package.provenance.len() == self.package.items.len()
     }
 
-    /// Construct from a JSON string (deserializes a `BindingPackage`).
-    pub fn from_json(json: &str) -> Result<Self, String> {
+    /// Construct from a JSON string containing a `BindingPackage`.
+    pub fn from_binding_json(json: &str) -> Result<Self, String> {
         let package: BindingPackage = serde_json::from_str(json).map_err(|e| e.to_string())?;
         Ok(Self::from_package(package))
+    }
+
+    /// Construct from a JSON string containing a `SourcePackage`.
+    pub fn from_source_json(json: &str) -> Result<Self, String> {
+        let source: SourcePackage = serde_json::from_str(json).map_err(|e| e.to_string())?;
+        Ok(Self::from_source_package(source))
     }
 }
 
@@ -281,14 +287,14 @@ mod tests {
     }
 
     #[test]
-    fn from_json_minimal() {
+    fn from_binding_json_minimal() {
         let json = r#"{"source_path": null, "items": [], "diagnostics": []}"#;
-        let input = GecInput::from_json(json).unwrap();
+        let input = GecInput::from_binding_json(json).unwrap();
         assert!(input.is_empty());
     }
 
     #[test]
-    fn from_json_with_function() {
+    fn from_binding_json_with_function() {
         let json = r#"{
             "source_path": "test.h",
             "items": [
@@ -303,13 +309,37 @@ mod tests {
             ],
             "diagnostics": []
         }"#;
-        let input = GecInput::from_json(json).unwrap();
+        let input = GecInput::from_binding_json(json).unwrap();
         assert_eq!(input.item_count(), 1);
     }
 
     #[test]
-    fn from_json_invalid() {
-        let result = GecInput::from_json("not json");
+    fn from_source_json_with_function() {
+        let json = r#"{
+            "source_path": "test.h",
+            "declarations": [
+                {"Function": {
+                    "name": "foo",
+                    "parameters": [],
+                    "return_type": "Void",
+                    "variadic": false,
+                    "source_offset": null
+                }}
+            ]
+        }"#;
+        let input = GecInput::from_source_json(json).unwrap();
+        assert_eq!(input.item_count(), 1);
+    }
+
+    #[test]
+    fn from_binding_json_invalid() {
+        let result = GecInput::from_binding_json("not json");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn from_source_json_invalid() {
+        let result = GecInput::from_source_json("not json");
         assert!(result.is_err());
     }
 
