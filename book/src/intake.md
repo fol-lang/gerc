@@ -35,6 +35,11 @@ variables that are missing validation matches or that only have unusable
 matches such as ABI mismatches, duplicate providers, hidden providers,
 decoration mismatches, or wrong-kind matches.
 
+Representation evidence is also treated conservatively. If a record or enum
+already carries a representation block but upstream left required fields unset
+such as record size, record alignment, or enum underlying size, `gec` rejects
+that declaration instead of guessing.
+
 ### `ResolvedLinkPlan`
 
 Resolved native link requirements. When present, `gec` uses the resolved

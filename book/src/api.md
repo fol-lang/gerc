@@ -45,6 +45,10 @@ let source = gec::emit::emit_source(&output.projection);
 When validation evidence is attached, `generate()` filters out declarations
 that fail validation gating instead of emitting speculative Rust bindings.
 
+The generated Rust source also includes comment-level projection notes for
+preserved provenance and other non-routine lowering outcomes. This keeps
+upstream context visible without changing the Rust API surface.
+
 ## Configuration
 
 `GecConfig` controls what gets generated:

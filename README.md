@@ -70,3 +70,12 @@ When a `ValidationReport` is attached, `gec` only projects declarations with
 usable validation evidence. Missing matches, ABI mismatches, duplicate
 providers, hidden providers, decoration mismatches, and wrong-kind matches are
 rejected instead of being projected speculatively.
+
+`gec` also treats partially-populated representation evidence conservatively.
+If a record or enum carries representation metadata but is missing critical
+fields like record size, record alignment, or enum underlying size, generation
+rejects that item instead of inventing layout facts.
+
+Generated Rust source now includes source-comment notes for preserved
+provenance and other non-routine projection notes, so downstream readers can
+see where declarations came from and why items were only partially supported.
