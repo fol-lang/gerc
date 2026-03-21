@@ -476,6 +476,23 @@ mod tests {
         cargo_in(&dir, "check");
     }
 
+    #[test]
+    fn emitted_crate_passes_cargo_check() {
+        let dir = tempdir("emit_crate_check");
+        let proj = sample_projection();
+        let cfg = sample_config();
+        emit_crate(
+            &proj,
+            &cfg,
+            &dir,
+            OutputMode::Crate,
+            OverwritePolicy::Overwrite,
+        )
+        .unwrap();
+
+        cargo_in(&dir, "check");
+    }
+
     // 8.10: build.rs content
     #[test]
     fn build_rs_content() {
