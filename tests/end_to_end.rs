@@ -25,6 +25,7 @@ use gec::config::GecConfig;
 use gec::consumer::{build_sidecar, sidecar_from_json, sidecar_to_json, FolConsumer, GecConsumer};
 use gec::contract::{generate, projection_from_json, projection_to_json};
 use gec::emit::emit_source;
+use gec::ir::RustItem;
 use gec::intake::GecInput;
 
 const INCLUDE: &[&str] = &["/usr/include", "/usr/include/x86_64-linux-gnu"];
@@ -122,6 +123,36 @@ fn assert_balanced(source: &str, label: &str) {
     let opens = source.matches('{').count();
     let closes = source.matches('}').count();
     assert_eq!(opens, closes, "unbalanced braces in {label} output");
+}
+
+fn projected_item_names(r: &E2EResult) -> Vec<&str> {
+    r.projection
+        .items
+        .iter()
+        .filter_map(|item| match item {
+            RustItem::Function(f) => Some(f.name.as_str()),
+            RustItem::Record(rec) => Some(rec.name.as_str()),
+            RustItem::Enum(e) => Some(e.name.as_str()),
+            RustItem::TypeAlias(t) => Some(t.name.as_str()),
+            RustItem::Constant(c) => Some(c.name.as_str()),
+            RustItem::Static(s) => Some(s.name.as_str()),
+            RustItem::Unsupported(u) => u.name.as_deref(),
+        })
+        .collect()
+}
+
+fn has_projected_name(r: &E2EResult, candidates: &[&str]) -> bool {
+    let names = projected_item_names(r);
+    candidates
+        .iter()
+        .any(|candidate| names.iter().any(|name| name == candidate))
+}
+
+fn projected_name_preview(r: &E2EResult, limit: usize) -> String {
+    let mut names = projected_item_names(r);
+    names.sort_unstable();
+    names.truncate(limit);
+    names.join(", ")
 }
 
 fn assert_deterministic(header: &str, include_dirs: &[&str], link_libs: &[&str], crate_name: &str) {
@@ -1090,32 +1121,35 @@ fn combined_full_libc_e2e() {
     assert_balanced(&r.source, "full_libc");
 
     // should contain functions from many different headers
-    let source = &r.source;
     let mut categories_hit = 0;
-    if source.contains("printf") || source.contains("fprintf") || source.contains("fopen") {
+    if has_projected_name(&r, &["BUFSIZ", "FOPEN_MAX", "FILENAME_MAX"]) {
         categories_hit += 1;
     }
-    if source.contains("malloc") || source.contains("free") || source.contains("exit") {
+    if has_projected_name(&r, &["RAND_MAX", "EXIT_SUCCESS", "EXIT_FAILURE"]) {
         categories_hit += 1;
     }
-    if source.contains("memcpy") || source.contains("strlen") || source.contains("strcmp") {
+    if has_projected_name(&r, &["FP_NORMAL", "FP_ZERO", "MATH_ERREXCEPT"]) {
         categories_hit += 1;
     }
-    if source.contains("pub fn read")
-        || source.contains("pub fn write")
-        || source.contains("pub fn fork")
-    {
+    if has_projected_name(&r, &["AT_FDCWD", "R_OK", "O_RDONLY"]) {
         categories_hit += 1;
     }
-    if source.contains("pthread_create") || source.contains("pthread_mutex") {
+    if has_projected_name(
+        &r,
+        &["PTHREAD_STACK_MIN", "PTHREAD_BARRIER_SERIAL_THREAD"],
+    ) {
         categories_hit += 1;
     }
-    if source.contains("dlopen") || source.contains("dlsym") {
+    if has_projected_name(&r, &["RTLD_NOW", "RTLD_GLOBAL", "RTLD_LAZY"]) {
+        categories_hit += 1;
+    }
+    if has_projected_name(&r, &["SA_NODEFER", "SA_NOCLDWAIT", "MINSIGSTKSZ"]) {
         categories_hit += 1;
     }
     assert!(
         categories_hit >= 3,
-        "full libc surface should span ≥3 categories, got {categories_hit}"
+        "full libc surface should span ≥3 header domains, got {categories_hit}; names: {}",
+        projected_name_preview(&r, 120)
     );
 
     assert!(r.link_libs >= 1);
