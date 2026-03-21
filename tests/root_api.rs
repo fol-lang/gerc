@@ -1,4 +1,5 @@
 use gec::ir::{RustFunction, RustItem, RustProjection, RustType};
+use gec::GecConsumer;
 use linc::{
     BindingItem, BindingPackage, BindingType, CallingConvention, FunctionBinding,
     SourceDeclaration, SourceFunction, SourcePackage, SourceType,
@@ -193,6 +194,43 @@ fn root_reexports_sidecar_helpers() {
 
     assert_eq!(roundtrip.crate_name, "sidecar_demo_sys");
     assert_eq!(roundtrip.items.len(), 1);
+}
+
+#[test]
+fn root_reexports_consumer_helpers() {
+    let mut projection = RustProjection::new();
+    projection.items.push(RustItem::Function(RustFunction {
+        name: "consumer_demo".into(),
+        parameters: vec![],
+        return_type: RustType::OpaquePtr { is_const: false },
+        variadic: false,
+        doc: None,
+    }));
+
+    let passthrough = gec::PassthroughConsumer;
+    let passthrough_report = passthrough.inspect(&projection);
+    assert_eq!(passthrough_report.consumer_name, "passthrough");
+    assert_eq!(passthrough_report.items_inspected, 1);
+    assert!(matches!(
+        passthrough_report.findings[0].kind,
+        gec::FindingKind::Usable
+    ));
+
+    let fol = gec::FolConsumer;
+    let fol_report = fol.inspect(&projection);
+    assert_eq!(fol_report.consumer_name, "fol-interloop-rust");
+    assert!(matches!(
+        fol_report.findings[0].kind,
+        gec::FindingKind::NeedsWrapper
+    ));
+
+    let externs = gec::extern_function_names(&projection);
+    let records = gec::record_names(&projection);
+    let aliases = gec::type_alias_names(&projection);
+
+    assert_eq!(externs, vec!["consumer_demo"]);
+    assert!(records.is_empty());
+    assert!(aliases.is_empty());
 }
 
 fn tempdir(name: &str) -> std::path::PathBuf {
