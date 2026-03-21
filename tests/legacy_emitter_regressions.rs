@@ -72,3 +72,19 @@ fn legacy_memcpy_style_void_pointer_signatures_stay_explicit() {
     assert!(source.contains("n: core::ffi::c_ulong"));
     assert!(source.contains("-> *mut core::ffi::c_void;"));
 }
+
+#[test]
+fn legacy_const_void_pointer_returns_stay_const_in_emission() {
+    let mut pkg = BindingPackage::new();
+    pkg.items.push(BindingItem::Function(FunctionBinding {
+        name: "find".into(),
+        calling_convention: CallingConvention::C,
+        parameters: vec![],
+        return_type: BindingType::const_ptr(BindingType::Void),
+        variadic: false,
+        source_offset: None,
+    }));
+
+    let source = generate_source(pkg);
+    assert!(source.contains("pub fn find() -> *const core::ffi::c_void;"));
+}
