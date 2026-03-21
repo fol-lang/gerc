@@ -154,3 +154,33 @@ fn vendored_zlib_parc_linc_gec_resolved_link_plan() {
         .any(|req| req.name == "z"));
     assert!(gec::emit_build_rs(&output.projection).contains("cargo:rustc-link-lib=dylib=z"));
 }
+
+#[test]
+fn vendored_libpng_parc_linc_gec_link_surface() {
+    let root = vendored_root("libpng");
+    let include_dir = root.join("include");
+    let entry = root.join("main.c");
+
+    let result = linc_common::process(
+        &linc::HeaderConfig::new()
+            .header(&entry)
+            .include_dir(&include_dir)
+            .link_lib("png")
+            .no_origin_filter(),
+    )
+    .unwrap();
+
+    let output = generate(
+        &GecInput::from_package(result.package),
+        &GecConfig::new("png_sys"),
+    )
+    .unwrap();
+    let emitted = emit_source(&output.projection);
+
+    assert!(emitted.contains("png_"));
+    assert!(output
+        .projection
+        .link_requirements
+        .iter()
+        .any(|req| req.name == "png"));
+}
