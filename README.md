@@ -73,12 +73,23 @@ assert!(source.contains("pub fn init"));
 assert!(emitted.root.join("Cargo.toml").exists());
 ```
 
-The crate root now re-exports the main generation and emission entrypoints:
-`generate`, `generate_from_source`, `emit_source`, `emit_crate`,
-`emit_build_rs`, `OutputMode`, and `OverwritePolicy`.
+The crate root now re-exports the main API families:
 
-For explicit staged workflows, the crate root also re-exports `GecInput`,
-`EvidenceInputs`, `gate_package`, `GateDecision`, and `lower_package`.
+- generation and emission: `generate`, `generate_from_source`, `emit_source`,
+  `emit_type`, `emit_crate`, `emit_build_rs`, `OutputMode`,
+  `OverwritePolicy`, `CrateManifest`, `EmittedCrate`
+- staged intake and lowering: `GecInput`, `EvidenceInputs`, `gate_package`,
+  `GateDecision`, `lower_package`
+- JSON contracts: `output_meta`, `meta_to_json`, `meta_from_json`,
+  `projection_to_json`, `projection_from_json`, `GecOutputMeta`,
+  `SCHEMA_VERSION`
+- consumer inspection and sidecars: `GecConsumer`, `ConsumerReport`,
+  `ConsumerFinding`, `FindingKind`, `PassthroughConsumer`, `FolConsumer`,
+  `build_sidecar`, `sidecar_to_json`, `sidecar_from_json`,
+  `extern_function_names`, `record_names`, `type_alias_names`
+
+Generated crate manifests and `src/lib.rs` markers now use `GERC` naming for
+the emitter identity.
 
 ## Validation-gated generation
 

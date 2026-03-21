@@ -19,6 +19,12 @@ For explicit staged workflows, the crate root also re-exports:
 - `EvidenceInputs` for optional validation/link-plan attachment
 - `gate_package` and `GateDecision` for explicit gating inspection
 - `lower_package` for explicit projection lowering
+- `output_meta`, `meta_to_json`, `meta_from_json`, `projection_to_json`, and
+  `projection_from_json` for JSON contracts
+- `GecConsumer`, `ConsumerReport`, `ConsumerFinding`, `FindingKind`,
+  `PassthroughConsumer`, `FolConsumer`, `build_sidecar`, `sidecar_to_json`,
+  `sidecar_from_json`, `extern_function_names`, `record_names`, and
+  `type_alias_names` for downstream inspection
 
 ## Primary workflow
 
@@ -151,3 +157,6 @@ use gec::consumer::{build_sidecar, sidecar_to_json};
 let sidecar = build_sidecar("mylib_sys", &output.projection);
 let json = sidecar_to_json(&sidecar).unwrap();
 ```
+
+Generated crate metadata and crate-level `src/lib.rs` markers identify the
+emitter as `GERC`.

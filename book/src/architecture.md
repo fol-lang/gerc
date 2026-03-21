@@ -22,6 +22,14 @@
 logic still exists elsewhere, the intended end state is to move the useful
 behavior here and delete the duplicate path.
 
+At the crate root, `gec` now exposes four top-level API families without
+module-qualified imports for routine use:
+
+- generation and crate emission
+- staged intake, gating, and lowering
+- JSON metadata and projection contracts
+- consumer inspection helpers and metadata sidecars
+
 ## Data flow
 
 ```text
