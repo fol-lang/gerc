@@ -151,6 +151,7 @@ mod tests {
     use crate::config::GecConfig;
     use crate::error::GecError;
     use crate::intake::GecInput;
+    use crate::ir::RustItem;
     use linc::*;
 
     fn sample_input() -> GecInput {
@@ -414,6 +415,124 @@ mod tests {
         // Only the function should be in the projection (bitfield filtered out)
         assert_eq!(output.item_count(), 1);
         assert!(output.has_diagnostics());
+    }
+
+    #[test]
+    fn generate_filters_functions_rejected_by_validation() {
+        let mut pkg = BindingPackage::new();
+        pkg.items.push(BindingItem::Function(FunctionBinding {
+            name: "good".into(),
+            calling_convention: CallingConvention::C,
+            parameters: vec![],
+            return_type: BindingType::Void,
+            variadic: false,
+            source_offset: None,
+        }));
+        pkg.items.push(BindingItem::Function(FunctionBinding {
+            name: "hidden".into(),
+            calling_convention: CallingConvention::C,
+            parameters: vec![],
+            return_type: BindingType::Void,
+            variadic: false,
+            source_offset: None,
+        }));
+
+        let report = ValidationReport {
+            phases: Vec::new(),
+            entries: Vec::new(),
+            summary: ValidationSummary::default(),
+            matches: vec![
+                SymbolMatch {
+                    name: "good".into(),
+                    item_kind: ItemKind::Function,
+                    status: MatchStatus::Matched,
+                    visibility: Some(SymbolVisibility::Default),
+                    provider_artifacts: vec!["libok.a".into()],
+                    confidence: MatchConfidence::High,
+                    evidence_kind: EvidenceKind::ExactExported,
+                },
+                SymbolMatch {
+                    name: "hidden".into(),
+                    item_kind: ItemKind::Function,
+                    status: MatchStatus::Hidden,
+                    visibility: Some(SymbolVisibility::Hidden),
+                    provider_artifacts: vec!["libhidden.a".into()],
+                    confidence: MatchConfidence::Low,
+                    evidence_kind: EvidenceKind::HiddenProvider,
+                },
+            ],
+        };
+
+        let input = GecInput::from_package(pkg).with_validation(report);
+        let output = generate(&input, &GecConfig::default()).unwrap();
+
+        assert_eq!(output.item_count(), 1);
+        assert!(output.projection.items.iter().any(|item| {
+            matches!(item, RustItem::Function(function) if function.name == "good")
+        }));
+        assert!(!output.projection.items.iter().any(|item| {
+            matches!(item, RustItem::Function(function) if function.name == "hidden")
+        }));
+        assert!(output
+            .diagnostics
+            .iter()
+            .any(|diag| diag.message.contains("hidden") && diag.message.contains("unusable")));
+    }
+
+    #[test]
+    fn generate_filters_variables_rejected_by_validation() {
+        let mut pkg = BindingPackage::new();
+        pkg.items.push(BindingItem::Variable(VariableBinding {
+            name: "VISIBLE".into(),
+            ty: BindingType::Int,
+            source_offset: None,
+        }));
+        pkg.items.push(BindingItem::Variable(VariableBinding {
+            name: "DUPLICATE".into(),
+            ty: BindingType::Int,
+            source_offset: None,
+        }));
+
+        let report = ValidationReport {
+            phases: Vec::new(),
+            entries: Vec::new(),
+            summary: ValidationSummary::default(),
+            matches: vec![
+                SymbolMatch {
+                    name: "VISIBLE".into(),
+                    item_kind: ItemKind::Variable,
+                    status: MatchStatus::Matched,
+                    visibility: Some(SymbolVisibility::Default),
+                    provider_artifacts: vec!["libok.a".into()],
+                    confidence: MatchConfidence::High,
+                    evidence_kind: EvidenceKind::ExactExported,
+                },
+                SymbolMatch {
+                    name: "DUPLICATE".into(),
+                    item_kind: ItemKind::Variable,
+                    status: MatchStatus::DuplicateProviders,
+                    visibility: Some(SymbolVisibility::Default),
+                    provider_artifacts: vec!["liba.a".into(), "libb.a".into()],
+                    confidence: MatchConfidence::Low,
+                    evidence_kind: EvidenceKind::DuplicateVisibleProviders,
+                },
+            ],
+        };
+
+        let input = GecInput::from_package(pkg).with_validation(report);
+        let output = generate(&input, &GecConfig::default()).unwrap();
+
+        assert_eq!(output.item_count(), 1);
+        assert!(output.projection.items.iter().any(|item| {
+            matches!(item, RustItem::Static(variable) if variable.name == "VISIBLE")
+        }));
+        assert!(!output.projection.items.iter().any(|item| {
+            matches!(item, RustItem::Static(variable) if variable.name == "DUPLICATE")
+        }));
+        assert!(output.diagnostics.iter().any(|diag| {
+            diag.message
+                .contains("variable 'DUPLICATE' has duplicate provider validation evidence")
+        }));
     }
 
     // 11.7: non-goals (informational — tested by absence)
