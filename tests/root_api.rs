@@ -135,6 +135,29 @@ fn root_helpers_support_intake_gate_lower_workflow() {
     assert!(gec::emit_source(&projection).contains("pub fn workflow_gate"));
 }
 
+#[test]
+fn root_reexports_output_meta_helpers() {
+    let mut source = SourcePackage::default();
+    source
+        .declarations
+        .push(SourceDeclaration::Function(SourceFunction {
+            name: "meta_demo".into(),
+            parameters: vec![],
+            return_type: SourceType::Int,
+            variadic: false,
+            source_offset: None,
+        }));
+
+    let cfg = gec::GecConfig::new("meta_demo_sys");
+    let output = gec::generate_from_source(source, &cfg).unwrap();
+    let meta = gec::output_meta(&cfg, &output);
+    let json = gec::meta_to_json(&meta).unwrap();
+    let roundtrip = gec::meta_from_json(&json).unwrap();
+
+    assert_eq!(roundtrip.crate_name, "meta_demo_sys");
+    assert_eq!(roundtrip.item_count, output.item_count());
+}
+
 fn tempdir(name: &str) -> std::path::PathBuf {
     let dir = std::env::temp_dir().join(format!("gec_test_{name}"));
     let _ = std::fs::remove_dir_all(&dir);
