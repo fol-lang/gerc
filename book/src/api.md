@@ -14,6 +14,12 @@ code does not need to import `emit` or `crategen` directly for routine use:
 `emit_source`, `emit_type`, `emit_crate`, `emit_build_rs`, `OutputMode`,
 `OverwritePolicy`, `CrateManifest`, and `EmittedCrate`.
 
+For explicit staged workflows, the crate root also re-exports:
+
+- `EvidenceInputs` for optional validation/link-plan attachment
+- `gate_package` and `GateDecision` for explicit gating inspection
+- `lower_package` for explicit projection lowering
+
 ## Primary workflow
 
 `generate_from_source()` is the preferred entrypoint when the caller already
@@ -63,6 +69,15 @@ that fail validation gating instead of emitting speculative Rust bindings.
 The generated Rust source also includes comment-level projection notes for
 preserved provenance and other non-routine lowering outcomes. This keeps
 upstream context visible without changing the Rust API surface.
+
+## Integration coverage
+
+The current suite exercises realistic split-pipeline paths, not only
+hand-constructed packages:
+
+- vendored `parc -> gec` source-only generation for zlib and libpng fixtures
+- vendored `parc -> linc -> gec` generation with declared link surfaces
+- vendored `parc -> linc -> gec` generation with resolved link-plan evidence
 
 ## Configuration
 

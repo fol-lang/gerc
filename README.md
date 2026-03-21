@@ -77,6 +77,9 @@ The crate root now re-exports the main generation and emission entrypoints:
 `generate`, `generate_from_source`, `emit_source`, `emit_crate`,
 `emit_build_rs`, `OutputMode`, and `OverwritePolicy`.
 
+For explicit staged workflows, the crate root also re-exports `GecInput`,
+`EvidenceInputs`, `gate_package`, `GateDecision`, and `lower_package`.
+
 ## Validation-gated generation
 
 When a `ValidationReport` is attached, `gec` only projects declarations with
@@ -106,3 +109,14 @@ from older `linc` Rust output are intentional:
   of bare function-pointer aliases
 
 These are current `gec` decisions, not compatibility regressions.
+
+## Split-pipeline coverage
+
+The integration suite now covers realistic vendored split-pipeline paths:
+
+- `parc -> gec` source-only generation for zlib and libpng fixtures
+- `parc -> linc -> gec` generation with declared link surfaces
+- `parc -> linc -> gec` generation with resolved link-plan evidence
+
+That keeps coverage anchored in upstream-produced fixtures instead of
+synthetic-only packages.
