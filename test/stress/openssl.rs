@@ -1,4 +1,4 @@
-use linc::*;
+use linc::ir::*;
 
 /// Build a BindingPackage that mirrors the OpenSSL public surface.
 /// OpenSSL is notable for: almost everything opaque, heavy typedef layering,

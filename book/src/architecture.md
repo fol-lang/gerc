@@ -26,7 +26,7 @@ At the crate root, `gec` now exposes four top-level API families without
 module-qualified imports for routine use:
 
 - generation and crate emission
-- staged intake, gating, and lowering
+- staged intake and evidence attachment
 - JSON metadata and projection contracts
 - consumer inspection helpers and metadata sidecars
 
@@ -35,11 +35,11 @@ module-qualified imports for routine use:
 ```text
 GecInput (linc::SourcePackage + optional extras)
     │
-    ├── gate_package()  →  Vec<GateDecision> + diagnostics
+    ├── gate::gate_package()  →  Vec<GateDecision> + diagnostics
     │       │
     │       └── filter: only Accept items pass through
     │
-    ├── lower_package()  →  RustProjection + diagnostics
+    ├── lower::lower_package()  →  RustProjection + diagnostics
     │
     ├── lower_link_surface()  →  Vec<RustLinkRequirement>
     │

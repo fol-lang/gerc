@@ -1,7 +1,7 @@
 use gec::{emit_source, generate, GecConfig, GecInput};
-use linc::{
-    BindingItem, BindingPackage, BindingType, CallingConvention, FieldBinding, FunctionBinding,
-    ParameterBinding, RecordBinding, RecordKind,
+use linc::ir::{
+    BindingItem, BindingPackage, BindingType, CallingConvention, EnumBinding, EnumVariant,
+    FieldBinding, FunctionBinding, ParameterBinding, RecordBinding, RecordKind, TypeAliasBinding,
 };
 
 fn generate_source(pkg: BindingPackage) -> String {
@@ -171,14 +171,14 @@ fn long_double_falls_back_to_explicit_unknown_marker() {
 #[test]
 fn enums_emit_as_repr_enums_not_typedef_plus_const_blocks() {
     let mut pkg = BindingPackage::new();
-    pkg.items.push(BindingItem::Enum(linc::EnumBinding {
+    pkg.items.push(BindingItem::Enum(EnumBinding {
         name: Some("color".into()),
         variants: vec![
-            linc::EnumVariant {
+            EnumVariant {
                 name: "RED".into(),
                 value: Some(0),
             },
-            linc::EnumVariant {
+            EnumVariant {
                 name: "GREEN".into(),
                 value: Some(1),
             },
@@ -200,7 +200,7 @@ fn enums_emit_as_repr_enums_not_typedef_plus_const_blocks() {
 #[test]
 fn function_pointer_aliases_emit_option_wrapped_signatures() {
     let mut pkg = BindingPackage::new();
-    pkg.items.push(BindingItem::TypeAlias(linc::TypeAliasBinding {
+    pkg.items.push(BindingItem::TypeAlias(TypeAliasBinding {
         name: "handler_t".into(),
         target: BindingType::FunctionPointer {
             return_type: Box::new(BindingType::Void),

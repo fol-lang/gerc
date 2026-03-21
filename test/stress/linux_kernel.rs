@@ -1,4 +1,4 @@
-use linc::*;
+use linc::ir::*;
 
 /// Build a BindingPackage that mirrors a significant slice of Linux kernel
 /// UAPI headers: ioctl, socket, netlink, input event, perf, etc.

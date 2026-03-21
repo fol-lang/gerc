@@ -1,4 +1,4 @@
-use linc::*;
+use linc::ir::*;
 
 /// Build a BindingPackage that mirrors the zlib public surface.
 pub fn zlib_package() -> BindingPackage {

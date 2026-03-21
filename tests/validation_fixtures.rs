@@ -5,9 +5,11 @@ use gec::contract::generate;
 use gec::intake::GecInput;
 use gec::ir::RustItem;
 use linc::{
-    BindingItem, BindingPackage, BindingType, CallingConvention, EvidenceKind, FunctionBinding,
-    ItemKind, MatchConfidence, MatchStatus, SymbolMatch, SymbolVisibility, ValidationReport,
-    ValidationSummary, VariableBinding,
+    EvidenceKind, ItemKind, MatchConfidence, MatchStatus, SymbolMatch, SymbolVisibility,
+    ValidationReport, ValidationSummary,
+};
+use linc::ir::{
+    BindingItem, BindingPackage, BindingType, CallingConvention, FunctionBinding, VariableBinding,
 };
 
 fn input_from_binding(pkg: BindingPackage) -> GecInput {

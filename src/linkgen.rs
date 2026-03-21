@@ -3,9 +3,10 @@
 //! Turns `linc` link surfaces and resolved link plans into Rust-side
 //! `RustLinkRequirement` values and emitted `build.rs` content.
 
-use linc::{
+use linc::ResolvedLinkPlan;
+use linc::ir::{
     BindingLinkSurface, BindingPackage, LinkArtifact, LinkArtifactKind, LinkInput, LinkLibrary,
-    LinkLibraryKind, LinkResolutionMode, ResolvedLinkPlan,
+    LinkLibraryKind, LinkResolutionMode,
 };
 
 use crate::ir::{RustLinkKind, RustLinkRequirement};
@@ -233,7 +234,7 @@ pub fn emit_rustc_link_args(reqs: &[RustLinkRequirement]) -> Vec<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use linc::*;
+    use linc::ir::*;
 
     fn empty_link_surface() -> BindingLinkSurface {
         BindingLinkSurface::default()

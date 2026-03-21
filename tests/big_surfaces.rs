@@ -20,7 +20,7 @@ use gec::contract::{
 use gec::emit::emit_source;
 use gec::intake::GecInput;
 
-fn input_from_binding(pkg: linc::BindingPackage) -> GecInput {
+fn input_from_binding(pkg: linc::ir::BindingPackage) -> GecInput {
     GecInput::from_source_package(linc::intake::adapters::from_binding_package(&pkg))
 }
 

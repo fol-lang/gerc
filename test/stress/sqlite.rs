@@ -1,4 +1,4 @@
-use linc::*;
+use linc::ir::*;
 
 /// Build a BindingPackage that mirrors the SQLite3 public surface.
 /// SQLite has a famously large single-file API (~200 functions, many typedefs).

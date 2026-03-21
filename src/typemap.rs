@@ -4,7 +4,7 @@
 //! pointers, arrays, function pointers, typedefs, and opaque handles into
 //! their Rust FFI equivalents.
 
-use linc::BindingType;
+use linc::ir::BindingType;
 
 use crate::ir::RustType;
 
@@ -82,7 +82,7 @@ pub fn map_type(ty: &BindingType) -> RustType {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use linc::{BindingType, TypeQualifiers};
+    use linc::ir::{BindingType, TypeQualifiers};
 
     // 4.1: primitive types
     #[test]

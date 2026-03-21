@@ -1,4 +1,4 @@
-use linc::*;
+use linc::ir::*;
 
 /// Build a BindingPackage that mirrors the FreeType2 public surface.
 /// FreeType is notable for: heavy typedef layering, fixed-point arithmetic

@@ -18,14 +18,18 @@ code does not need to import `emit` or `crategen` directly for routine use:
 For explicit staged workflows, the crate root also re-exports:
 
 - `EvidenceInputs` for optional analysis/validation/link-plan attachment
-- `gate_package` and `GateDecision` for explicit gating inspection
-- `lower_package` for explicit projection lowering
+- `GateDecision` for explicit gating inspection results
 - `output_meta`, `meta_to_json`, `meta_from_json`, `projection_to_json`, and
   `projection_from_json` for JSON contracts
 - `GecConsumer`, `ConsumerReport`, `ConsumerFinding`, `FindingKind`,
   `PassthroughConsumer`, `FolConsumer`, `build_sidecar`, `sidecar_to_json`,
   `sidecar_from_json`, `extern_function_names`, `record_names`, and
   `type_alias_names` for downstream inspection
+
+For staged inspection, import the modules explicitly:
+
+- `gec::gate::gate_package(...)`
+- `gec::lower::lower_package(...)`
 
 ## Primary workflow
 

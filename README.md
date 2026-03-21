@@ -75,8 +75,8 @@ The crate root now re-exports the main API families:
 - generation and emission: `generate`, `generate_from_source`, `emit_source`,
   `emit_type`, `emit_crate`, `emit_build_rs`, `OutputMode`,
   `OverwritePolicy`, `CrateManifest`, `EmittedCrate`
-- staged intake and lowering: `GecInput`, `EvidenceInputs`, `gate_package`,
-  `GateDecision`, `lower_package`
+- staged intake and evidence attachment: `GecInput`, `EvidenceInputs`,
+  `GateDecision`
 - JSON contracts: `output_meta`, `meta_to_json`, `meta_from_json`,
   `projection_to_json`, `projection_from_json`, `GecOutputMeta`,
   `SCHEMA_VERSION`
@@ -125,6 +125,11 @@ The integration suite now covers realistic vendored split-pipeline paths:
 - `parc -> gec` source-only generation for zlib and libpng fixtures
 - `parc -> linc -> gec` generation with declared link surfaces
 - `parc -> linc -> gec` generation with resolved link-plan evidence
+
+Explicit staged inspection still exists, but it now lives under module paths:
+
+- `gec::gate::gate_package(...)`
+- `gec::lower::lower_package(...)`
 
 That keeps coverage anchored in upstream-produced fixtures instead of
 synthetic-only packages.

@@ -1,9 +1,6 @@
 use gec::ir::{RustFunction, RustItem, RustProjection, RustType};
 use gec::GecConsumer;
-use linc::{
-    BindingItem, BindingPackage, BindingType, CallingConvention, FunctionBinding,
-    SourceDeclaration, SourceFunction, SourcePackage, SourceType,
-};
+use linc::{SourceDeclaration, SourceFunction, SourcePackage, SourceType};
 
 #[test]
 fn root_reexports_source_emit_helpers() {
@@ -124,29 +121,7 @@ fn root_reexports_evidence_inputs() {
 }
 
 #[test]
-fn root_reexports_gate_and_lower_helpers() {
-    let mut package = BindingPackage::new();
-    package.items.push(BindingItem::Function(FunctionBinding {
-        name: "demo_init".into(),
-        calling_convention: CallingConvention::C,
-        parameters: vec![],
-        return_type: BindingType::Int,
-        variadic: false,
-        source_offset: None,
-    }));
-
-    let (decisions, diagnostics) = gec::gate_package(&package, None);
-    assert_eq!(decisions.len(), 1);
-    assert!(diagnostics.is_empty());
-    assert!(matches!(decisions[0], gec::GateDecision::Accept));
-
-    let (projection, lower_diags) = gec::lower_package(&package);
-    assert!(lower_diags.is_empty());
-    assert!(gec::emit_source(&projection).contains("pub fn demo_init"));
-}
-
-#[test]
-fn root_helpers_support_intake_gate_lower_workflow() {
+fn gate_and_lower_modules_support_explicit_staged_workflow() {
     let mut source = SourcePackage::default();
     source
         .declarations
@@ -161,11 +136,12 @@ fn root_helpers_support_intake_gate_lower_workflow() {
     let input =
         gec::GecInput::from_source_package(source).with_evidence(gec::EvidenceInputs::default());
     let package = linc::intake::adapters::to_binding_package(&input.source);
-    let (decisions, gate_diags) = gec::gate_package(&package, input.evidence.validation.as_ref());
+    let (decisions, gate_diags) =
+        gec::gate::gate_package(&package, input.evidence.validation.as_ref());
     assert!(gate_diags.is_empty());
     assert!(matches!(decisions[0], gec::GateDecision::Accept));
 
-    let (projection, lower_diags) = gec::lower_package(&package);
+    let (projection, lower_diags) = gec::lower::lower_package(&package);
     assert!(lower_diags.is_empty());
     assert!(gec::emit_source(&projection).contains("pub fn workflow_gate"));
 }

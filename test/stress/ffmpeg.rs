@@ -1,4 +1,4 @@
-use linc::*;
+use linc::ir::*;
 
 /// Build a BindingPackage that mirrors a significant slice of FFmpeg's
 /// libavcodec + libavformat + libavutil public surface.

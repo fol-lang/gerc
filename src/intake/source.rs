@@ -1,4 +1,5 @@
-use linc::{BindingPackage, SourcePackage};
+use linc::SourcePackage;
+use linc::ir::BindingPackage;
 
 pub(super) fn binding_package_from_source(source: &SourcePackage) -> BindingPackage {
     linc::intake::adapters::to_binding_package(source)

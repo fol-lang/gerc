@@ -3,9 +3,10 @@
 //! This module defines rules for when `gec` should refuse to generate Rust
 //! code because the `linc` evidence is insufficient for safe FFI.
 
-use linc::{
-    BindingItem, BindingPackage, EnumBinding, FieldBinding, FunctionBinding, RecordBinding,
-    ValidationReport,
+use linc::ValidationReport;
+use linc::ir::{
+    BindingItem, BindingPackage, BindingType, EnumBinding, FieldBinding, FunctionBinding,
+    RecordBinding, VariableBinding,
 };
 
 use crate::output::{GecDiagnostic, GecSeverity};
@@ -106,7 +107,7 @@ fn validation_match_for_function<'a>(
         .find(|m| m.item_kind == linc::ItemKind::Function && m.name == name)
 }
 
-fn gate_variable(v: &linc::VariableBinding, validation: Option<&ValidationReport>) -> GateDecision {
+fn gate_variable(v: &VariableBinding, validation: Option<&ValidationReport>) -> GateDecision {
     if let Some(report) = validation {
         let Some(symbol_match) = validation_match_for_variable(report, &v.name) else {
             return GateDecision::Reject(format!(
@@ -231,7 +232,7 @@ fn gate_enum(e: &EnumBinding) -> GateDecision {
     GateDecision::Accept
 }
 
-fn has_bitfield_in_signature(_ty: &linc::BindingType) -> bool {
+fn has_bitfield_in_signature(_ty: &BindingType) -> bool {
     // Bitfields cannot appear directly in function signatures in C,
     // but structs containing bitfields can be passed by value.
     // This is a conservative check — we let the record gate handle it.
@@ -239,7 +240,7 @@ fn has_bitfield_in_signature(_ty: &linc::BindingType) -> bool {
 }
 
 fn field_is_incomplete(field: &FieldBinding) -> bool {
-    matches!(&field.ty, linc::BindingType::Opaque(_))
+    matches!(&field.ty, BindingType::Opaque(_))
 }
 
 fn item_name(item: &BindingItem) -> Option<String> {
@@ -257,6 +258,7 @@ fn item_name(item: &BindingItem) -> Option<String> {
 mod tests {
     use super::*;
     use linc::*;
+    use linc::ir::*;
 
     fn make_package(items: Vec<BindingItem>) -> BindingPackage {
         let mut pkg = BindingPackage::new();

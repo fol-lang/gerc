@@ -2,9 +2,9 @@ mod evidence;
 mod source;
 
 use linc::{
-    BindingItem, BindingPackage, DeclarationProvenance, LinkAnalysisPackage, ResolvedLinkPlan,
-    SourcePackage, ValidationReport,
+    LinkAnalysisPackage, ResolvedLinkPlan, SourcePackage, ValidationReport,
 };
+use linc::ir::{BindingItem, BindingPackage, DeclarationProvenance};
 
 pub use evidence::EvidenceInputs;
 
@@ -175,6 +175,7 @@ fn align_provenance(pkg: &mut BindingPackage) {
 mod tests {
     use super::*;
     use linc::*;
+    use linc::ir::*;
     use serde_json::to_string_pretty;
 
     fn empty_package() -> BindingPackage {

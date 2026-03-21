@@ -175,6 +175,7 @@ mod tests {
     use crate::intake::GecInput;
     use crate::ir::RustItem;
     use linc::*;
+    use linc::ir::*;
 
     fn sample_input() -> GecInput {
         let mut pkg = BindingPackage::new();

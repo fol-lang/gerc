@@ -1,4 +1,4 @@
-use linc::*;
+use linc::ir::*;
 
 /// Build a pathological BindingPackage designed to exercise every edge case
 /// in the gec pipeline: mixed accept/reject items, deep pointer chains,

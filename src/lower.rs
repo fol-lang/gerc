@@ -3,7 +3,7 @@
 //! This module converts `linc::BindingItem` values into `gec::ir::RustItem`
 //! values, using the type mapping from `typemap`.
 
-use linc::{
+use linc::ir::{
     BindingItem, BindingPackage, DeclarationProvenance, EnumBinding, FunctionBinding, MacroBinding,
     MacroCategory, MacroValue, RecordBinding, RecordKind, TypeAliasBinding, UnsupportedItem,
     VariableBinding,
@@ -304,7 +304,7 @@ fn format_provenance_message(provenance: &DeclarationProvenance) -> Option<Strin
 mod tests {
     use super::*;
     use linc::line_markers::{SourceLocation, SourceOrigin};
-    use linc::*;
+    use linc::ir::*;
 
     fn make_package(items: Vec<BindingItem>) -> BindingPackage {
         let mut pkg = BindingPackage::new();

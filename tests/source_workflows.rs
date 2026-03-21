@@ -1,11 +1,14 @@
 use gec::emit::emit_source;
 use gec::{generate, generate_from_source, GecConfig, GecInput};
 use linc::{
-    intake::source::SourceLinkKind, EvidenceKind, ItemKind, LinkAnalysisPackage, LinkInput,
-    LinkLibrary, LinkLibraryKind, LinkRequirementSource, LinkResolutionMode, MatchConfidence,
-    MatchStatus, NativeSurfaceKind, ResolvedLinkPlan, SourceDeclaration, SourceFunction,
+    intake::source::SourceLinkKind, EvidenceKind, ItemKind, LinkAnalysisPackage,
+    MatchConfidence, MatchStatus, ResolvedLinkPlan, SourceDeclaration, SourceFunction,
     SourceLinkRequirement, SourcePackage, SourceRecord, SourceType, SourceVariable, SymbolMatch,
     SymbolVisibility, ValidationReport, ValidationSummary,
+};
+use linc::ir::{
+    LinkInput, LinkLibrary, LinkLibraryKind, LinkRequirementSource, LinkResolutionMode,
+    NativeSurfaceKind,
 };
 
 fn source_fixture() -> SourcePackage {

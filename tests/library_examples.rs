@@ -16,7 +16,7 @@ use gec::contract::{generate, meta_to_json, output_meta, projection_to_json};
 use gec::emit::emit_source;
 use gec::intake::GecInput;
 
-fn run_full_pipeline(pkg: linc::BindingPackage, crate_name: &str) -> PipelineResult {
+fn run_full_pipeline(pkg: linc::ir::BindingPackage, crate_name: &str) -> PipelineResult {
     let input = GecInput::from_source_package(linc::intake::adapters::from_binding_package(&pkg));
     let cfg = GecConfig::new(crate_name);
     let output = generate(&input, &cfg).unwrap();
