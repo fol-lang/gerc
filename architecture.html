@@ -35,7 +35,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-0442d6c2.js";
+            window.path_to_searchindex_js = "searchindex-7f801087.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-fea1ade6.js"></script>
@@ -201,6 +201,17 @@
 </tbody>
 </table>
 </div>
+<p><code>gec</code> is the only Rust emitter in this pipeline layer. If older Rust-emission
+logic still exists elsewhere, the intended end state is to move the useful
+behavior here and delete the duplicate path.</p>
+<p>At the crate root, <code>gec</code> now exposes four top-level API families without
+module-qualified imports for routine use:</p>
+<ul>
+<li>generation and crate emission</li>
+<li>staged intake, gating, and lowering</li>
+<li>JSON metadata and projection contracts</li>
+<li>consumer inspection helpers and metadata sidecars</li>
+</ul>
 <h2 id="data-flow"><a class="header" href="#data-flow">Data flow</a></h2>
 <pre><code class="language-text">GecInput (linc::BindingPackage + optional extras)
     │

@@ -35,7 +35,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-0442d6c2.js";
+            window.path_to_searchindex_js = "searchindex-7f801087.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-fea1ade6.js"></script>
@@ -206,6 +206,10 @@ validation findings to drive safety gating decisions.</p>
 variables that are missing validation matches or that only have unusable
 matches such as ABI mismatches, duplicate providers, hidden providers,
 decoration mismatches, or wrong-kind matches.</p>
+<p>Representation evidence is also treated conservatively. If a record or enum
+already carries a representation block but upstream left required fields unset
+such as record size, record alignment, or enum underlying size, <code>gec</code> rejects
+that declaration instead of guessing.</p>
 <h3 id="resolvedlinkplan"><a class="header" href="#resolvedlinkplan"><code>ResolvedLinkPlan</code></a></h3>
 <p>Resolved native link requirements. When present, <code>gec</code> uses the resolved
 plan (with concrete artifact paths and search directories) instead of the

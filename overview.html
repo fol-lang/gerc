@@ -35,7 +35,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-0442d6c2.js";
+            window.path_to_searchindex_js = "searchindex-7f801087.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-fea1ade6.js"></script>
@@ -178,7 +178,7 @@
                 <div id="mdbook-content" class="content">
                     <main>
                         <h1 id="overview"><a class="header" href="#overview">Overview</a></h1>
-<p><code>gec</code> sits between <code>parc</code>, <code>linc</code>, and downstream Rust tooling in the
+<p><code>GERC</code> currently ships as the <code>gec</code> crate and sits between <code>parc</code>, <code>linc</code>, and downstream Rust tooling in the
 following pipeline:</p>
 <pre><code class="language-text">PARC         (source parsing and extraction)
     → LINC   (link, validation, and ABI evidence)
@@ -187,7 +187,7 @@ following pipeline:</p>
     → fol-interloop-rust  (optional downstream consumer)
     → fol-visible surface
 </code></pre>
-<h2 id="what-happens-inside-gec"><a class="header" href="#what-happens-inside-gec">What happens inside gec</a></h2>
+<h2 id="what-happens-inside-gerc"><a class="header" href="#what-happens-inside-gerc">What happens inside GERC</a></h2>
 <ol>
 <li>
 <p><strong>Intake</strong> — <code>gec</code> receives a <code>linc::BindingPackage</code> (plus optional

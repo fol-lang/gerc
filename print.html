@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-0442d6c2.js";
+            window.path_to_searchindex_js = "searchindex-7f801087.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-fea1ade6.js"></script>
@@ -178,8 +178,9 @@
 
                 <div id="mdbook-content" class="content">
                     <main>
-                        <h1 id="gec"><a class="header" href="#gec">gec</a></h1>
-<p><code>gec</code> is the Rust projection layer in the <code>PARC -&gt; LINC -&gt; GERC</code> pipeline.</p>
+                        <h1 id="gerc-gec-today"><a class="header" href="#gerc-gec-today">GERC (<code>gec</code> today)</a></h1>
+<p><code>gec</code> is the current crate name for <code>GERC</code>, the Rust projection layer in the
+<code>PARC -&gt; LINC -&gt; GERC</code> pipeline.</p>
 <p>It consumes <code>linc</code> contracts and generates Rust FFI bindings from C
 declarations.  The output is a complete Cargo-compatible Rust crate (or a loose
 source bundle) that compiles cleanly with <code>cargo build</code>.</p>
@@ -236,7 +237,7 @@ functions and variables. Declarations without usable evidence are filtered out
 and reported through diagnostics instead of being emitted.</p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="overview"><a class="header" href="#overview">Overview</a></h1>
-<p><code>gec</code> sits between <code>parc</code>, <code>linc</code>, and downstream Rust tooling in the
+<p><code>GERC</code> currently ships as the <code>gec</code> crate and sits between <code>parc</code>, <code>linc</code>, and downstream Rust tooling in the
 following pipeline:</p>
 <pre><code class="language-text">PARC         (source parsing and extraction)
     → LINC   (link, validation, and ABI evidence)
@@ -245,7 +246,7 @@ following pipeline:</p>
     → fol-interloop-rust  (optional downstream consumer)
     → fol-visible surface
 </code></pre>
-<h2 id="what-happens-inside-gec"><a class="header" href="#what-happens-inside-gec">What happens inside gec</a></h2>
+<h2 id="what-happens-inside-gerc"><a class="header" href="#what-happens-inside-gerc">What happens inside GERC</a></h2>
 <ol>
 <li>
 <p><strong>Intake</strong> — <code>gec</code> receives a <code>linc::BindingPackage</code> (plus optional
@@ -307,6 +308,17 @@ link metadata.</p>
 </tbody>
 </table>
 </div>
+<p><code>gec</code> is the only Rust emitter in this pipeline layer. If older Rust-emission
+logic still exists elsewhere, the intended end state is to move the useful
+behavior here and delete the duplicate path.</p>
+<p>At the crate root, <code>gec</code> now exposes four top-level API families without
+module-qualified imports for routine use:</p>
+<ul>
+<li>generation and crate emission</li>
+<li>staged intake, gating, and lowering</li>
+<li>JSON metadata and projection contracts</li>
+<li>consumer inspection helpers and metadata sidecars</li>
+</ul>
 <h2 id="data-flow"><a class="header" href="#data-flow">Data flow</a></h2>
 <pre><code class="language-text">GecInput (linc::BindingPackage + optional extras)
     │
@@ -355,13 +367,32 @@ diagnostics but no Rust code.</p>
 <li><strong>Tier 2 (public but less stable)</strong>: individual modules (<code>lower</code>, <code>gate</code>,
 <code>emit</code>, <code>typemap</code>, <code>linkgen</code>, <code>crategen</code>, <code>consumer</code>)</li>
 </ul>
+<p>The crate root also re-exports the common emission entrypoints so downstream
+code does not need to import <code>emit</code> or <code>crategen</code> directly for routine use:
+<code>emit_source</code>, <code>emit_type</code>, <code>emit_crate</code>, <code>emit_build_rs</code>, <code>OutputMode</code>,
+<code>OverwritePolicy</code>, <code>CrateManifest</code>, and <code>EmittedCrate</code>.</p>
+<p>For explicit staged workflows, the crate root also re-exports:</p>
+<ul>
+<li><code>EvidenceInputs</code> for optional validation/link-plan attachment</li>
+<li><code>gate_package</code> and <code>GateDecision</code> for explicit gating inspection</li>
+<li><code>lower_package</code> for explicit projection lowering</li>
+<li><code>output_meta</code>, <code>meta_to_json</code>, <code>meta_from_json</code>, <code>projection_to_json</code>, and
+<code>projection_from_json</code> for JSON contracts</li>
+<li><code>GecConsumer</code>, <code>ConsumerReport</code>, <code>ConsumerFinding</code>, <code>FindingKind</code>,
+<code>PassthroughConsumer</code>, <code>FolConsumer</code>, <code>build_sidecar</code>, <code>sidecar_to_json</code>,
+<code>sidecar_from_json</code>, <code>extern_function_names</code>, <code>record_names</code>, and
+<code>type_alias_names</code> for downstream inspection</li>
+</ul>
 <h2 id="primary-workflow"><a class="header" href="#primary-workflow">Primary workflow</a></h2>
 <p><code>generate_from_source()</code> is the preferred entrypoint when the caller already
 has a <code>linc::SourcePackage</code>. Use <code>GecInput</code> directly when attaching optional
 validation or resolved link evidence.</p>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>use gec::{generate_from_source, GecConfig, GecInput, generate};
+</span>use gec::{
+    emit_crate, emit_source, generate, generate_from_source, GecConfig, GecInput, OutputMode,
+    OverwritePolicy,
+};
 
 // 1a. Build input from a linc BindingPackage
 let input = GecInput::from_package(pkg);
@@ -379,7 +410,14 @@ let config = GecConfig::new("mylib_sys");
 let output = generate(&amp;input, &amp;config).unwrap();
 
 // 5. Use the output
-let source = gec::emit::emit_source(&amp;output.projection);
+let source = emit_source(&amp;output.projection);
+let emitted = emit_crate(
+    &amp;output.projection,
+    &amp;config,
+    std::path::Path::new("/tmp/mylib_sys"),
+    OutputMode::Crate,
+    OverwritePolicy::Overwrite,
+).unwrap();
 <span class="boring">}</span></code></pre>
 <p><code>GecInput</code> also exposes explicit JSON constructors:</p>
 <ul>
@@ -388,6 +426,17 @@ let source = gec::emit::emit_source(&amp;output.projection);
 </ul>
 <p>When validation evidence is attached, <code>generate()</code> filters out declarations
 that fail validation gating instead of emitting speculative Rust bindings.</p>
+<p>The generated Rust source also includes comment-level projection notes for
+preserved provenance and other non-routine lowering outcomes. This keeps
+upstream context visible without changing the Rust API surface.</p>
+<h2 id="integration-coverage"><a class="header" href="#integration-coverage">Integration coverage</a></h2>
+<p>The current suite exercises realistic split-pipeline paths, not only
+hand-constructed packages:</p>
+<ul>
+<li>vendored <code>parc -&gt; gec</code> source-only generation for zlib and libpng fixtures</li>
+<li>vendored <code>parc -&gt; linc -&gt; gec</code> generation with declared link surfaces</li>
+<li>vendored <code>parc -&gt; linc -&gt; gec</code> generation with resolved link-plan evidence</li>
+</ul>
 <h2 id="configuration"><a class="header" href="#configuration">Configuration</a></h2>
 <p><code>GecConfig</code> controls what gets generated:</p>
 <div class="table-wrapper">
@@ -457,6 +506,8 @@ that don’t need to parse Rust source:</p>
 let sidecar = build_sidecar("mylib_sys", &amp;output.projection);
 let json = sidecar_to_json(&amp;sidecar).unwrap();
 <span class="boring">}</span></code></pre>
+<p>Generated crate metadata and crate-level <code>src/lib.rs</code> markers identify the
+emitter as <code>GERC</code>.</p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="intake-contract"><a class="header" href="#intake-contract">Intake Contract</a></h1>
 <h2 id="primary-input"><a class="header" href="#primary-input">Primary input</a></h2>
@@ -487,6 +538,10 @@ validation findings to drive safety gating decisions.</p>
 variables that are missing validation matches or that only have unusable
 matches such as ABI mismatches, duplicate providers, hidden providers,
 decoration mismatches, or wrong-kind matches.</p>
+<p>Representation evidence is also treated conservatively. If a record or enum
+already carries a representation block but upstream left required fields unset
+such as record size, record alignment, or enum underlying size, <code>gec</code> rejects
+that declaration instead of guessing.</p>
 <h3 id="resolvedlinkplan"><a class="header" href="#resolvedlinkplan"><code>ResolvedLinkPlan</code></a></h3>
 <p>Resolved native link requirements. When present, <code>gec</code> uses the resolved
 plan (with concrete artifact paths and search directories) instead of the
@@ -526,6 +581,9 @@ extraction belongs in <code>parc</code>, and transitional raw-header scanning be
 <code>linc::HeaderConfig</code>.</p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="code-generation"><a class="header" href="#code-generation">Code Generation</a></h1>
+<p><code>gec</code> owns Rust FFI emission in the split <code>PARC -&gt; LINC -&gt; GERC</code> pipeline.
+Useful legacy emitter behavior is rehomed here; obsolete output shapes are not
+kept just for compatibility.</p>
 <h2 id="pipeline-stages"><a class="header" href="#pipeline-stages">Pipeline stages</a></h2>
 <p>Code generation in <code>gec</code> proceeds through several stages:</p>
 <h3 id="1-safety-gating-gate"><a class="header" href="#1-safety-gating-gate">1. Safety gating (<code>gate</code>)</a></h3>
@@ -593,6 +651,14 @@ opaque structs (<code>pub struct NAME { _opaque: [u8; 0] }</code>)</li>
 </ol>
 <p>This ordering is stable and deterministic: the same input always produces
 the same output.</p>
+<h2 id="intentional-canonicalizations"><a class="header" href="#intentional-canonicalizations">Intentional canonicalizations</a></h2>
+<p>Some emitted forms intentionally differ from older <code>linc</code> Rust output:</p>
+<ul>
+<li>named opaque handles emit as named zero-sized structs, not erased comments</li>
+<li>enums emit as <code>#[repr(...)] pub enum NAME { ... }</code>, not typedef-plus-const groups</li>
+<li>function-pointer aliases emit as <code>Option&lt;unsafe extern "C" fn(...)&gt;</code></li>
+</ul>
+<p>These are the supported <code>gec</code> forms going forward.</p>
 <h2 id="link-metadata-linkgen"><a class="header" href="#link-metadata-linkgen">Link metadata (<code>linkgen</code>)</a></h2>
 <p><code>linc</code> link evidence is lowered into Cargo-compatible <code>build.rs</code> directives:</p>
 <ul>
@@ -609,7 +675,8 @@ that evidence over the raw package link surface.</p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="emitted-crate"><a class="header" href="#emitted-crate">Emitted Crate</a></h1>
 <h2 id="output-modes"><a class="header" href="#output-modes">Output modes</a></h2>
-<p><code>gec</code> supports two output modes via <code>crategen::OutputMode</code>:</p>
+<p><code>gec</code> supports two output modes via the crate-root <code>OutputMode</code> re-export
+(or <code>gec::crategen::OutputMode</code> if you want the module path explicitly):</p>
 <h3 id="crate-mode"><a class="header" href="#crate-mode">Crate mode</a></h3>
 <p>Writes a complete Cargo-compatible crate directory:</p>
 <pre><code class="language-text">output_dir/
@@ -630,7 +697,7 @@ that evidence over the raw package link surface.</p>
 name = "mylib-sys"
 version = "0.1.0"
 edition = "2021"
-# Auto-generated by gec &lt;version&gt;
+# Auto-generated by GERC &lt;version&gt;
 </code></pre>
 <h2 id="buildrs"><a class="header" href="#buildrs">build.rs</a></h2>
 <p>When link requirements exist, <code>gec</code> generates a <code>build.rs</code> that emits
@@ -640,7 +707,7 @@ Cargo link directives:</p>
     println!("cargo:rustc-link-search=native=/usr/lib");
 }</code></pre>
 <h2 id="overwrite-policies"><a class="header" href="#overwrite-policies">Overwrite policies</a></h2>
-<p><code>crategen::OverwritePolicy</code> controls behavior when the output directory
+<p><code>OverwritePolicy</code> controls behavior when the output directory
 already exists:</p>
 <div class="table-wrapper">
 <table>
@@ -655,7 +722,7 @@ already exists:</p>
 </table>
 </div>
 <h2 id="crate-naming"><a class="header" href="#crate-naming">Crate naming</a></h2>
-<p><code>crategen::normalize_crate_name()</code> ensures valid Cargo package names:</p>
+<p><code>normalize_crate_name()</code> ensures valid Cargo package names:</p>
 <ul>
 <li>Replaces non-alphanumeric characters (except <code>_</code>) with <code>_</code></li>
 <li>Rejects empty names</li>
@@ -664,19 +731,23 @@ already exists:</p>
 <h2 id="usage"><a class="header" href="#usage">Usage</a></h2>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>use gec::crategen::{emit_crate, OutputMode, OverwritePolicy};
+</span>use gec::{emit_crate, OutputMode, OverwritePolicy};
 
 let emitted = emit_crate(
     &amp;output.projection,
     &amp;config,
-    "/tmp/mylib_sys",
+    std::path::Path::new("/tmp/mylib_sys"),
     OutputMode::Crate,
     OverwritePolicy::Clean,
 ).unwrap();
 
-assert!(emitted.cargo_toml.is_some());
-assert!(emitted.lib_rs.exists());
+assert!(emitted.root.join("Cargo.toml").exists());
+assert!(emitted.root.join("src/lib.rs").exists());
+assert!(emitted.files.iter().any(|path| path.ends_with("Cargo.toml")));
 <span class="boring">}</span></code></pre>
+<p><code>EmittedCrate</code> records the crate root directory and the concrete files that
+were written. In crate mode that file list is deterministic and includes
+<code>Cargo.toml</code>, <code>src/lib.rs</code>, and <code>build.rs</code> when link requirements require it.</p>
 
                     </main>
 

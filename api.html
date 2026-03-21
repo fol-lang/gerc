@@ -35,7 +35,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-0442d6c2.js";
+            window.path_to_searchindex_js = "searchindex-7f801087.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-fea1ade6.js"></script>
@@ -186,13 +186,32 @@
 <li><strong>Tier 2 (public but less stable)</strong>: individual modules (<code>lower</code>, <code>gate</code>,
 <code>emit</code>, <code>typemap</code>, <code>linkgen</code>, <code>crategen</code>, <code>consumer</code>)</li>
 </ul>
+<p>The crate root also re-exports the common emission entrypoints so downstream
+code does not need to import <code>emit</code> or <code>crategen</code> directly for routine use:
+<code>emit_source</code>, <code>emit_type</code>, <code>emit_crate</code>, <code>emit_build_rs</code>, <code>OutputMode</code>,
+<code>OverwritePolicy</code>, <code>CrateManifest</code>, and <code>EmittedCrate</code>.</p>
+<p>For explicit staged workflows, the crate root also re-exports:</p>
+<ul>
+<li><code>EvidenceInputs</code> for optional validation/link-plan attachment</li>
+<li><code>gate_package</code> and <code>GateDecision</code> for explicit gating inspection</li>
+<li><code>lower_package</code> for explicit projection lowering</li>
+<li><code>output_meta</code>, <code>meta_to_json</code>, <code>meta_from_json</code>, <code>projection_to_json</code>, and
+<code>projection_from_json</code> for JSON contracts</li>
+<li><code>GecConsumer</code>, <code>ConsumerReport</code>, <code>ConsumerFinding</code>, <code>FindingKind</code>,
+<code>PassthroughConsumer</code>, <code>FolConsumer</code>, <code>build_sidecar</code>, <code>sidecar_to_json</code>,
+<code>sidecar_from_json</code>, <code>extern_function_names</code>, <code>record_names</code>, and
+<code>type_alias_names</code> for downstream inspection</li>
+</ul>
 <h2 id="primary-workflow"><a class="header" href="#primary-workflow">Primary workflow</a></h2>
 <p><code>generate_from_source()</code> is the preferred entrypoint when the caller already
 has a <code>linc::SourcePackage</code>. Use <code>GecInput</code> directly when attaching optional
 validation or resolved link evidence.</p>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>use gec::{generate_from_source, GecConfig, GecInput, generate};
+</span>use gec::{
+    emit_crate, emit_source, generate, generate_from_source, GecConfig, GecInput, OutputMode,
+    OverwritePolicy,
+};
 
 // 1a. Build input from a linc BindingPackage
 let input = GecInput::from_package(pkg);
@@ -210,7 +229,14 @@ let config = GecConfig::new("mylib_sys");
 let output = generate(&amp;input, &amp;config).unwrap();
 
 // 5. Use the output
-let source = gec::emit::emit_source(&amp;output.projection);
+let source = emit_source(&amp;output.projection);
+let emitted = emit_crate(
+    &amp;output.projection,
+    &amp;config,
+    std::path::Path::new("/tmp/mylib_sys"),
+    OutputMode::Crate,
+    OverwritePolicy::Overwrite,
+).unwrap();
 <span class="boring">}</span></code></pre>
 <p><code>GecInput</code> also exposes explicit JSON constructors:</p>
 <ul>
@@ -219,6 +245,17 @@ let source = gec::emit::emit_source(&amp;output.projection);
 </ul>
 <p>When validation evidence is attached, <code>generate()</code> filters out declarations
 that fail validation gating instead of emitting speculative Rust bindings.</p>
+<p>The generated Rust source also includes comment-level projection notes for
+preserved provenance and other non-routine lowering outcomes. This keeps
+upstream context visible without changing the Rust API surface.</p>
+<h2 id="integration-coverage"><a class="header" href="#integration-coverage">Integration coverage</a></h2>
+<p>The current suite exercises realistic split-pipeline paths, not only
+hand-constructed packages:</p>
+<ul>
+<li>vendored <code>parc -&gt; gec</code> source-only generation for zlib and libpng fixtures</li>
+<li>vendored <code>parc -&gt; linc -&gt; gec</code> generation with declared link surfaces</li>
+<li>vendored <code>parc -&gt; linc -&gt; gec</code> generation with resolved link-plan evidence</li>
+</ul>
 <h2 id="configuration"><a class="header" href="#configuration">Configuration</a></h2>
 <p><code>GecConfig</code> controls what gets generated:</p>
 <div class="table-wrapper">
@@ -288,6 +325,8 @@ that don’t need to parse Rust source:</p>
 let sidecar = build_sidecar("mylib_sys", &amp;output.projection);
 let json = sidecar_to_json(&amp;sidecar).unwrap();
 <span class="boring">}</span></code></pre>
+<p>Generated crate metadata and crate-level <code>src/lib.rs</code> markers identify the
+emitter as <code>GERC</code>.</p>
 
                     </main>
 
