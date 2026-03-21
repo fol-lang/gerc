@@ -219,6 +219,15 @@ fn gate_enum(e: &EnumBinding) -> GateDecision {
     if e.name.is_none() {
         return GateDecision::Reject("anonymous enum cannot be projected".into());
     }
+    if matches!(
+        e.representation.as_ref(),
+        Some(representation) if representation.underlying_size.is_none()
+    ) {
+        return GateDecision::Reject(format!(
+            "enum '{}' lacks underlying-size representation evidence",
+            e.name.as_deref().unwrap_or("<anon>")
+        ));
+    }
     GateDecision::Accept
 }
 
@@ -328,6 +337,27 @@ mod tests {
             GateDecision::Reject(r) => assert!(r.contains("anonymous")),
             GateDecision::Accept => panic!("should reject anonymous enum"),
         }
+    }
+
+    #[test]
+    fn reject_enum_without_underlying_size() {
+        let pkg = make_package(vec![BindingItem::Enum(EnumBinding {
+            name: Some("color".into()),
+            variants: vec![],
+            representation: Some(EnumRepresentation {
+                underlying_size: None,
+                is_signed: Some(false),
+            }),
+            abi_confidence: None,
+            source_offset: None,
+        })]);
+        let (decisions, _) = gate_package(&pkg, None);
+        assert_eq!(
+            decisions[0],
+            GateDecision::Reject(
+                "enum 'color' lacks underlying-size representation evidence".into()
+            )
+        );
     }
 
     // 6.3: function acceptance
