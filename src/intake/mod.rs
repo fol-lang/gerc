@@ -174,6 +174,7 @@ fn align_provenance(pkg: &mut BindingPackage) {
 mod tests {
     use super::*;
     use linc::*;
+    use serde_json::to_string_pretty;
 
     fn empty_package() -> BindingPackage {
         BindingPackage::new()
@@ -188,6 +189,84 @@ mod tests {
             variadic: false,
             source_offset: None,
         })
+    }
+
+    fn fixture_binding_package() -> BindingPackage {
+        let mut pkg = BindingPackage::new();
+        pkg.source_path = Some("fixtures/demo.h".into());
+        pkg.items.push(BindingItem::Function(FunctionBinding {
+            name: "demo_init".into(),
+            calling_convention: CallingConvention::C,
+            parameters: vec![ParameterBinding {
+                name: Some("flags".into()),
+                ty: BindingType::UInt,
+            }],
+            return_type: BindingType::Int,
+            variadic: false,
+            source_offset: Some(12),
+        }));
+        pkg.items.push(BindingItem::Variable(VariableBinding {
+            name: "demo_errno".into(),
+            ty: BindingType::Int,
+            source_offset: Some(27),
+        }));
+        pkg.macros.push(MacroBinding {
+            name: "DEMO_API_VERSION".into(),
+            body: "3".into(),
+            function_like: false,
+            form: MacroForm::ObjectLike,
+            kind: MacroKind::Integer,
+            category: MacroCategory::BindableConstant,
+            value: Some(MacroValue::Integer(3)),
+        });
+        pkg.provenance.push(DeclarationProvenance {
+            item_name: Some("demo_init".into()),
+            item_kind: Some(BindingItemKind::Function),
+            source_offset: Some(12),
+            ..Default::default()
+        });
+        pkg.provenance.push(DeclarationProvenance {
+            item_name: Some("demo_errno".into()),
+            item_kind: Some(BindingItemKind::Variable),
+            source_offset: Some(27),
+            ..Default::default()
+        });
+        pkg.link.libraries.push(LinkLibrary {
+            name: "demo".into(),
+            kind: LinkLibraryKind::Default,
+            source: LinkRequirementSource::Declared,
+        });
+        pkg
+    }
+
+    fn fixture_source_package() -> SourcePackage {
+        let mut source = SourcePackage::default();
+        source.source_path = Some("fixtures/demo.h".into());
+        source
+            .declarations
+            .push(SourceDeclaration::Function(SourceFunction {
+                name: "demo_init".into(),
+                parameters: vec![SourceParameter {
+                    name: Some("flags".into()),
+                    ty: SourceType::UInt,
+                }],
+                return_type: SourceType::Int,
+                variadic: false,
+                source_offset: Some(12),
+            }));
+        source
+            .declarations
+            .push(SourceDeclaration::Variable(SourceVariable {
+                name: "demo_errno".into(),
+                ty: SourceType::Int,
+                source_offset: Some(27),
+            }));
+        source.macros.push(SourceMacro {
+            name: "DEMO_API_VERSION".into(),
+            body: "3".into(),
+            function_like: false,
+        });
+        source
     }
 
     #[test]
@@ -352,6 +431,49 @@ mod tests {
         }"#;
         let input = GecInput::from_source_json(json).unwrap();
         assert_eq!(input.item_count(), 1);
+    }
+
+    #[test]
+    fn from_binding_json_fixture_contract() {
+        let json = to_string_pretty(&fixture_binding_package()).unwrap();
+        let input = GecInput::from_binding_json(&json).unwrap();
+
+        assert_eq!(input.item_count(), 2);
+        assert_eq!(
+            input.package.source_path.as_deref(),
+            Some("fixtures/demo.h")
+        );
+        assert_eq!(input.package.macros.len(), 1);
+        assert_eq!(input.package.link.libraries.len(), 1);
+        assert!(matches!(
+            &input.package.items[0],
+            BindingItem::Function(function) if function.name == "demo_init"
+        ));
+        assert!(matches!(
+            &input.package.items[1],
+            BindingItem::Variable(variable) if variable.name == "demo_errno"
+        ));
+    }
+
+    #[test]
+    fn from_source_json_fixture_contract() {
+        let json = to_string_pretty(&fixture_source_package()).unwrap();
+        let input = GecInput::from_source_json(&json).unwrap();
+
+        assert_eq!(input.item_count(), 2);
+        assert_eq!(
+            input.package.source_path.as_deref(),
+            Some("fixtures/demo.h")
+        );
+        assert_eq!(input.package.macros.len(), 1);
+        assert!(matches!(
+            &input.package.items[0],
+            BindingItem::Function(function) if function.name == "demo_init"
+        ));
+        assert!(matches!(
+            &input.package.items[1],
+            BindingItem::Variable(variable) if variable.name == "demo_errno"
+        ));
     }
 
     #[test]
