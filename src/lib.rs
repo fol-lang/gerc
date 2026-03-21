@@ -64,5 +64,5 @@ pub use crategen::{
 };
 pub use emit::{emit_source, emit_type};
 pub use error::{GecError, GecResult};
-pub use intake::GecInput;
+pub use intake::{EvidenceInputs, GecInput};
 pub use output::GecOutput;

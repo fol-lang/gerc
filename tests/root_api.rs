@@ -80,6 +80,13 @@ fn root_public_api_supports_source_to_crate_workflow() {
     assert!(emitted_crate.root.join("src/lib.rs").exists());
 }
 
+#[test]
+fn root_reexports_evidence_inputs() {
+    let evidence = gec::EvidenceInputs::default();
+    assert!(evidence.validation.is_none());
+    assert!(evidence.link_plan.is_none());
+}
+
 fn tempdir(name: &str) -> std::path::PathBuf {
     let dir = std::env::temp_dir().join(format!("gec_test_{name}"));
     let _ = std::fs::remove_dir_all(&dir);
