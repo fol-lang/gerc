@@ -158,6 +158,24 @@ fn root_reexports_output_meta_helpers() {
     assert_eq!(roundtrip.item_count, output.item_count());
 }
 
+#[test]
+fn root_reexports_projection_json_helpers() {
+    let mut projection = RustProjection::new();
+    projection.items.push(RustItem::Function(RustFunction {
+        name: "json_demo".into(),
+        parameters: vec![],
+        return_type: RustType::CInt,
+        variadic: false,
+        doc: None,
+    }));
+
+    let json = gec::projection_to_json(&projection).unwrap();
+    let roundtrip = gec::projection_from_json(&json).unwrap();
+
+    assert_eq!(roundtrip.len(), 1);
+    assert!(gec::emit_source(&roundtrip).contains("pub fn json_demo"));
+}
+
 fn tempdir(name: &str) -> std::path::PathBuf {
     let dir = std::env::temp_dir().join(format!("gec_test_{name}"));
     let _ = std::fs::remove_dir_all(&dir);
