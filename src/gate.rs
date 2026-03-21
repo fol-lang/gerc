@@ -180,6 +180,13 @@ fn gate_record(r: &RecordBinding) -> GateDecision {
 
     let fields = r.fields.as_ref().unwrap();
 
+    if matches!(r.representation.as_ref(), Some(rep) if rep.size.is_none()) {
+        return GateDecision::Reject(format!(
+            "record '{}' lacks representation size evidence",
+            r.name.as_deref().unwrap_or("<anon>")
+        ));
+    }
+
     // 6.5: Reject records with bitfields (conservative)
     if fields.iter().any(|f| f.is_bitfield()) {
         return GateDecision::Reject(format!(
@@ -791,6 +798,32 @@ mod tests {
             GateDecision::Reject(r) => assert!(r.contains("incomplete")),
             GateDecision::Accept => panic!("should reject incomplete field"),
         }
+    }
+
+    #[test]
+    fn reject_record_without_representation_size() {
+        let pkg = make_package(vec![BindingItem::Record(RecordBinding {
+            kind: RecordKind::Struct,
+            name: Some("wrapper".into()),
+            fields: Some(vec![FieldBinding {
+                name: Some("value".into()),
+                ty: BindingType::Int,
+                bit_width: None,
+                layout: None,
+            }]),
+            representation: Some(RecordRepresentation {
+                size: None,
+                align: Some(4),
+                completeness: Some("complete".into()),
+            }),
+            abi_confidence: None,
+            source_offset: None,
+        })]);
+        let (decisions, _) = gate_package(&pkg, None);
+        assert_eq!(
+            decisions[0],
+            GateDecision::Reject("record 'wrapper' lacks representation size evidence".into())
+        );
     }
 
     // 6.6: unsupported items rejected
