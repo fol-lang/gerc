@@ -58,6 +58,7 @@ pub mod typemap;
 pub use contract::{generate, generate_from_source, GecOutputMeta, SCHEMA_VERSION};
 
 pub use config::GecConfig;
+pub use emit::{emit_source, emit_type};
 pub use error::{GecError, GecResult};
 pub use intake::GecInput;
 pub use output::GecOutput;
