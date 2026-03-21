@@ -1,5 +1,8 @@
 use gec::ir::{RustFunction, RustItem, RustProjection, RustType};
-use linc::{SourceDeclaration, SourceFunction, SourcePackage, SourceType};
+use linc::{
+    BindingItem, BindingPackage, BindingType, CallingConvention, FunctionBinding,
+    SourceDeclaration, SourceFunction, SourcePackage, SourceType,
+};
 
 #[test]
 fn root_reexports_source_emit_helpers() {
@@ -85,6 +88,28 @@ fn root_reexports_evidence_inputs() {
     let evidence = gec::EvidenceInputs::default();
     assert!(evidence.validation.is_none());
     assert!(evidence.link_plan.is_none());
+}
+
+#[test]
+fn root_reexports_gate_and_lower_helpers() {
+    let mut package = BindingPackage::new();
+    package.items.push(BindingItem::Function(FunctionBinding {
+        name: "demo_init".into(),
+        calling_convention: CallingConvention::C,
+        parameters: vec![],
+        return_type: BindingType::Int,
+        variadic: false,
+        source_offset: None,
+    }));
+
+    let (decisions, diagnostics) = gec::gate_package(&package, None);
+    assert_eq!(decisions.len(), 1);
+    assert!(diagnostics.is_empty());
+    assert!(matches!(decisions[0], gec::GateDecision::Accept));
+
+    let (projection, lower_diags) = gec::lower_package(&package);
+    assert!(lower_diags.is_empty());
+    assert!(gec::emit_source(&projection).contains("pub fn demo_init"));
 }
 
 fn tempdir(name: &str) -> std::path::PathBuf {

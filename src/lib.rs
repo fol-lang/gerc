@@ -64,5 +64,7 @@ pub use crategen::{
 };
 pub use emit::{emit_source, emit_type};
 pub use error::{GecError, GecResult};
+pub use gate::{gate_package, GateDecision};
 pub use intake::{EvidenceInputs, GecInput};
+pub use lower::lower_package;
 pub use output::GecOutput;
