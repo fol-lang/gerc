@@ -186,6 +186,7 @@ pub fn emit_build_rs(proj: &RustProjection) -> String {
 mod tests {
     use super::*;
     use crate::ir::*;
+    use std::process::Command;
 
     fn sample_projection() -> RustProjection {
         let mut proj = RustProjection::new();
@@ -449,6 +450,32 @@ mod tests {
         assert!(!dir.join("build.rs").exists());
     }
 
+    #[test]
+    fn emitted_source_bundle_passes_cargo_check() {
+        let dir = tempdir("emit_bundle_check");
+        let proj = sample_projection();
+        let cfg = sample_config();
+        emit_crate(
+            &proj,
+            &cfg,
+            &dir,
+            OutputMode::SourceBundle,
+            OverwritePolicy::Overwrite,
+        )
+        .unwrap();
+
+        std::fs::write(
+            dir.join("Cargo.toml"),
+            format!(
+                "[package]\nname = \"{}\"\nversion = \"0.1.0\"\nedition = \"2021\"\n",
+                cfg.crate_name
+            ),
+        )
+        .unwrap();
+
+        cargo_in(&dir, "check");
+    }
+
     // 8.10: build.rs content
     #[test]
     fn build_rs_content() {
@@ -489,5 +516,17 @@ mod tests {
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         dir
+    }
+
+    fn cargo_in(dir: &Path, subcommand: &str) {
+        let status = Command::new("cargo")
+            .arg(subcommand)
+            .arg("--quiet")
+            .arg("--target-dir")
+            .arg(dir.join("target"))
+            .current_dir(dir)
+            .status()
+            .unwrap();
+        assert!(status.success(), "cargo {subcommand} failed in {}", dir.display());
     }
 }
