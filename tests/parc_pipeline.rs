@@ -3,7 +3,7 @@ mod linc_common;
 
 use std::path::{Path, PathBuf};
 
-use gec::{emit_source, generate_from_source, GecConfig};
+use gec::{emit_source, generate, generate_from_source, GecConfig, GecInput};
 
 fn vendored_root(name: &str) -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -92,4 +92,34 @@ fn vendored_libpng_parc_to_gec_source_only() {
             || emitted.contains("pub fn png_read_png")
             || emitted.contains("pub fn png_init_io")
     );
+}
+
+#[test]
+fn vendored_zlib_parc_linc_gec_link_surface() {
+    let root = vendored_root("zlib");
+    let include_dir = root.join("include");
+    let entry = root.join("main.c");
+
+    let result = linc_common::process(
+        &linc::HeaderConfig::new()
+            .header(&entry)
+            .include_dir(&include_dir)
+            .link_lib("z")
+            .no_origin_filter(),
+    )
+    .unwrap();
+
+    let output = generate(
+        &GecInput::from_package(result.package),
+        &GecConfig::new("zlib_sys"),
+    )
+    .unwrap();
+    let emitted = emit_source(&output.projection);
+
+    assert!(emitted.contains("pub fn deflate"));
+    assert!(output
+        .projection
+        .link_requirements
+        .iter()
+        .any(|req| req.name == "z"));
 }
