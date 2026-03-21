@@ -176,6 +176,25 @@ fn root_reexports_projection_json_helpers() {
     assert!(gec::emit_source(&roundtrip).contains("pub fn json_demo"));
 }
 
+#[test]
+fn root_reexports_sidecar_helpers() {
+    let mut projection = RustProjection::new();
+    projection.items.push(RustItem::Function(RustFunction {
+        name: "sidecar_demo".into(),
+        parameters: vec![],
+        return_type: RustType::CInt,
+        variadic: false,
+        doc: None,
+    }));
+
+    let sidecar = gec::build_sidecar("sidecar_demo_sys", &projection);
+    let json = gec::sidecar_to_json(&sidecar).unwrap();
+    let roundtrip = gec::sidecar_from_json(&json).unwrap();
+
+    assert_eq!(roundtrip.crate_name, "sidecar_demo_sys");
+    assert_eq!(roundtrip.items.len(), 1);
+}
+
 fn tempdir(name: &str) -> std::path::PathBuf {
     let dir = std::env::temp_dir().join(format!("gec_test_{name}"));
     let _ = std::fs::remove_dir_all(&dir);
