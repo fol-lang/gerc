@@ -16,6 +16,9 @@
 //!   - POSIX/libc: stdio, stdlib, string, math, pthreads, dlfcn, signal, mman, epoll
 //!   - Combined multi-header surfaces
 
+#[path = "../../linc/tests/common/mod.rs"]
+mod linc_common;
+
 use std::path::Path;
 
 use gec::config::GecConfig;
@@ -54,7 +57,7 @@ fn bic_to_gec(
         cfg = cfg.probe_type_layout(*ty);
     }
 
-    let linc_result = cfg.process().ok()?;
+    let linc_result = linc_common::process(&cfg).ok()?;
     let input = GecInput::from_package(linc_result.package);
     let gec_cfg = GecConfig::new(crate_name);
     let output = generate(&input, &gec_cfg).ok()?;
@@ -100,7 +103,7 @@ fn bic_to_gec_multi(
         cfg = cfg.probe_type_layout(*ty);
     }
 
-    let linc_result = cfg.process().ok()?;
+    let linc_result = linc_common::process(&cfg).ok()?;
     let input = GecInput::from_package(linc_result.package);
     let gec_cfg = GecConfig::new(crate_name);
     let output = generate(&input, &gec_cfg).ok()?;
