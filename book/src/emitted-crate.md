@@ -2,7 +2,8 @@
 
 ## Output modes
 
-`gec` supports two output modes via `crategen::OutputMode`:
+`gec` supports two output modes via the crate-root `OutputMode` re-export
+(or `gec::crategen::OutputMode` if you want the module path explicitly):
 
 ### Crate mode
 
@@ -52,7 +53,7 @@ fn main() {
 
 ## Overwrite policies
 
-`crategen::OverwritePolicy` controls behavior when the output directory
+`OverwritePolicy` controls behavior when the output directory
 already exists:
 
 | Policy | Behavior |
@@ -63,7 +64,7 @@ already exists:
 
 ## Crate naming
 
-`crategen::normalize_crate_name()` ensures valid Cargo package names:
+`normalize_crate_name()` ensures valid Cargo package names:
 
 - Replaces non-alphanumeric characters (except `_`) with `_`
 - Rejects empty names
@@ -72,16 +73,21 @@ already exists:
 ## Usage
 
 ```rust
-use gec::crategen::{emit_crate, OutputMode, OverwritePolicy};
+use gec::{emit_crate, OutputMode, OverwritePolicy};
 
 let emitted = emit_crate(
     &output.projection,
     &config,
-    "/tmp/mylib_sys",
+    std::path::Path::new("/tmp/mylib_sys"),
     OutputMode::Crate,
     OverwritePolicy::Clean,
 ).unwrap();
 
-assert!(emitted.cargo_toml.is_some());
-assert!(emitted.lib_rs.exists());
+assert!(emitted.root.join("Cargo.toml").exists());
+assert!(emitted.root.join("src/lib.rs").exists());
+assert!(emitted.files.iter().any(|path| path.ends_with("Cargo.toml")));
 ```
+
+`EmittedCrate` records the crate root directory and the concrete files that
+were written. In crate mode that file list is deterministic and includes
+`Cargo.toml`, `src/lib.rs`, and `build.rs` when link requirements require it.

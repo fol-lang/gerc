@@ -9,6 +9,11 @@
 - **Tier 2 (public but less stable)**: individual modules (`lower`, `gate`,
   `emit`, `typemap`, `linkgen`, `crategen`, `consumer`)
 
+The crate root also re-exports the common emission entrypoints so downstream
+code does not need to import `emit` or `crategen` directly for routine use:
+`emit_source`, `emit_type`, `emit_crate`, `emit_build_rs`, `OutputMode`,
+`OverwritePolicy`, `CrateManifest`, and `EmittedCrate`.
+
 ## Primary workflow
 
 `generate_from_source()` is the preferred entrypoint when the caller already
@@ -16,7 +21,10 @@ has a `linc::SourcePackage`. Use `GecInput` directly when attaching optional
 validation or resolved link evidence.
 
 ```rust
-use gec::{generate_from_source, GecConfig, GecInput, generate};
+use gec::{
+    emit_crate, emit_source, generate, generate_from_source, GecConfig, GecInput, OutputMode,
+    OverwritePolicy,
+};
 
 // 1a. Build input from a linc BindingPackage
 let input = GecInput::from_package(pkg);
@@ -34,7 +42,14 @@ let config = GecConfig::new("mylib_sys");
 let output = generate(&input, &config).unwrap();
 
 // 5. Use the output
-let source = gec::emit::emit_source(&output.projection);
+let source = emit_source(&output.projection);
+let emitted = emit_crate(
+    &output.projection,
+    &config,
+    std::path::Path::new("/tmp/mylib_sys"),
+    OutputMode::Crate,
+    OverwritePolicy::Overwrite,
+).unwrap();
 ```
 
 `GecInput` also exposes explicit JSON constructors:

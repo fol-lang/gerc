@@ -44,8 +44,7 @@ Current direction:
 ## Preferred usage
 
 ```rust
-use gec::{generate_from_source, GecConfig};
-use gec::emit::emit_source;
+use gec::{emit_crate, emit_source, generate_from_source, GecConfig, OutputMode, OverwritePolicy};
 use linc::{SourceDeclaration, SourceFunction, SourcePackage, SourceType};
 
 let mut source = SourcePackage::default();
@@ -60,9 +59,21 @@ source.declarations.push(SourceDeclaration::Function(SourceFunction {
 let config = GecConfig::new("mylib_sys");
 let output = generate_from_source(source, &config).unwrap();
 let source = emit_source(&output.projection);
+let emitted = emit_crate(
+    &output.projection,
+    &config,
+    std::path::Path::new("/tmp/mylib_sys"),
+    OutputMode::Crate,
+    OverwritePolicy::Clean,
+).unwrap();
 
 assert!(source.contains("pub fn init"));
+assert!(emitted.root.join("Cargo.toml").exists());
 ```
+
+The crate root now re-exports the main generation and emission entrypoints:
+`generate`, `generate_from_source`, `emit_source`, `emit_crate`,
+`emit_build_rs`, `OutputMode`, and `OverwritePolicy`.
 
 ## Validation-gated generation
 
