@@ -36,10 +36,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-7f801087.js";
+            window.path_to_searchindex_js = "searchindex-c4a7df5b.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-fea1ade6.js"></script>
+        <script src="toc-7fcd72d4.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -181,12 +181,24 @@
                         <h1 id="gerc-gec-today"><a class="header" href="#gerc-gec-today">GERC (<code>gec</code> today)</a></h1>
 <p><code>gec</code> is the current crate name for <code>GERC</code>, the Rust projection layer in the
 <code>PARC -&gt; LINC -&gt; GERC</code> pipeline.</p>
-<p>It consumes <code>linc</code> contracts and generates Rust FFI bindings from C
-declarations.  The output is a complete Cargo-compatible Rust crate (or a loose
-source bundle) that compiles cleanly with <code>cargo build</code>.</p>
-<p>The preferred library entrypoint is <code>generate_from_source(...)</code>. Attach a
-<code>ValidationReport</code> or <code>ResolvedLinkPlan</code> through <code>GecInput</code> when generation
-needs artifact-backed evidence.</p>
+<p>The target architecture is strict:</p>
+<ul>
+<li><code>gec</code> library code must not depend on <code>parc</code> or <code>linc</code></li>
+<li><code>gec</code> owns its own generation model</li>
+<li><code>gec</code> consumes translated source and evidence inputs</li>
+<li>translation from PARC or LINC artifacts belongs only in tests, examples, or
+external harnesses</li>
+<li>there is no shared ABI crate and no backward-compatibility burden for discarded pipeline shapes</li>
+</ul>
+<p><code>gec</code> generates Rust FFI bindings from C declarations. The output is a
+complete Cargo-compatible Rust crate (or a loose source bundle), and it also
+emits plain <code>rustc</code> link arguments for non-Cargo toolchains.</p>
+<p>In the toolchain split:</p>
+<ul>
+<li><code>parc</code> owns source meaning</li>
+<li><code>linc</code> owns link and binary meaning</li>
+<li><code>gec</code> owns Rust lowering and emitted build output</li>
+</ul>
 <h2 id="audience"><a class="header" href="#audience">Audience</a></h2>
 <p>This book is for developers who:</p>
 <ul>
@@ -216,7 +228,7 @@ output</li>
 </span><span class="boring">fn main() {
 </span>use gec::{generate_from_source, GecConfig};
 use gec::emit::emit_source;
-use linc::{SourceDeclaration, SourceFunction, SourcePackage, SourceType};
+use gec::intake::{SourceDeclaration, SourceFunction, SourcePackage, SourceType};
 
 let mut source = SourcePackage::default();
 source.declarations.push(SourceDeclaration::Function(SourceFunction {
@@ -246,11 +258,18 @@ following pipeline:</p>
     → fol-interloop-rust  (optional downstream consumer)
     → fol-visible surface
 </code></pre>
+<p>Read this chapter as the workflow summary:</p>
+<ol>
+<li><code>gec</code> receives its own input model</li>
+<li>any upstream artifact translation happens outside <code>gec/src/**</code></li>
+<li><code>gec</code> gates, lowers, and emits deterministic Rust/build artifacts</li>
+</ol>
 <h2 id="what-happens-inside-gerc"><a class="header" href="#what-happens-inside-gerc">What happens inside GERC</a></h2>
 <ol>
 <li>
-<p><strong>Intake</strong> — <code>gec</code> receives a <code>linc::BindingPackage</code> (plus optional
-validation and link-plan data) via <code>GecInput</code>.</p>
+<p><strong>Intake</strong> — <code>gec</code> receives its own source/evidence input model via
+<code>GecInput</code>. Tests/examples or external harnesses may translate PARC and LINC
+artifacts into that model.</p>
 </li>
 <li>
 <p><strong>Safety gating</strong> — Each declaration is checked against generation rules.
@@ -258,8 +277,8 @@ Items that cannot be safely represented in Rust (bitfields, anonymous
 records, incomplete types) are rejected with diagnostics.</p>
 </li>
 <li>
-<p><strong>Lowering</strong> — Accepted declarations are lowered from <code>linc</code> types into
-<code>gec</code>’s internal Rust projection IR (<code>RustProjection</code>).</p>
+<p><strong>Lowering</strong> — Accepted declarations are lowered from GERC-owned source
+types into <code>gec</code>’s internal Rust projection IR (<code>RustProjection</code>).</p>
 </li>
 <li>
 <p><strong>Type mapping</strong> — C types (<code>int</code>, <code>void*</code>, pointers, arrays, function
@@ -282,9 +301,22 @@ link metadata.</p>
 <li><strong>Conservative</strong> — Prefer refusing generation over emitting unsound code.</li>
 <li><strong>Library-first</strong> — <code>gec</code> is a Rust library, not a CLI tool.</li>
 <li><strong>Generic</strong> — No <code>fol</code>-specific assumptions in the core crate.</li>
+<li><strong>Artifact-boundary integration</strong> — cross-package composition belongs outside
+<code>gec/src/**</code>.</li>
+<li><strong>No crate-level back-compat burden</strong> — dead pipeline shapes should be
+deleted, not carried indefinitely.</li>
 </ul>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="architecture"><a class="header" href="#architecture">Architecture</a></h1>
+<h2 id="what-gerc-owns"><a class="header" href="#what-gerc-owns">What GERC Owns</a></h2>
+<p><code>gec</code> owns Rust lowering, projection, emission, and generated build output for
+this toolchain layer.</p>
+<p>It does not own:</p>
+<ul>
+<li>source parsing</li>
+<li>binary inspection</li>
+<li>upstream artifact translation inside <code>src/**</code></li>
+</ul>
 <h2 id="module-layout"><a class="header" href="#module-layout">Module layout</a></h2>
 <div class="table-wrapper">
 <table>
@@ -292,14 +324,14 @@ link metadata.</p>
 <tr><th>Module</th><th>Purpose</th></tr>
 </thead>
 <tbody>
-<tr><td><code>intake</code></td><td>Consumes <code>linc::BindingPackage</code> and optional enrichment data</td></tr>
-<tr><td><code>typemap</code></td><td>Maps C types (<code>linc::BindingType</code>) to Rust FFI types (<code>RustType</code>)</td></tr>
+<tr><td><code>intake</code></td><td>Consumes GERC-owned source and evidence input models</td></tr>
+<tr><td><code>typemap</code></td><td>Maps GERC-owned C-like types to Rust FFI types (<code>RustType</code>)</td></tr>
 <tr><td><code>gate</code></td><td>Safety gating — accepts or rejects each declaration</td></tr>
-<tr><td><code>lower</code></td><td>Lowers accepted <code>linc</code> items into Rust projection IR</td></tr>
+<tr><td><code>lower</code></td><td>Lowers accepted input items into Rust projection IR</td></tr>
 <tr><td><code>ir</code></td><td>Internal Rust projection IR: <code>RustProjection</code>, <code>RustItem</code>, <code>RustType</code></td></tr>
 <tr><td><code>emit</code></td><td>Renders the IR into deterministic Rust source code</td></tr>
 <tr><td><code>crategen</code></td><td>Writes a full Cargo-compatible crate directory to disk</td></tr>
-<tr><td><code>linkgen</code></td><td>Lowers <code>linc</code> link surfaces into <code>build.rs</code> link directives</td></tr>
+<tr><td><code>linkgen</code></td><td>Lowers native link surfaces into <code>build.rs</code> and <code>rustc</code> directives</td></tr>
 <tr><td><code>contract</code></td><td>Top-level <code>generate()</code> entry point and JSON output contract</td></tr>
 <tr><td><code>consumer</code></td><td>Generic downstream-consumer contract and metadata sidecar</td></tr>
 <tr><td><code>config</code></td><td>Generation configuration (<code>GecConfig</code>)</td></tr>
@@ -315,18 +347,18 @@ behavior here and delete the duplicate path.</p>
 module-qualified imports for routine use:</p>
 <ul>
 <li>generation and crate emission</li>
-<li>staged intake, gating, and lowering</li>
+<li>staged intake and evidence attachment</li>
 <li>JSON metadata and projection contracts</li>
 <li>consumer inspection helpers and metadata sidecars</li>
 </ul>
 <h2 id="data-flow"><a class="header" href="#data-flow">Data flow</a></h2>
-<pre><code class="language-text">GecInput (linc::BindingPackage + optional extras)
+<pre><code class="language-text">GecInput (GERC-owned source + optional evidence)
     │
-    ├── gate_package()  →  Vec&lt;GateDecision&gt; + diagnostics
+    ├── gate::gate_package()  →  Vec&lt;GateDecision&gt; + diagnostics
     │       │
     │       └── filter: only Accept items pass through
     │
-    ├── lower_package()  →  RustProjection + diagnostics
+    ├── lower::lower_package()  →  RustProjection + diagnostics
     │
     ├── lower_link_surface()  →  Vec&lt;RustLinkRequirement&gt;
     │
@@ -336,7 +368,23 @@ module-qualified imports for routine use:</p>
             ├── emit_crate()   →  Cargo crate on disk
             └── build_sidecar() → JSON metadata for consumers
 </code></pre>
+<p>This is an internal <code>gec</code> data flow. It is not permission for <code>gec/src/**</code> to
+import upstream crate types. Upstream artifacts must be translated outside the
+library boundary and then handed to <code>gec</code> in <code>gec</code>’s own input model.</p>
+<h2 id="artifact-boundary"><a class="header" href="#artifact-boundary">Artifact boundary</a></h2>
+<p><code>gec</code> consumes its own source/evidence model and emits its own generation
+artifacts.</p>
+<p>The boundary rule is:</p>
+<ul>
+<li><code>gec/src/**</code> must not depend on <code>parc</code> or <code>linc</code></li>
+<li>tests/examples/external harnesses may translate upstream artifacts into <code>gec</code>
+input</li>
+<li>generated Rust/build outputs are the downstream-facing product</li>
+</ul>
 <h2 id="key-types"><a class="header" href="#key-types">Key types</a></h2>
+<p>GERC should not import <code>parc</code> or <code>linc</code> in library code.
+If another package’s artifact needs to be consumed, the translation belongs in
+tests/examples or an external harness.</p>
 <h3 id="rustprojection"><a class="header" href="#rustprojection"><code>RustProjection</code></a></h3>
 <p>The central IR type. Contains:</p>
 <ul>
@@ -359,6 +407,15 @@ statics, unsupported markers</li>
 diagnostics but no Rust code.</p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="api-reference"><a class="header" href="#api-reference">API Reference</a></h1>
+<h2 id="first-principle"><a class="header" href="#first-principle">First principle</a></h2>
+<p><code>gec</code> is the Rust lowering and emission layer of the toolchain.</p>
+<p>The safest downstream posture is:</p>
+<ol>
+<li>prefer crate-root APIs first</li>
+<li>provide <code>gec</code>’s own source/evidence inputs directly</li>
+<li>keep upstream artifact translation outside <code>gec/src/**</code></li>
+<li>treat emitted Rust/build artifacts as the product boundary</li>
+</ol>
 <h2 id="api-tiers"><a class="header" href="#api-tiers">API tiers</a></h2>
 <p><code>gec</code> organizes its public API into two tiers:</p>
 <ul>
@@ -369,13 +426,13 @@ diagnostics but no Rust code.</p>
 </ul>
 <p>The crate root also re-exports the common emission entrypoints so downstream
 code does not need to import <code>emit</code> or <code>crategen</code> directly for routine use:
-<code>emit_source</code>, <code>emit_type</code>, <code>emit_crate</code>, <code>emit_build_rs</code>, <code>OutputMode</code>,
-<code>OverwritePolicy</code>, <code>CrateManifest</code>, and <code>EmittedCrate</code>.</p>
+<code>emit_source</code>, <code>emit_type</code>, <code>emit_crate</code>, <code>emit_build_rs</code>, <code>emit_rustc_args</code>,
+<code>emit_rustc_link_args</code>, <code>OutputMode</code>, <code>OverwritePolicy</code>, <code>CrateManifest</code>, and
+<code>EmittedCrate</code>.</p>
 <p>For explicit staged workflows, the crate root also re-exports:</p>
 <ul>
-<li><code>EvidenceInputs</code> for optional validation/link-plan attachment</li>
-<li><code>gate_package</code> and <code>GateDecision</code> for explicit gating inspection</li>
-<li><code>lower_package</code> for explicit projection lowering</li>
+<li><code>EvidenceInputs</code> for optional analysis/validation/link-plan attachment</li>
+<li><code>GateDecision</code> for explicit gating inspection results</li>
 <li><code>output_meta</code>, <code>meta_to_json</code>, <code>meta_from_json</code>, <code>projection_to_json</code>, and
 <code>projection_from_json</code> for JSON contracts</li>
 <li><code>GecConsumer</code>, <code>ConsumerReport</code>, <code>ConsumerFinding</code>, <code>FindingKind</code>,
@@ -383,25 +440,36 @@ code does not need to import <code>emit</code> or <code>crategen</code> directly
 <code>sidecar_from_json</code>, <code>extern_function_names</code>, <code>record_names</code>, and
 <code>type_alias_names</code> for downstream inspection</li>
 </ul>
+<p>For staged inspection, import the modules explicitly:</p>
+<ul>
+<li><code>gec::gate::gate_package(...)</code></li>
+<li><code>gec::lower::lower_package(...)</code></li>
+</ul>
+<h2 id="preferred-public-surface"><a class="header" href="#preferred-public-surface">Preferred public surface</a></h2>
+<p>These are the main consumer-facing entrypoints:</p>
+<ul>
+<li><code>generate()</code> and <code>generate_from_source()</code></li>
+<li><code>GecInput</code>, <code>GecConfig</code>, and <code>GecOutput</code></li>
+<li><code>emit_source()</code>, <code>emit_crate()</code>, <code>emit_build_rs()</code>, and <code>emit_rustc_args()</code></li>
+<li>JSON metadata/projection helpers</li>
+<li>consumer-sidecar helpers</li>
+</ul>
 <h2 id="primary-workflow"><a class="header" href="#primary-workflow">Primary workflow</a></h2>
 <p><code>generate_from_source()</code> is the preferred entrypoint when the caller already
-has a <code>linc::SourcePackage</code>. Use <code>GecInput</code> directly when attaching optional
-validation or resolved link evidence.</p>
+has a <code>gec::SourcePackage</code>. Use <code>GecInput</code> directly when attaching optional
+translated evidence in parallel with source.</p>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>use gec::{
-    emit_crate, emit_source, generate, generate_from_source, GecConfig, GecInput, OutputMode,
-    OverwritePolicy,
+    emit_crate, emit_rustc_args, emit_source, generate, generate_from_source, GecConfig,
+    GecInput, OutputMode, OverwritePolicy,
 };
 
-// 1a. Build input from a linc BindingPackage
-let input = GecInput::from_package(pkg);
+// 1a. Preferred: build input from a SourcePackage
+let input = GecInput::from_source_package(source.clone()).with_analysis(analysis);
 
-// 1b. Or generate directly from a linc SourcePackage
+// 1b. Or generate directly from a SourcePackage
 let output = generate_from_source(source, &amp;GecConfig::new("mylib_sys")).unwrap();
-
-// 2. Attach optional evidence for the explicit-input path
-let input = input.with_validation(report).with_link_plan(plan);
 
 // 3. Configure generation for the explicit-input path
 let config = GecConfig::new("mylib_sys");
@@ -411,6 +479,7 @@ let output = generate(&amp;input, &amp;config).unwrap();
 
 // 5. Use the output
 let source = emit_source(&amp;output.projection);
+let rustc_args = emit_rustc_args(&amp;output.projection);
 let emitted = emit_crate(
     &amp;output.projection,
     &amp;config,
@@ -419,9 +488,8 @@ let emitted = emit_crate(
     OverwritePolicy::Overwrite,
 ).unwrap();
 <span class="boring">}</span></code></pre>
-<p><code>GecInput</code> also exposes explicit JSON constructors:</p>
+<p><code>GecInput</code> exposes an explicit source-contract JSON constructor:</p>
 <ul>
-<li><code>GecInput::from_binding_json(...)</code></li>
 <li><code>GecInput::from_source_json(...)</code></li>
 </ul>
 <p>When validation evidence is attached, <code>generate()</code> filters out declarations
@@ -429,6 +497,20 @@ that fail validation gating instead of emitting speculative Rust bindings.</p>
 <p>The generated Rust source also includes comment-level projection notes for
 preserved provenance and other non-routine lowering outcomes. This keeps
 upstream context visible without changing the Rust API surface.</p>
+<p>The emitted crate path now supports both:</p>
+<ul>
+<li>Cargo build-script rendering via <code>build.rs</code></li>
+<li>direct <code>rustc</code> argument rendering via <code>rustc-link-args.txt</code> and
+<code>emit_rustc_args(...)</code></li>
+</ul>
+<h2 id="downstream-posture"><a class="header" href="#downstream-posture">Downstream posture</a></h2>
+<p>If you are integrating <code>gec</code> into another tool, prefer:</p>
+<ol>
+<li>root-level generation APIs</li>
+<li>explicit <code>GecInput</code> construction when evidence is available</li>
+<li>emitted Rust/build outputs rather than internal lowering modules</li>
+<li>tests/examples/harnesses for any <code>parc</code> or <code>linc</code> artifact translation</li>
+</ol>
 <h2 id="integration-coverage"><a class="header" href="#integration-coverage">Integration coverage</a></h2>
 <p>The current suite exercises realistic split-pipeline paths, not only
 hand-constructed packages:</p>
@@ -437,6 +519,8 @@ hand-constructed packages:</p>
 <li>vendored <code>parc -&gt; linc -&gt; gec</code> generation with declared link surfaces</li>
 <li>vendored <code>parc -&gt; linc -&gt; gec</code> generation with resolved link-plan evidence</li>
 </ul>
+<p>Those paths are proved in tests and examples. They are not library-level crate
+dependencies.</p>
 <h2 id="configuration"><a class="header" href="#configuration">Configuration</a></h2>
 <p><code>GecConfig</code> controls what gets generated:</p>
 <div class="table-wrapper">
@@ -457,6 +541,14 @@ hand-constructed packages:</p>
 </tbody>
 </table>
 </div>
+<h2 id="explicit-non-goals"><a class="header" href="#explicit-non-goals">Explicit non-goals</a></h2>
+<p>The current contract does not promise:</p>
+<ul>
+<li>parsing or preprocessing C</li>
+<li>binary inspection inside <code>gec</code></li>
+<li>automatic invention of missing ABI facts</li>
+<li>library-level dependencies on upstream pipeline crates</li>
+</ul>
 <h2 id="error-handling"><a class="header" href="#error-handling">Error handling</a></h2>
 <p>All fallible operations return <code>GecResult&lt;T&gt;</code>, which is
 <code>Result&lt;T, GecError&gt;</code>.</p>
@@ -478,9 +570,9 @@ hand-constructed packages:</p>
 let meta = output_meta(&amp;config, &amp;output);
 let json = meta_to_json(&amp;meta).unwrap();
 <span class="boring">}</span></code></pre>
-<p>The JSON includes <code>schema_version</code> for forward compatibility.
+<p>The JSON includes <code>schema_version</code> as an artifact-shape gate.
 <code>meta_from_json()</code> rejects metadata with a schema version newer than the
-current build supports.</p>
+current build supports rather than guessing.</p>
 <h2 id="consumer-contract"><a class="header" href="#consumer-contract">Consumer contract</a></h2>
 <p>Downstream tools implement the <code>GecConsumer</code> trait:</p>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
@@ -511,27 +603,25 @@ emitter as <code>GERC</code>.</p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="intake-contract"><a class="header" href="#intake-contract">Intake Contract</a></h1>
 <h2 id="primary-input"><a class="header" href="#primary-input">Primary input</a></h2>
-<p><code>gec</code> accepts two explicit intake forms:</p>
+<p><code>gec</code> is source-first, but the important ownership rule is:</p>
 <ul>
-<li><code>linc::BindingPackage</code> via <code>GecInput::from_package(...)</code></li>
-<li><code>linc::SourcePackage</code> via <code>GecInput::from_source_package(...)</code></li>
+<li><code>gec</code> library code owns its own input types</li>
+<li><code>gec</code> library code must not depend on <code>parc</code> or <code>linc</code></li>
+<li>translation from PARC or LINC artifacts belongs outside <code>gec/src/**</code></li>
 </ul>
-<p>The source-package path is the preferred starting point when the caller already
-has <code>parc</code>/<code>linc</code> source contracts. It keeps <code>gec</code> on the split-pipeline path
-and lets the crate adapt source declarations into bindings internally.</p>
-<p>The binding-package path is the richer machine contract and contains:</p>
-<ul>
-<li><strong>Items</strong> — function declarations, record (struct/union) definitions, enum
-definitions, type aliases, variable declarations, and unsupported markers</li>
-<li><strong>Diagnostics</strong> — warnings and errors from upstream analysis</li>
-<li><strong>Macros</strong> — C preprocessor macro definitions (integer literals become Rust
-constants)</li>
-<li><strong>Layouts</strong> — ABI layout information for records</li>
-<li><strong>Link surface</strong> — native library requirements, search paths, artifacts</li>
-</ul>
+<p><code>GecInput</code> is therefore the crate-owned intake boundary.</p>
 <h2 id="optional-enrichment"><a class="header" href="#optional-enrichment">Optional enrichment</a></h2>
-<p>Two additional <code>linc</code> outputs can optionally be attached:</p>
-<h3 id="validationreport"><a class="header" href="#validationreport"><code>ValidationReport</code></a></h3>
+<p>Additional evidence forms can optionally be attached.</p>
+<h3 id="link-analysis-artifact"><a class="header" href="#link-analysis-artifact">Link analysis artifact</a></h3>
+<p>The preferred binary/link evidence contract derived from <code>linc</code>.</p>
+<p>When present, <code>gec</code> reads:</p>
+<ul>
+<li>resolved link-plan data</li>
+<li>declared link surface</li>
+<li>attached validation evidence</li>
+</ul>
+<p>without forcing source declarations to flow through <code>linc</code> as the only path.</p>
+<h3 id="validation-report-artifact"><a class="header" href="#validation-report-artifact">Validation report artifact</a></h3>
 <p>Declaration-vs-artifact validation evidence. When present, <code>gec</code> uses
 validation findings to drive safety gating decisions.</p>
 <p>Attached validation evidence is not advisory. <code>gec</code> rejects functions and
@@ -542,52 +632,46 @@ decoration mismatches, or wrong-kind matches.</p>
 already carries a representation block but upstream left required fields unset
 such as record size, record alignment, or enum underlying size, <code>gec</code> rejects
 that declaration instead of guessing.</p>
-<h3 id="resolvedlinkplan"><a class="header" href="#resolvedlinkplan"><code>ResolvedLinkPlan</code></a></h3>
+<h3 id="resolved-link-plan-artifact"><a class="header" href="#resolved-link-plan-artifact">Resolved link-plan artifact</a></h3>
 <p>Resolved native link requirements. When present, <code>gec</code> uses the resolved
-plan (with concrete artifact paths and search directories) instead of the
-raw link surface from the binding package.</p>
+plan (with concrete artifact paths and search directories) instead of source
+or analysis-declared raw link surfaces.</p>
 <h2 id="building-a-gecinput"><a class="header" href="#building-a-gecinput">Building a <code>GecInput</code></a></h2>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>use gec::intake::GecInput;
+</span>use gec::intake::{GecInput, SourcePackage};
 
-use linc::SourcePackage;
-
-// Source-package intake
+// Preferred source-package intake
 let input = GecInput::from_source_package(SourcePackage::default());
 
-// Binding-package intake
-let input = GecInput::from_package(pkg);
-
-// Optional enrichment (builder pattern)
-let input = GecInput::from_package(pkg)
+// Optional explicit enrichment (builder pattern)
+let input = GecInput::from_source_package(SourcePackage::default())
     .with_validation(report)
     .with_link_plan(plan);
 
-// Explicit JSON entrypoints
-let input = GecInput::from_binding_json(binding_json).unwrap();
 let input = GecInput::from_source_json(source_json).unwrap();
 <span class="boring">}</span></code></pre>
 <h2 id="normalization"><a class="header" href="#normalization">Normalization</a></h2>
 <p><code>GecInput::normalize()</code> is called automatically during <code>generate()</code>. It:</p>
 <ul>
-<li>Deduplicates function declarations by name (last-wins)</li>
+<li>Deduplicates function declarations by name</li>
 <li>Aligns provenance markers</li>
 <li>Is idempotent (safe to call multiple times)</li>
 </ul>
 <h2 id="what-gec-does-not-accept"><a class="header" href="#what-gec-does-not-accept">What gec does NOT accept</a></h2>
 <p><code>gec</code> does not accept raw C source code or header files directly. Source
-extraction belongs in <code>parc</code>, and transitional raw-header scanning belongs in
-<code>linc::HeaderConfig</code>.</p>
+extraction belongs in <code>parc</code>, and link/binary evidence belongs in <code>linc</code>.</p>
+<p>The library also should not grow direct PARC/LINC dependency paths in <code>src/</code>.
+That would violate the intended boundary.</p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="code-generation"><a class="header" href="#code-generation">Code Generation</a></h1>
 <p><code>gec</code> owns Rust FFI emission in the split <code>PARC -&gt; LINC -&gt; GERC</code> pipeline.
-Useful legacy emitter behavior is rehomed here; obsolete output shapes are not
-kept just for compatibility.</p>
+Useful older emitter behavior is rehomed here when it still belongs in <code>gec</code>;
+obsolete output shapes are not kept alive just to preserve dead paths.</p>
 <h2 id="pipeline-stages"><a class="header" href="#pipeline-stages">Pipeline stages</a></h2>
 <p>Code generation in <code>gec</code> proceeds through several stages:</p>
 <h3 id="1-safety-gating-gate"><a class="header" href="#1-safety-gating-gate">1. Safety gating (<code>gate</code>)</a></h3>
-<p>Each item in the <code>BindingPackage</code> is evaluated against generation rules:</p>
+<p>Each item in the source-derived lowering package is evaluated against generation rules:</p>
 <div class="table-wrapper">
 <table>
 <thead>
@@ -598,7 +682,7 @@ kept just for compatibility.</p>
 <tr><td>Anonymous records</td><td>Rejected — Rust requires named types</td></tr>
 <tr><td>Anonymous enums</td><td>Rejected — Rust requires named types</td></tr>
 <tr><td>Incomplete/opaque fields</td><td>Rejected — cannot determine layout</td></tr>
-<tr><td><code>linc::Unsupported</code> items</td><td>Rejected — explicitly unsupported upstream</td></tr>
+<tr><td><code>Unsupported</code> items</td><td>Rejected — explicitly unsupported upstream</td></tr>
 </tbody>
 </table>
 </div>
@@ -628,7 +712,7 @@ kept just for compatibility.</p>
 </table>
 </div>
 <h3 id="3-lowering-lower"><a class="header" href="#3-lowering-lower">3. Lowering (<code>lower</code>)</a></h3>
-<p>Accepted items are lowered from <code>linc</code> types to <code>gec</code>’s internal IR:</p>
+<p>Accepted items are lowered from <code>gec</code>’s C-side model to <code>gec</code>’s internal IR:</p>
 <ul>
 <li><strong>Functions</strong> → <code>RustFunction</code> (name, parameters, return type, variadic flag)</li>
 <li><strong>Structs</strong> → <code>RustRecord</code> with <code>RustRecordKind::Struct</code></li>
@@ -660,7 +744,7 @@ the same output.</p>
 </ul>
 <p>These are the supported <code>gec</code> forms going forward.</p>
 <h2 id="link-metadata-linkgen"><a class="header" href="#link-metadata-linkgen">Link metadata (<code>linkgen</code>)</a></h2>
-<p><code>linc</code> link evidence is lowered into Cargo-compatible <code>build.rs</code> directives:</p>
+<p>Link evidence is lowered into Cargo-compatible <code>build.rs</code> directives:</p>
 <ul>
 <li><code>cargo:rustc-link-lib=NAME</code> — link a library</li>
 <li><code>cargo:rustc-link-lib=static=NAME</code> — link a static library</li>
@@ -671,7 +755,7 @@ the same output.</p>
 <p>Platform filtering is supported via <code>cfg!()</code> guards when platform constraints
 are specified.</p>
 <p>When a resolved <code>ResolvedLinkPlan</code> is attached to <code>GecInput</code>, <code>gec</code> prefers
-that evidence over the raw package link surface.</p>
+that evidence over the source-declared raw link surface.</p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="emitted-crate"><a class="header" href="#emitted-crate">Emitted Crate</a></h1>
 <h2 id="output-modes"><a class="header" href="#output-modes">Output modes</a></h2>
@@ -681,13 +765,15 @@ that evidence over the raw package link surface.</p>
 <p>Writes a complete Cargo-compatible crate directory:</p>
 <pre><code class="language-text">output_dir/
 ├── Cargo.toml
-├── build.rs          (if link requirements exist and build_script enabled)
+├── build.rs              (if link requirements exist and build_script enabled)
+├── rustc-link-args.txt   (if link requirements exist)
 └── src/
     └── lib.rs
 </code></pre>
 <h3 id="source-bundle-mode"><a class="header" href="#source-bundle-mode">Source bundle mode</a></h3>
 <p>Writes only the Rust source file (no <code>Cargo.toml</code> or <code>build.rs</code>):</p>
 <pre><code class="language-text">output_dir/
+├── rustc-link-args.txt   (if link requirements exist)
 └── src/
     └── lib.rs
 </code></pre>
@@ -706,6 +792,13 @@ Cargo link directives:</p>
     println!("cargo:rustc-link-lib=mylib");
     println!("cargo:rustc-link-search=native=/usr/lib");
 }</code></pre>
+<h2 id="rustc-link-argstxt"><a class="header" href="#rustc-link-argstxt">rustc-link-args.txt</a></h2>
+<p>When link requirements exist, <code>gec</code> also generates a plain text file with
+direct <code>rustc</code> arguments:</p>
+<pre><code class="language-text">-Lnative=/usr/lib
+-ldylib=mylib
+</code></pre>
+<p>This file is intended for non-Cargo toolchains or custom build orchestration.</p>
 <h2 id="overwrite-policies"><a class="header" href="#overwrite-policies">Overwrite policies</a></h2>
 <p><code>OverwritePolicy</code> controls behavior when the output directory
 already exists:</p>
@@ -747,7 +840,80 @@ assert!(emitted.files.iter().any(|path| path.ends_with("Cargo.toml")));
 <span class="boring">}</span></code></pre>
 <p><code>EmittedCrate</code> records the crate root directory and the concrete files that
 were written. In crate mode that file list is deterministic and includes
-<code>Cargo.toml</code>, <code>src/lib.rs</code>, and <code>build.rs</code> when link requirements require it.</p>
+<code>Cargo.toml</code>, <code>src/lib.rs</code>, <code>rustc-link-args.txt</code>, and <code>build.rs</code> when link
+requirements require them.</p>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="testing-and-release"><a class="header" href="#testing-and-release">Testing And Release</a></h1>
+<p><code>gerc</code> is the lowering and emission crate in the toolchain, so its test and
+release posture is different from <code>parc</code> and <code>linc</code>.</p>
+<p>The core questions are:</p>
+<ul>
+<li>can <code>gerc</code> gate unsafe or unsupported input correctly</li>
+<li>can it lower accepted input deterministically</li>
+<li>can it emit stable Rust/build artifacts</li>
+<li>can tests/examples prove upstream composition without turning upstream crates
+into library dependencies</li>
+</ul>
+<h2 id="contract-tests"><a class="header" href="#contract-tests">Contract tests</a></h2>
+<p>The main contract tests should cover:</p>
+<ul>
+<li>source-first intake through <code>GecInput</code> and <code>generate_from_source</code></li>
+<li>evidence-aware gating when validation and link evidence are attached</li>
+<li>deterministic projection and emission</li>
+<li>emitted crate/build output for the documented modes</li>
+</ul>
+<p>Those tests are the practical statement of what downstream code may rely on.</p>
+<h2 id="artifact-boundary-integration-proof"><a class="header" href="#artifact-boundary-integration-proof">Artifact-boundary integration proof</a></h2>
+<p><code>gerc/src/**</code> must not import <code>parc</code> or <code>linc</code>.</p>
+<p>Cross-package proof belongs in:</p>
+<ul>
+<li><code>gerc</code> tests/examples that translate <code>parc</code> source artifacts</li>
+<li><code>gerc</code> tests/examples that translate <code>linc</code> evidence artifacts</li>
+<li>external harnesses that exercise the whole pipeline</li>
+</ul>
+<p>If a change requires <code>gerc</code> library code to know another pipeline crate’s
+internal types, the change is architecturally wrong.</p>
+<h2 id="determinism-rules"><a class="header" href="#determinism-rules">Determinism Rules</a></h2>
+<p>Generated output should be deterministic for the same intake model.</p>
+<p>That means tests should prefer:</p>
+<ul>
+<li>stable item ordering</li>
+<li>stable build sidecar output</li>
+<li>stable Rust source snapshots where formatting is part of the contract</li>
+<li>semantic assertions when exact text is intentionally flexible</li>
+</ul>
+<h2 id="release-checklist"><a class="header" href="#release-checklist">Release Checklist</a></h2>
+<p>Before releasing <code>gerc</code>:</p>
+<ol>
+<li>run <code>make build</code></li>
+<li>run <code>make test</code></li>
+<li>confirm the preferred public workflow in the README and book still matches
+the tested API</li>
+<li>confirm emitted Cargo and raw <code>rustc</code> paths still match the documented
+output story</li>
+<li>confirm tests/examples still keep PARC/LINC translation outside <code>gerc/src/**</code></li>
+</ol>
+<h2 id="maintenance-rule"><a class="header" href="#maintenance-rule">Maintenance Rule</a></h2>
+<p>When <code>gerc</code> changes:</p>
+<ol>
+<li>update the smallest meaningful test first</li>
+<li>update emitted-output docs in the same patch when behavior changes</li>
+<li>keep upstream translation in tests/examples/harnesses only</li>
+<li>delete stale workflow language instead of preserving it for history</li>
+</ol>
+<h2 id="what-supported-means"><a class="header" href="#what-supported-means">What “supported” means</a></h2>
+<p>For <code>gerc</code>, support means:</p>
+<ul>
+<li>accepted declarations lower to deterministic Rust/build artifacts</li>
+<li>rejected declarations fail conservatively and diagnostically</li>
+<li>documented output modes are covered by tests</li>
+</ul>
+<p>It does not mean:</p>
+<ul>
+<li>every upstream C declaration can already be emitted</li>
+<li>every rejected item is a bug rather than a deliberate safety boundary</li>
+<li><code>gerc</code> library code is allowed to absorb upstream crate internals</li>
+</ul>
 
                     </main>
 

@@ -35,10 +35,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-7f801087.js";
+            window.path_to_searchindex_js = "searchindex-c4a7df5b.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-fea1ade6.js"></script>
+        <script src="toc-7fcd72d4.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -185,13 +185,15 @@
 <p>Writes a complete Cargo-compatible crate directory:</p>
 <pre><code class="language-text">output_dir/
 ├── Cargo.toml
-├── build.rs          (if link requirements exist and build_script enabled)
+├── build.rs              (if link requirements exist and build_script enabled)
+├── rustc-link-args.txt   (if link requirements exist)
 └── src/
     └── lib.rs
 </code></pre>
 <h3 id="source-bundle-mode"><a class="header" href="#source-bundle-mode">Source bundle mode</a></h3>
 <p>Writes only the Rust source file (no <code>Cargo.toml</code> or <code>build.rs</code>):</p>
 <pre><code class="language-text">output_dir/
+├── rustc-link-args.txt   (if link requirements exist)
 └── src/
     └── lib.rs
 </code></pre>
@@ -210,6 +212,13 @@ Cargo link directives:</p>
     println!("cargo:rustc-link-lib=mylib");
     println!("cargo:rustc-link-search=native=/usr/lib");
 }</code></pre>
+<h2 id="rustc-link-argstxt"><a class="header" href="#rustc-link-argstxt">rustc-link-args.txt</a></h2>
+<p>When link requirements exist, <code>gec</code> also generates a plain text file with
+direct <code>rustc</code> arguments:</p>
+<pre><code class="language-text">-Lnative=/usr/lib
+-ldylib=mylib
+</code></pre>
+<p>This file is intended for non-Cargo toolchains or custom build orchestration.</p>
 <h2 id="overwrite-policies"><a class="header" href="#overwrite-policies">Overwrite policies</a></h2>
 <p><code>OverwritePolicy</code> controls behavior when the output directory
 already exists:</p>
@@ -251,7 +260,8 @@ assert!(emitted.files.iter().any(|path| path.ends_with("Cargo.toml")));
 <span class="boring">}</span></code></pre>
 <p><code>EmittedCrate</code> records the crate root directory and the concrete files that
 were written. In crate mode that file list is deterministic and includes
-<code>Cargo.toml</code>, <code>src/lib.rs</code>, and <code>build.rs</code> when link requirements require it.</p>
+<code>Cargo.toml</code>, <code>src/lib.rs</code>, <code>rustc-link-args.txt</code>, and <code>build.rs</code> when link
+requirements require them.</p>
 
                     </main>
 
@@ -261,6 +271,9 @@ were written. In crate mode that file list is deterministic and includes
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                             </a>
 
+                            <a rel="next prefetch" href="testing-and-release.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                            </a>
 
                         <div style="clear: both"></div>
                     </nav>
@@ -272,6 +285,9 @@ were written. In crate mode that file list is deterministic and includes
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                     </a>
 
+                    <a rel="next prefetch" href="testing-and-release.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                    </a>
             </nav>
 
         </div>

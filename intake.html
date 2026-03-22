@@ -35,10 +35,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-7f801087.js";
+            window.path_to_searchindex_js = "searchindex-c4a7df5b.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-fea1ade6.js"></script>
+        <script src="toc-7fcd72d4.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -179,27 +179,25 @@
                     <main>
                         <h1 id="intake-contract"><a class="header" href="#intake-contract">Intake Contract</a></h1>
 <h2 id="primary-input"><a class="header" href="#primary-input">Primary input</a></h2>
-<p><code>gec</code> accepts two explicit intake forms:</p>
+<p><code>gec</code> is source-first, but the important ownership rule is:</p>
 <ul>
-<li><code>linc::BindingPackage</code> via <code>GecInput::from_package(...)</code></li>
-<li><code>linc::SourcePackage</code> via <code>GecInput::from_source_package(...)</code></li>
+<li><code>gec</code> library code owns its own input types</li>
+<li><code>gec</code> library code must not depend on <code>parc</code> or <code>linc</code></li>
+<li>translation from PARC or LINC artifacts belongs outside <code>gec/src/**</code></li>
 </ul>
-<p>The source-package path is the preferred starting point when the caller already
-has <code>parc</code>/<code>linc</code> source contracts. It keeps <code>gec</code> on the split-pipeline path
-and lets the crate adapt source declarations into bindings internally.</p>
-<p>The binding-package path is the richer machine contract and contains:</p>
-<ul>
-<li><strong>Items</strong> — function declarations, record (struct/union) definitions, enum
-definitions, type aliases, variable declarations, and unsupported markers</li>
-<li><strong>Diagnostics</strong> — warnings and errors from upstream analysis</li>
-<li><strong>Macros</strong> — C preprocessor macro definitions (integer literals become Rust
-constants)</li>
-<li><strong>Layouts</strong> — ABI layout information for records</li>
-<li><strong>Link surface</strong> — native library requirements, search paths, artifacts</li>
-</ul>
+<p><code>GecInput</code> is therefore the crate-owned intake boundary.</p>
 <h2 id="optional-enrichment"><a class="header" href="#optional-enrichment">Optional enrichment</a></h2>
-<p>Two additional <code>linc</code> outputs can optionally be attached:</p>
-<h3 id="validationreport"><a class="header" href="#validationreport"><code>ValidationReport</code></a></h3>
+<p>Additional evidence forms can optionally be attached.</p>
+<h3 id="link-analysis-artifact"><a class="header" href="#link-analysis-artifact">Link analysis artifact</a></h3>
+<p>The preferred binary/link evidence contract derived from <code>linc</code>.</p>
+<p>When present, <code>gec</code> reads:</p>
+<ul>
+<li>resolved link-plan data</li>
+<li>declared link surface</li>
+<li>attached validation evidence</li>
+</ul>
+<p>without forcing source declarations to flow through <code>linc</code> as the only path.</p>
+<h3 id="validation-report-artifact"><a class="header" href="#validation-report-artifact">Validation report artifact</a></h3>
 <p>Declaration-vs-artifact validation evidence. When present, <code>gec</code> uses
 validation findings to drive safety gating decisions.</p>
 <p>Attached validation evidence is not advisory. <code>gec</code> rejects functions and
@@ -210,43 +208,37 @@ decoration mismatches, or wrong-kind matches.</p>
 already carries a representation block but upstream left required fields unset
 such as record size, record alignment, or enum underlying size, <code>gec</code> rejects
 that declaration instead of guessing.</p>
-<h3 id="resolvedlinkplan"><a class="header" href="#resolvedlinkplan"><code>ResolvedLinkPlan</code></a></h3>
+<h3 id="resolved-link-plan-artifact"><a class="header" href="#resolved-link-plan-artifact">Resolved link-plan artifact</a></h3>
 <p>Resolved native link requirements. When present, <code>gec</code> uses the resolved
-plan (with concrete artifact paths and search directories) instead of the
-raw link surface from the binding package.</p>
+plan (with concrete artifact paths and search directories) instead of source
+or analysis-declared raw link surfaces.</p>
 <h2 id="building-a-gecinput"><a class="header" href="#building-a-gecinput">Building a <code>GecInput</code></a></h2>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>use gec::intake::GecInput;
+</span>use gec::intake::{GecInput, SourcePackage};
 
-use linc::SourcePackage;
-
-// Source-package intake
+// Preferred source-package intake
 let input = GecInput::from_source_package(SourcePackage::default());
 
-// Binding-package intake
-let input = GecInput::from_package(pkg);
-
-// Optional enrichment (builder pattern)
-let input = GecInput::from_package(pkg)
+// Optional explicit enrichment (builder pattern)
+let input = GecInput::from_source_package(SourcePackage::default())
     .with_validation(report)
     .with_link_plan(plan);
 
-// Explicit JSON entrypoints
-let input = GecInput::from_binding_json(binding_json).unwrap();
 let input = GecInput::from_source_json(source_json).unwrap();
 <span class="boring">}</span></code></pre>
 <h2 id="normalization"><a class="header" href="#normalization">Normalization</a></h2>
 <p><code>GecInput::normalize()</code> is called automatically during <code>generate()</code>. It:</p>
 <ul>
-<li>Deduplicates function declarations by name (last-wins)</li>
+<li>Deduplicates function declarations by name</li>
 <li>Aligns provenance markers</li>
 <li>Is idempotent (safe to call multiple times)</li>
 </ul>
 <h2 id="what-gec-does-not-accept"><a class="header" href="#what-gec-does-not-accept">What gec does NOT accept</a></h2>
 <p><code>gec</code> does not accept raw C source code or header files directly. Source
-extraction belongs in <code>parc</code>, and transitional raw-header scanning belongs in
-<code>linc::HeaderConfig</code>.</p>
+extraction belongs in <code>parc</code>, and link/binary evidence belongs in <code>linc</code>.</p>
+<p>The library also should not grow direct PARC/LINC dependency paths in <code>src/</code>.
+That would violate the intended boundary.</p>
 
                     </main>
 

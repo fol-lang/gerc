@@ -35,10 +35,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-7f801087.js";
+            window.path_to_searchindex_js = "searchindex-c4a7df5b.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-fea1ade6.js"></script>
+        <script src="toc-7fcd72d4.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -180,12 +180,24 @@
                         <h1 id="gerc-gec-today"><a class="header" href="#gerc-gec-today">GERC (<code>gec</code> today)</a></h1>
 <p><code>gec</code> is the current crate name for <code>GERC</code>, the Rust projection layer in the
 <code>PARC -&gt; LINC -&gt; GERC</code> pipeline.</p>
-<p>It consumes <code>linc</code> contracts and generates Rust FFI bindings from C
-declarations.  The output is a complete Cargo-compatible Rust crate (or a loose
-source bundle) that compiles cleanly with <code>cargo build</code>.</p>
-<p>The preferred library entrypoint is <code>generate_from_source(...)</code>. Attach a
-<code>ValidationReport</code> or <code>ResolvedLinkPlan</code> through <code>GecInput</code> when generation
-needs artifact-backed evidence.</p>
+<p>The target architecture is strict:</p>
+<ul>
+<li><code>gec</code> library code must not depend on <code>parc</code> or <code>linc</code></li>
+<li><code>gec</code> owns its own generation model</li>
+<li><code>gec</code> consumes translated source and evidence inputs</li>
+<li>translation from PARC or LINC artifacts belongs only in tests, examples, or
+external harnesses</li>
+<li>there is no shared ABI crate and no backward-compatibility burden for discarded pipeline shapes</li>
+</ul>
+<p><code>gec</code> generates Rust FFI bindings from C declarations. The output is a
+complete Cargo-compatible Rust crate (or a loose source bundle), and it also
+emits plain <code>rustc</code> link arguments for non-Cargo toolchains.</p>
+<p>In the toolchain split:</p>
+<ul>
+<li><code>parc</code> owns source meaning</li>
+<li><code>linc</code> owns link and binary meaning</li>
+<li><code>gec</code> owns Rust lowering and emitted build output</li>
+</ul>
 <h2 id="audience"><a class="header" href="#audience">Audience</a></h2>
 <p>This book is for developers who:</p>
 <ul>
@@ -215,7 +227,7 @@ output</li>
 </span><span class="boring">fn main() {
 </span>use gec::{generate_from_source, GecConfig};
 use gec::emit::emit_source;
-use linc::{SourceDeclaration, SourceFunction, SourcePackage, SourceType};
+use gec::intake::{SourceDeclaration, SourceFunction, SourcePackage, SourceType};
 
 let mut source = SourcePackage::default();
 source.declarations.push(SourceDeclaration::Function(SourceFunction {

@@ -35,10 +35,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-7f801087.js";
+            window.path_to_searchindex_js = "searchindex-c4a7df5b.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-fea1ade6.js"></script>
+        <script src="toc-7fcd72d4.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -187,11 +187,18 @@ following pipeline:</p>
     → fol-interloop-rust  (optional downstream consumer)
     → fol-visible surface
 </code></pre>
+<p>Read this chapter as the workflow summary:</p>
+<ol>
+<li><code>gec</code> receives its own input model</li>
+<li>any upstream artifact translation happens outside <code>gec/src/**</code></li>
+<li><code>gec</code> gates, lowers, and emits deterministic Rust/build artifacts</li>
+</ol>
 <h2 id="what-happens-inside-gerc"><a class="header" href="#what-happens-inside-gerc">What happens inside GERC</a></h2>
 <ol>
 <li>
-<p><strong>Intake</strong> — <code>gec</code> receives a <code>linc::BindingPackage</code> (plus optional
-validation and link-plan data) via <code>GecInput</code>.</p>
+<p><strong>Intake</strong> — <code>gec</code> receives its own source/evidence input model via
+<code>GecInput</code>. Tests/examples or external harnesses may translate PARC and LINC
+artifacts into that model.</p>
 </li>
 <li>
 <p><strong>Safety gating</strong> — Each declaration is checked against generation rules.
@@ -199,8 +206,8 @@ Items that cannot be safely represented in Rust (bitfields, anonymous
 records, incomplete types) are rejected with diagnostics.</p>
 </li>
 <li>
-<p><strong>Lowering</strong> — Accepted declarations are lowered from <code>linc</code> types into
-<code>gec</code>’s internal Rust projection IR (<code>RustProjection</code>).</p>
+<p><strong>Lowering</strong> — Accepted declarations are lowered from GERC-owned source
+types into <code>gec</code>’s internal Rust projection IR (<code>RustProjection</code>).</p>
 </li>
 <li>
 <p><strong>Type mapping</strong> — C types (<code>int</code>, <code>void*</code>, pointers, arrays, function
@@ -223,6 +230,10 @@ link metadata.</p>
 <li><strong>Conservative</strong> — Prefer refusing generation over emitting unsound code.</li>
 <li><strong>Library-first</strong> — <code>gec</code> is a Rust library, not a CLI tool.</li>
 <li><strong>Generic</strong> — No <code>fol</code>-specific assumptions in the core crate.</li>
+<li><strong>Artifact-boundary integration</strong> — cross-package composition belongs outside
+<code>gec/src/**</code>.</li>
+<li><strong>No crate-level back-compat burden</strong> — dead pipeline shapes should be
+deleted, not carried indefinitely.</li>
 </ul>
 
                     </main>
