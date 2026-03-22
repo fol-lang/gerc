@@ -3,7 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>Architecture - gerc</title>
+        <title>Architecture - GERC</title>
 
 
         <!-- Custom HTML head -->
@@ -35,10 +35,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-0ae605e0.js";
+            window.path_to_searchindex_js = "searchindex-962fe17a.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-7fcd72d4.js"></script>
+        <script src="toc-18d46400.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -137,7 +137,7 @@
                         </button>
                     </div>
 
-                    <h1 class="menu-title">gerc</h1>
+                    <h1 class="menu-title">GERC</h1>
 
                     <div class="right-buttons">
                         <a href="print.html" title="Print this book" aria-label="Print this book">
@@ -179,102 +179,110 @@
                     <main>
                         <h1 id="architecture"><a class="header" href="#architecture">Architecture</a></h1>
 <h2 id="what-gerc-owns"><a class="header" href="#what-gerc-owns">What GERC Owns</a></h2>
-<p><code>gerc</code> owns Rust lowering, projection, emission, and generated build output for
-this toolchain layer.</p>
+<p><code>gerc</code> owns Rust lowering, projection, emission, and generated build output
+for this toolchain layer.</p>
 <p>It does not own:</p>
 <ul>
 <li>source parsing</li>
 <li>binary inspection</li>
 <li>upstream artifact translation inside <code>src/**</code></li>
 </ul>
-<h2 id="module-layout"><a class="header" href="#module-layout">Module layout</a></h2>
+<h2 id="module-layout"><a class="header" href="#module-layout">Module Layout</a></h2>
 <div class="table-wrapper">
 <table>
 <thead>
 <tr><th>Module</th><th>Purpose</th></tr>
 </thead>
 <tbody>
-<tr><td><code>intake</code></td><td>Consumes GERC-owned source and evidence input models</td></tr>
-<tr><td><code>typemap</code></td><td>Maps GERC-owned C-like types to Rust FFI types (<code>RustType</code>)</td></tr>
-<tr><td><code>gate</code></td><td>Safety gating — accepts or rejects each declaration</td></tr>
-<tr><td><code>lower</code></td><td>Lowers accepted input items into Rust projection IR</td></tr>
-<tr><td><code>ir</code></td><td>Internal Rust projection IR: <code>RustProjection</code>, <code>RustItem</code>, <code>RustType</code></td></tr>
-<tr><td><code>emit</code></td><td>Renders the IR into deterministic Rust source code</td></tr>
-<tr><td><code>crategen</code></td><td>Writes a full Cargo-compatible crate directory to disk</td></tr>
-<tr><td><code>linkgen</code></td><td>Lowers native link surfaces into <code>build.rs</code> and <code>rustc</code> directives</td></tr>
-<tr><td><code>contract</code></td><td>Top-level <code>generate()</code> entry point and JSON output contract</td></tr>
+<tr><td><code>intake</code></td><td>Crate-owned source and evidence input models</td></tr>
+<tr><td><code>c</code></td><td>Crate-owned C-side binding model and native evidence types</td></tr>
+<tr><td><code>typemap</code></td><td>Maps C-like types to Rust FFI types</td></tr>
+<tr><td><code>gate</code></td><td>Safety gating for each declaration</td></tr>
+<tr><td><code>lower</code></td><td>Lowers accepted items into <code>RustProjection</code></td></tr>
+<tr><td><code>ir</code></td><td>Rust projection IR and supporting types</td></tr>
+<tr><td><code>emit</code></td><td>Renders the IR into deterministic Rust source</td></tr>
+<tr><td><code>linkgen</code></td><td>Lowers native link surfaces into Cargo and <code>rustc</code> directives</td></tr>
+<tr><td><code>crategen</code></td><td>Writes crate directories and source bundles to disk</td></tr>
+<tr><td><code>contract</code></td><td>Top-level generation entry point and JSON output contract</td></tr>
 <tr><td><code>consumer</code></td><td>Generic downstream-consumer contract and metadata sidecar</td></tr>
 <tr><td><code>config</code></td><td>Generation configuration (<code>GercConfig</code>)</td></tr>
-<tr><td><code>output</code></td><td>Generation output container (<code>GercOutput</code>, diagnostics)</td></tr>
+<tr><td><code>output</code></td><td>Generation output container (<code>GercOutput</code>)</td></tr>
 <tr><td><code>error</code></td><td>Crate error types (<code>GercError</code>, <code>GercResult</code>)</td></tr>
 </tbody>
 </table>
 </div>
 <p><code>gerc</code> is the only Rust emitter in this pipeline layer. If older Rust-emission
-logic still exists elsewhere, the intended end state is to move the useful
-behavior here and delete the duplicate path.</p>
-<p>At the crate root, <code>gerc</code> now exposes four top-level API families without
-module-qualified imports for routine use:</p>
+logic still exists elsewhere, the end state is to move the useful behavior here
+and delete the duplicate path.</p>
+<p>At the crate root, <code>gerc</code> exposes four top-level API families:</p>
 <ul>
 <li>generation and crate emission</li>
 <li>staged intake and evidence attachment</li>
 <li>JSON metadata and projection contracts</li>
 <li>consumer inspection helpers and metadata sidecars</li>
 </ul>
-<h2 id="data-flow"><a class="header" href="#data-flow">Data flow</a></h2>
-<pre><code class="language-text">GercInput (GERC-owned source + optional evidence)
+<p>It also exposes a large crate-owned C-side compatibility model through
+<code>gerc::c</code>. That model exists because <code>gerc</code> still supports staged workflows
+and internal lowering paths that operate on binding-style inputs, even though
+the preferred top-level story is source-first.</p>
+<h2 id="data-flow"><a class="header" href="#data-flow">Data Flow</a></h2>
+<pre><code class="language-text">GercInput
     │
-    ├── gate::gate_package()  →  Vec&lt;GateDecision&gt; + diagnostics
+    ├── gate::gate_package()  -&gt; Vec&lt;GateDecision&gt; + diagnostics
     │       │
-    │       └── filter: only Accept items pass through
+    │       └── filter: only accepted items pass through
     │
-    ├── lower::lower_package()  →  RustProjection + diagnostics
+    ├── lower::lower_package() -&gt; RustProjection + diagnostics
     │
-    ├── lower_link_surface()  →  Vec&lt;RustLinkRequirement&gt;
+    ├── linkgen lowering       -&gt; native link requirements
     │
     └── GercOutput { projection, diagnostics }
             │
-            ├── emit_source()  →  Rust source string
-            ├── emit_crate()   →  Cargo crate on disk
-            └── build_sidecar() → JSON metadata for consumers
+            ├── emit_source()   -&gt; Rust source string
+            ├── emit_crate()    -&gt; Cargo crate or source bundle on disk
+            └── build_sidecar() -&gt; JSON metadata for consumers
 </code></pre>
-<p>This is an internal <code>gerc</code> data flow. It is not permission for <code>gerc/src/**</code> to
-import upstream crate types. Upstream artifacts must be translated outside the
-library boundary and then handed to <code>gerc</code> in <code>gerc</code>’s own input model.</p>
-<h2 id="artifact-boundary"><a class="header" href="#artifact-boundary">Artifact boundary</a></h2>
+<p>This is an internal <code>gerc</code> data flow. It is not permission for <code>gerc/src/**</code>
+to import upstream crate types. Upstream artifacts must be translated outside
+the library boundary and then handed to <code>gerc</code> in <code>gerc</code>’s own input model.</p>
+<h2 id="artifact-boundary"><a class="header" href="#artifact-boundary">Artifact Boundary</a></h2>
 <p><code>gerc</code> consumes its own source/evidence model and emits its own generation
 artifacts.</p>
 <p>The boundary rule is:</p>
 <ul>
 <li><code>gerc/src/**</code> must not depend on <code>parc</code> or <code>linc</code></li>
-<li>tests/examples/external harnesses may translate upstream artifacts into <code>gerc</code>
-input</li>
+<li>tests/examples/external harnesses may translate upstream artifacts into <code>gerc</code> input</li>
 <li>generated Rust/build outputs are the downstream-facing product</li>
 </ul>
-<h2 id="key-types"><a class="header" href="#key-types">Key types</a></h2>
-<p>GERC should not import <code>parc</code> or <code>linc</code> in library code.
+<h2 id="key-types"><a class="header" href="#key-types">Key Types</a></h2>
+<p><code>gerc</code> should not import <code>parc</code> or <code>linc</code> in library code.
 If another package’s artifact needs to be consumed, the translation belongs in
 tests/examples or an external harness.</p>
-<h3 id="rustprojection"><a class="header" href="#rustprojection"><code>RustProjection</code></a></h3>
-<p>The central IR type. Contains:</p>
+<h3 id="gercinput"><a class="header" href="#gercinput"><code>GercInput</code></a></h3>
+<p>The primary input container. It wraps:</p>
 <ul>
-<li><code>items: Vec&lt;RustItem&gt;</code> — functions, records, enums, type aliases, constants,
-statics, unsupported markers</li>
-<li><code>modules: Vec&lt;RustModule&gt;</code> — optional module organization</li>
-<li><code>link_requirements: Vec&lt;RustLinkRequirement&gt;</code> — native link metadata</li>
-<li><code>notes: Vec&lt;ProjectionNote&gt;</code> — provenance and diagnostic notes</li>
+<li>a required <code>SourcePackage</code></li>
+<li>optional <code>EvidenceInputs</code></li>
 </ul>
-<h3 id="rusttype"><a class="header" href="#rusttype"><code>RustType</code></a></h3>
-<p>Enum covering all Rust FFI-safe types:</p>
+<p><code>EvidenceInputs</code> can carry <code>LinkAnalysisPackage</code>, <code>ValidationReport</code>, and
+<code>ResolvedLinkPlan</code> data.</p>
+<h3 id="rustprojection"><a class="header" href="#rustprojection"><code>RustProjection</code></a></h3>
+<p>The central IR type. It contains:</p>
 <ul>
-<li>Primitives: <code>Void</code>, <code>Bool</code>, <code>CChar</code>, <code>CInt</code>, <code>CUInt</code>, <code>CLong</code>, etc.</li>
-<li>Compound: <code>Pointer</code>, <code>Array</code>, <code>FnPointer</code></li>
-<li>References: <code>Named(String)</code> for typedefs/records/enums</li>
-<li>Special: <code>OpaquePtr</code> for <code>void*</code>, <code>Unknown</code> for unmappable types</li>
+<li><code>items: Vec&lt;RustItem&gt;</code> - functions, records, enums, type aliases, constants,
+statics, unsupported markers</li>
+<li><code>modules: Vec&lt;RustModule&gt;</code> - optional module organization</li>
+<li><code>link_requirements: Vec&lt;RustLinkRequirement&gt;</code> - native link metadata</li>
+<li><code>notes: Vec&lt;ProjectionNote&gt;</code> - provenance and diagnostic notes</li>
 </ul>
 <h3 id="gatedecision"><a class="header" href="#gatedecision"><code>GateDecision</code></a></h3>
-<p>Either <code>Accept</code> or <code>Reject(reason)</code>. Items that are rejected produce
-diagnostics but no Rust code.</p>
+<p>Either <code>Accept</code> or <code>Reject(reason)</code>. Rejected items produce diagnostics but no
+Rust code.</p>
+<h3 id="gercc"><a class="header" href="#gercc"><code>gerc::c::*</code></a></h3>
+<p>This module is a crate-owned C-side model used by staged lowering, tests, and
+compatibility-style flows. It is public and root-reexported, so the
+documentation needs to treat it as part of the actual surface, not as a hidden
+implementation detail.</p>
 
                     </main>
 

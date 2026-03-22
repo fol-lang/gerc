@@ -3,7 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>Intake Contract - gerc</title>
+        <title>Intake Contract - GERC</title>
 
 
         <!-- Custom HTML head -->
@@ -35,10 +35,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-0ae605e0.js";
+            window.path_to_searchindex_js = "searchindex-962fe17a.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-7fcd72d4.js"></script>
+        <script src="toc-18d46400.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -137,7 +137,7 @@
                         </button>
                     </div>
 
-                    <h1 class="menu-title">gerc</h1>
+                    <h1 class="menu-title">GERC</h1>
 
                     <div class="right-buttons">
                         <a href="print.html" title="Print this book" aria-label="Print this book">
@@ -178,7 +178,7 @@
                 <div id="mdbook-content" class="content">
                     <main>
                         <h1 id="intake-contract"><a class="header" href="#intake-contract">Intake Contract</a></h1>
-<h2 id="primary-input"><a class="header" href="#primary-input">Primary input</a></h2>
+<h2 id="primary-input"><a class="header" href="#primary-input">Primary Input</a></h2>
 <p><code>gerc</code> is source-first, but the important ownership rule is:</p>
 <ul>
 <li><code>gerc</code> library code owns its own input types</li>
@@ -186,11 +186,17 @@
 <li>translation from PARC or LINC artifacts belongs outside <code>gerc/src/**</code></li>
 </ul>
 <p><code>GercInput</code> is therefore the crate-owned intake boundary.</p>
-<h2 id="optional-enrichment"><a class="header" href="#optional-enrichment">Optional enrichment</a></h2>
+<p>In practice there are two real intake layers:</p>
+<ol>
+<li>the preferred <code>GercInput</code> path</li>
+<li>the lower-level crate-owned <code>gerc::c</code> model that staged helpers and some
+tests still use directly</li>
+</ol>
+<h2 id="optional-enrichment"><a class="header" href="#optional-enrichment">Optional Enrichment</a></h2>
 <p>Additional evidence forms can optionally be attached.</p>
 <h3 id="link-analysis-artifact"><a class="header" href="#link-analysis-artifact">Link analysis artifact</a></h3>
 <p>The preferred binary/link evidence contract derived from <code>linc</code>.</p>
-<p>When present, <code>gerc</code> reads:</p>
+<p>When present, <code>gerc</code> can read:</p>
 <ul>
 <li>resolved link-plan data</li>
 <li>declared link surface</li>
@@ -210,18 +216,16 @@ such as record size, record alignment, or enum underlying size, <code>gerc</code
 that declaration instead of guessing.</p>
 <h3 id="resolved-link-plan-artifact"><a class="header" href="#resolved-link-plan-artifact">Resolved link-plan artifact</a></h3>
 <p>Resolved native link requirements. When present, <code>gerc</code> uses the resolved
-plan (with concrete artifact paths and search directories) instead of source
-or analysis-declared raw link surfaces.</p>
+plan, with concrete artifact paths and search directories, instead of the raw
+source-declared link surface.</p>
 <h2 id="building-a-gercinput"><a class="header" href="#building-a-gercinput">Building a <code>GercInput</code></a></h2>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>use gerc::intake::{GercInput, SourcePackage};
 
-// Preferred source-package intake
 let input = GercInput::from_source_package(SourcePackage::default());
-
-// Optional explicit enrichment (builder pattern)
 let input = GercInput::from_source_package(SourcePackage::default())
+    .with_analysis(analysis)
     .with_validation(report)
     .with_link_plan(plan);
 
@@ -230,11 +234,14 @@ let input = GercInput::from_source_json(source_json).unwrap();
 <h2 id="normalization"><a class="header" href="#normalization">Normalization</a></h2>
 <p><code>GercInput::normalize()</code> is called automatically during <code>generate()</code>. It:</p>
 <ul>
-<li>Deduplicates function declarations by name</li>
-<li>Aligns provenance markers</li>
-<li>Is idempotent (safe to call multiple times)</li>
+<li>deduplicates function declarations by name</li>
+<li>aligns provenance markers</li>
+<li>is idempotent</li>
 </ul>
-<h2 id="what-gerc-does-not-accept"><a class="header" href="#what-gerc-does-not-accept">What gerc does NOT accept</a></h2>
+<p>Internally, normalization still routes through the crate-owned binding-style
+model before reconstructing source-shaped state. That is important drift from
+the cleaner architecture story, and the docs should say so plainly.</p>
+<h2 id="what-gerc-does-not-accept"><a class="header" href="#what-gerc-does-not-accept">What GERC Does Not Accept</a></h2>
 <p><code>gerc</code> does not accept raw C source code or header files directly. Source
 extraction belongs in <code>parc</code>, and link/binary evidence belongs in <code>linc</code>.</p>
 <p>The library also should not grow direct PARC/LINC dependency paths in <code>src/</code>.
@@ -248,7 +255,7 @@ That would violate the intended boundary.</p>
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                             </a>
 
-                            <a rel="next prefetch" href="codegen.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next prefetch" href="hardening-matrix.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
                             </a>
 
@@ -262,7 +269,7 @@ That would violate the intended boundary.</p>
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                     </a>
 
-                    <a rel="next prefetch" href="codegen.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a rel="next prefetch" href="hardening-matrix.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
                     </a>
             </nav>

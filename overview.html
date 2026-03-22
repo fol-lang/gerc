@@ -3,7 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>Overview - gerc</title>
+        <title>Overview - GERC</title>
 
 
         <!-- Custom HTML head -->
@@ -35,10 +35,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-0ae605e0.js";
+            window.path_to_searchindex_js = "searchindex-962fe17a.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-7fcd72d4.js"></script>
+        <script src="toc-18d46400.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -137,7 +137,7 @@
                         </button>
                     </div>
 
-                    <h1 class="menu-title">gerc</h1>
+                    <h1 class="menu-title">GERC</h1>
 
                     <div class="right-buttons">
                         <a href="print.html" title="Print this book" aria-label="Print this book">
@@ -178,62 +178,58 @@
                 <div id="mdbook-content" class="content">
                     <main>
                         <h1 id="overview"><a class="header" href="#overview">Overview</a></h1>
-<p><code>GERC</code> currently ships as the <code>gerc</code> crate and sits between <code>parc</code>, <code>linc</code>, and downstream Rust tooling in the
-following pipeline:</p>
-<pre><code class="language-text">PARC         (source parsing and extraction)
-    → LINC   (link, validation, and ABI evidence)
-    → GERC   (Rust projection, code generation)
-    → generated Rust bindings crate
-    → fol-interloop-rust  (optional downstream consumer)
-    → fol-visible surface
+<p><code>gerc</code> sits between <code>parc</code>, <code>linc</code>, and downstream Rust tooling in the
+toolchain:</p>
+<pre><code class="language-text">PARC  (source contracts)
+  -&gt; LINC  (link and evidence contracts)
+  -&gt; GERC  (Rust lowering and emission)
+  -&gt; generated Rust bindings crate or source bundle
 </code></pre>
 <p>Read this chapter as the workflow summary:</p>
 <ol>
 <li><code>gerc</code> receives its own input model</li>
 <li>any upstream artifact translation happens outside <code>gerc/src/**</code></li>
-<li><code>gerc</code> gates, lowers, and emits deterministic Rust/build artifacts</li>
+<li><code>gerc</code> gates, lowers, and emits deterministic Rust and build artifacts</li>
 </ol>
-<h2 id="what-happens-inside-gerc"><a class="header" href="#what-happens-inside-gerc">What happens inside GERC</a></h2>
+<h2 id="what-happens-inside-gerc"><a class="header" href="#what-happens-inside-gerc">What Happens Inside GERC</a></h2>
 <ol>
 <li>
-<p><strong>Intake</strong> — <code>gerc</code> receives its own source/evidence input model via
-<code>GercInput</code>. Tests/examples or external harnesses may translate PARC and LINC
+<p><strong>Intake</strong> - <code>gerc</code> receives a <code>GercInput</code> wrapping source plus optional
+evidence. Tests/examples or external harnesses may translate PARC and LINC
 artifacts into that model.</p>
 </li>
 <li>
-<p><strong>Safety gating</strong> — Each declaration is checked against generation rules.
-Items that cannot be safely represented in Rust (bitfields, anonymous
-records, incomplete types) are rejected with diagnostics.</p>
+<p><strong>Safety gating</strong> - Each declaration is checked against generation rules.
+Items that cannot be safely represented in Rust are rejected with
+diagnostics rather than guessed into existence.</p>
 </li>
 <li>
-<p><strong>Lowering</strong> — Accepted declarations are lowered from GERC-owned source
-types into <code>gerc</code>’s internal Rust projection IR (<code>RustProjection</code>).</p>
+<p><strong>Lowering</strong> - Accepted declarations are lowered from the crate-owned C-side
+model into <code>RustProjection</code>.</p>
 </li>
 <li>
-<p><strong>Type mapping</strong> — C types (<code>int</code>, <code>void*</code>, pointers, arrays, function
-pointers, etc.) are mapped to Rust FFI-safe equivalents.</p>
+<p><strong>Type mapping</strong> - C types, pointers, arrays, function pointers, and
+qualifiers are mapped to Rust FFI-safe equivalents.</p>
 </li>
 <li>
-<p><strong>Emission</strong> — The IR is rendered into deterministic Rust source code.
+<p><strong>Emission</strong> - The projection is rendered into deterministic Rust source.
 Items are emitted in a stable order: constants, type aliases, enums,
-records, then an <code>extern "C"</code> block for functions and statics.</p>
+records, then <code>extern "C"</code> declarations.</p>
 </li>
 <li>
-<p><strong>Crate generation</strong> — Optionally, <code>gerc</code> writes a full Cargo-compatible
-crate directory: <code>Cargo.toml</code>, <code>src/lib.rs</code>, and a <code>build.rs</code> with native
-link metadata.</p>
+<p><strong>Crate generation</strong> - Optionally, <code>gerc</code> writes a Cargo-compatible crate
+directory or a source bundle plus <code>rustc</code> link arguments.</p>
 </li>
 </ol>
-<h2 id="design-principles"><a class="header" href="#design-principles">Design principles</a></h2>
+<h2 id="design-principles"><a class="header" href="#design-principles">Design Principles</a></h2>
 <ul>
-<li><strong>Deterministic</strong> — The same input always produces the same output.</li>
-<li><strong>Conservative</strong> — Prefer refusing generation over emitting unsound code.</li>
-<li><strong>Library-first</strong> — <code>gerc</code> is a Rust library, not a CLI tool.</li>
-<li><strong>Generic</strong> — No <code>fol</code>-specific assumptions in the core crate.</li>
-<li><strong>Artifact-boundary integration</strong> — cross-package composition belongs outside
-<code>gerc/src/**</code>.</li>
-<li><strong>No crate-level back-compat burden</strong> — dead pipeline shapes should be
-deleted, not carried indefinitely.</li>
+<li><strong>Deterministic</strong> - the same input always produces the same output</li>
+<li><strong>Conservative</strong> - refuse generation rather than emit unsound code</li>
+<li><strong>Library-first</strong> - <code>gerc</code> is a Rust library, not a CLI tool</li>
+<li><strong>Generic</strong> - no <code>fol</code>-specific assumptions in the core crate</li>
+<li><strong>Artifact-boundary integration</strong> - cross-package composition belongs outside
+<code>gerc/src/**</code></li>
+<li><strong>No back-compat burden</strong> - discarded shapes are deleted, not preserved</li>
 </ul>
 
                     </main>

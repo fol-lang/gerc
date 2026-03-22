@@ -3,7 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>Testing And Release - gerc</title>
+        <title>Testing And Release - GERC</title>
 
 
         <!-- Custom HTML head -->
@@ -35,10 +35,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-0ae605e0.js";
+            window.path_to_searchindex_js = "searchindex-962fe17a.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-7fcd72d4.js"></script>
+        <script src="toc-18d46400.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -137,7 +137,7 @@
                         </button>
                     </div>
 
-                    <h1 class="menu-title">gerc</h1>
+                    <h1 class="menu-title">GERC</h1>
 
                     <div class="right-buttons">
                         <a href="print.html" title="Print this book" aria-label="Print this book">
@@ -184,20 +184,22 @@ release posture is different from <code>parc</code> and <code>linc</code>.</p>
 <ul>
 <li>can <code>gerc</code> gate unsafe or unsupported input correctly</li>
 <li>can it lower accepted input deterministically</li>
-<li>can it emit stable Rust/build artifacts</li>
+<li>can it emit stable Rust and build artifacts</li>
 <li>can tests/examples prove upstream composition without turning upstream crates
 into library dependencies</li>
 </ul>
-<h2 id="contract-tests"><a class="header" href="#contract-tests">Contract tests</a></h2>
+<h2 id="contract-tests"><a class="header" href="#contract-tests">Contract Tests</a></h2>
 <p>The main contract tests should cover:</p>
 <ul>
 <li>source-first intake through <code>GercInput</code> and <code>generate_from_source</code></li>
 <li>evidence-aware gating when validation and link evidence are attached</li>
+<li>staged <code>BindingPackage -&gt; gate -&gt; lower</code> paths</li>
 <li>deterministic projection and emission</li>
-<li>emitted crate/build output for the documented modes</li>
+<li>emitted crate and source-bundle output for the documented modes</li>
+<li>grouped gate, lowering, and pipeline failure matrices</li>
 </ul>
 <p>Those tests are the practical statement of what downstream code may rely on.</p>
-<h2 id="artifact-boundary-integration-proof"><a class="header" href="#artifact-boundary-integration-proof">Artifact-boundary integration proof</a></h2>
+<h2 id="artifact-boundary-integration-proof"><a class="header" href="#artifact-boundary-integration-proof">Artifact-Boundary Integration Proof</a></h2>
 <p><code>gerc/src/**</code> must not import <code>parc</code> or <code>linc</code>.</p>
 <p>Cross-package proof belongs in:</p>
 <ul>
@@ -221,12 +223,38 @@ internal types, the change is architecturally wrong.</p>
 <ol>
 <li>run <code>make build</code></li>
 <li>run <code>make test</code></li>
+<li>confirm the canonical hardening anchors still pass
+<ul>
+<li>source-only zlib</li>
+<li>source-only libpng</li>
+<li>emitted crate output on deterministic fixtures</li>
+<li>OpenSSL link directives when available</li>
+<li>combined Linux event-loop link directives when available</li>
+</ul>
+</li>
 <li>confirm the preferred public workflow in the README and book still matches
 the tested API</li>
 <li>confirm emitted Cargo and raw <code>rustc</code> paths still match the documented
 output story</li>
 <li>confirm tests/examples still keep PARC/LINC translation outside <code>gerc/src/**</code></li>
 </ol>
+<h2 id="hermeticity-split"><a class="header" href="#hermeticity-split">Hermeticity Split</a></h2>
+<p>Read the large test surfaces in three groups:</p>
+<ul>
+<li>always-on hermetic baselines</li>
+<li>host-dependent but high-value evidence ladders</li>
+<li>conservative rejection and degradation paths</li>
+</ul>
+<p>The hermetic baselines are the confidence floor. The host-dependent ladders
+raise confidence on real targets. The conservative-failure paths prove that
+GERC refuses unsound lowering instead of inventing answers.</p>
+<p>The grouped failure suites now live in:</p>
+<ul>
+<li><code>failure_matrix_gate</code> for validation-driven gate refusals</li>
+<li><code>failure_matrix_lower</code> for anonymous and unsupported lowering failures</li>
+<li><code>failure_matrix_pipeline</code> for the closed source-only anonymous-type cargo-check
+regression</li>
+</ul>
 <h2 id="maintenance-rule"><a class="header" href="#maintenance-rule">Maintenance Rule</a></h2>
 <p>When <code>gerc</code> changes:</p>
 <ol>
@@ -235,10 +263,10 @@ output story</li>
 <li>keep upstream translation in tests/examples/harnesses only</li>
 <li>delete stale workflow language instead of preserving it for history</li>
 </ol>
-<h2 id="what-supported-means"><a class="header" href="#what-supported-means">What “supported” means</a></h2>
+<h2 id="what-supported-means"><a class="header" href="#what-supported-means">What “Supported” Means</a></h2>
 <p>For <code>gerc</code>, support means:</p>
 <ul>
-<li>accepted declarations lower to deterministic Rust/build artifacts</li>
+<li>accepted declarations lower to deterministic Rust and build artifacts</li>
 <li>rejected declarations fail conservatively and diagnostically</li>
 <li>documented output modes are covered by tests</li>
 </ul>
@@ -253,7 +281,7 @@ output story</li>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
-                            <a rel="prev" href="emitted-crate.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                            <a rel="prev" href="readiness-scorecard.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                             </a>
 
@@ -264,7 +292,7 @@ output story</li>
             </div>
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
-                    <a rel="prev" href="emitted-crate.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                    <a rel="prev" href="readiness-scorecard.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                     </a>
 

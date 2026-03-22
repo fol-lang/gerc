@@ -3,7 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>Introduction - gerc</title>
+        <title>Introduction - GERC</title>
 
 
         <!-- Custom HTML head -->
@@ -35,10 +35,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-0ae605e0.js";
+            window.path_to_searchindex_js = "searchindex-962fe17a.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-7fcd72d4.js"></script>
+        <script src="toc-18d46400.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -137,7 +137,7 @@
                         </button>
                     </div>
 
-                    <h1 class="menu-title">gerc</h1>
+                    <h1 class="menu-title">GERC</h1>
 
                     <div class="right-buttons">
                         <a href="print.html" title="Print this book" aria-label="Print this book">
@@ -177,34 +177,42 @@
 
                 <div id="mdbook-content" class="content">
                     <main>
-                        <h1 id="gerc-gerc-today"><a class="header" href="#gerc-gerc-today">GERC (<code>gerc</code> today)</a></h1>
-<p><code>gerc</code> is the current crate name for <code>GERC</code>, the Rust projection layer in the
-<code>PARC -&gt; LINC -&gt; GERC</code> pipeline.</p>
+                        <h1 id="gerc-gerc-crate"><a class="header" href="#gerc-gerc-crate">GERC (<code>gerc</code> crate)</a></h1>
+<p><code>gerc</code> is the Rust lowering and emission layer in the <code>PARC -&gt; LINC -&gt; GERC</code>
+toolchain.</p>
+<p>It is the crate you use when you already have a normalized source contract and,
+optionally, evidence about native symbols or link plans. <code>gerc</code> then turns that
+input into Rust FFI output.</p>
 <p>The target architecture is strict:</p>
 <ul>
 <li><code>gerc</code> library code must not depend on <code>parc</code> or <code>linc</code></li>
 <li><code>gerc</code> owns its own generation model</li>
 <li><code>gerc</code> consumes translated source and evidence inputs</li>
-<li>translation from PARC or LINC artifacts belongs only in tests, examples, or
-external harnesses</li>
+<li>translation from PARC or LINC artifacts belongs only in tests, examples, or external harnesses</li>
 <li>there is no shared ABI crate and no backward-compatibility burden for discarded pipeline shapes</li>
 </ul>
-<p><code>gerc</code> generates Rust FFI bindings from C declarations. The output is a
-complete Cargo-compatible Rust crate (or a loose source bundle), and it also
-emits plain <code>rustc</code> link arguments for non-Cargo toolchains.</p>
+<p><code>gerc</code> generates Rust FFI bindings from C declarations. The output can be a
+standalone Rust source bundle or a Cargo-compatible crate directory, and it
+also emits plain <code>rustc</code> link arguments for non-Cargo toolchains.</p>
+<p>One correction matters up front: the current public crate surface is broader
+than just <code>generate()</code> and <code>generate_from_source()</code>. The crate also exposes:</p>
+<ul>
+<li>a crate-owned C-side model under <code>gerc::c</code></li>
+<li>explicit staged <code>gate</code> / <code>lower</code> modules</li>
+<li>consumer-side inspection and sidecar helpers</li>
+</ul>
 <p>In the toolchain split:</p>
 <ul>
 <li><code>parc</code> owns source meaning</li>
 <li><code>linc</code> owns link and binary meaning</li>
-<li><code>gerc</code> owns Rust lowering and emitted build output</li>
+<li><code>gerc</code> owns Rust lowering, Rust emission, and emitted build output</li>
 </ul>
 <h2 id="audience"><a class="header" href="#audience">Audience</a></h2>
 <p>This book is for developers who:</p>
 <ul>
 <li>want to understand how <code>gerc</code> transforms C declarations into Rust FFI code</li>
 <li>need to integrate <code>gerc</code> as a library in their own tooling</li>
-<li>are building downstream consumers (like <code>fol-interloop-rust</code>) on top of <code>gerc</code>
-output</li>
+<li>are building downstream consumers on top of <code>gerc</code> output</li>
 </ul>
 <h2 id="scope"><a class="header" href="#scope">Scope</a></h2>
 <p><code>gerc</code> is intentionally narrow:</p>
@@ -216,17 +224,16 @@ output</li>
 <tbody>
 <tr><td>C header parsing and source extraction</td><td><code>parc</code></td></tr>
 <tr><td>Link, validation, and ABI evidence</td><td><code>linc</code></td></tr>
-<tr><td>Rust FFI projection and code generation</td><td><strong><code>gerc</code></strong></td></tr>
+<tr><td>Rust FFI projection and code generation</td><td><code>gerc</code></td></tr>
 <tr><td>Runtime loader policy and deployment</td><td>downstream tooling</td></tr>
-<tr><td><code>fol</code>-specific surface generation</td><td><code>fol-interloop-rust</code></td></tr>
+<tr><td><code>fol</code>-specific surface generation</td><td>downstream tooling</td></tr>
 </tbody>
 </table>
 </div>
-<h2 id="quick-start"><a class="header" href="#quick-start">Quick start</a></h2>
+<h2 id="quick-start"><a class="header" href="#quick-start">Quick Start</a></h2>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>use gerc::{generate_from_source, GercConfig};
-use gerc::emit::emit_source;
+</span>use gerc::{generate_from_source, GercConfig, emit_source};
 use gerc::intake::{SourceDeclaration, SourceFunction, SourcePackage, SourceType};
 
 let mut source = SourcePackage::default();
@@ -240,10 +247,10 @@ source.declarations.push(SourceDeclaration::Function(SourceFunction {
 
 let config = GercConfig::new("mylib_sys");
 let output = generate_from_source(source, &amp;config).unwrap();
-let source = emit_source(&amp;output.projection);
-println!("{source}");
+let emitted = emit_source(&amp;output.projection);
+println!("{emitted}");
 <span class="boring">}</span></code></pre>
-<p>If validation evidence is present, <code>gerc</code> treats it as a hard gating input for
+<p>If validation evidence is present, <code>gerc</code> treats it as a gating input for
 functions and variables. Declarations without usable evidence are filtered out
 and reported through diagnostics instead of being emitted.</p>
 

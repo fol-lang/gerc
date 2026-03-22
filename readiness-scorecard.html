@@ -3,7 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>API - GERC</title>
+        <title>Readiness Scorecard - GERC</title>
 
 
         <!-- Custom HTML head -->
@@ -177,201 +177,54 @@
 
                 <div id="mdbook-content" class="content">
                     <main>
-                        <h1 id="api-reference"><a class="header" href="#api-reference">API Reference</a></h1>
-<h2 id="first-principle"><a class="header" href="#first-principle">First Principle</a></h2>
-<p><code>gerc</code> is the Rust lowering and emission layer of the toolchain.</p>
-<p>The safest downstream posture is:</p>
-<ol>
-<li>prefer crate-root APIs first</li>
-<li>provide <code>gerc</code>’s own source/evidence inputs directly</li>
-<li>keep upstream artifact translation outside <code>gerc/src/**</code></li>
-<li>treat emitted Rust and build artifacts as the product boundary</li>
-</ol>
-<h2 id="api-tiers"><a class="header" href="#api-tiers">API Tiers</a></h2>
-<p><code>gerc</code> organizes its public API into two tiers:</p>
+                        <h1 id="readiness-scorecard"><a class="header" href="#readiness-scorecard">Readiness Scorecard</a></h1>
+<p>This chapter ties GERC readiness to the current hardening ladder instead of
+general optimism.</p>
+<h2 id="overall-posture"><a class="header" href="#overall-posture">Overall Posture</a></h2>
+<p>GERC should currently be read as:</p>
 <ul>
-<li><strong>Tier 1</strong>: <code>generate()</code>, <code>generate_from_source()</code>, <code>GercConfig</code>,
-<code>GercInput</code>, <code>GercOutput</code>, <code>GercOutputMeta</code>, <code>SCHEMA_VERSION</code></li>
-<li><strong>Tier 2</strong>: the individual modules (<code>lower</code>, <code>gate</code>, <code>emit</code>, <code>typemap</code>,
-<code>linkgen</code>, <code>crategen</code>, <code>consumer</code>, <code>c</code>)</li>
+<li>strong on source-only lowering fundamentals</li>
+<li>strong on deterministic emission and emitted-crate generation</li>
+<li>strong on conservative rejection of unsupported shapes</li>
+<li>useful and increasingly hardened on evidence-aware large surfaces</li>
+<li>still dependent on host availability for the biggest OpenSSL and Linux-system
+evidence ladders</li>
 </ul>
-<p>The crate root also re-exports the common emission entrypoints so downstream
-code does not need to import <code>emit</code> or <code>crategen</code> directly for routine use:
-<code>emit_source</code>, <code>emit_type</code>, <code>emit_crate</code>, <code>emit_build_rs</code>, <code>emit_rustc_args</code>,
-<code>emit_rustc_link_args</code>, <code>OutputMode</code>, <code>OverwritePolicy</code>, <code>CrateManifest</code>, and
-<code>EmittedCrate</code>.</p>
-<p>For explicit staged workflows, the crate root also re-exports:</p>
+<p>That is a good release posture for a young lowering crate, but it is not yet a
+claim that every ugly native surface will lower cleanly.</p>
+<h2 id="subsystem-scorecard"><a class="header" href="#subsystem-scorecard">Subsystem Scorecard</a></h2>
 <ul>
-<li><code>EvidenceInputs</code></li>
-<li><code>GateDecision</code></li>
-<li><code>output_meta</code>, <code>meta_to_json</code>, <code>meta_from_json</code>, <code>projection_to_json</code>, and
-<code>projection_from_json</code></li>
-<li><code>GercConsumer</code>, <code>ConsumerReport</code>, <code>ConsumerFinding</code>, <code>FindingKind</code>,
-<code>PassthroughConsumer</code>, <code>FolConsumer</code>, <code>build_sidecar</code>, <code>sidecar_to_json</code>,
-<code>sidecar_from_json</code>, <code>extern_function_names</code>, <code>record_names</code>, and
-<code>type_alias_names</code></li>
+<li>source-first intake: high</li>
+<li>gate and refusal diagnostics: high</li>
+<li>lowering and typemapping: high</li>
+<li>deterministic source emission: high</li>
+<li>emitted crate output: high</li>
+<li>raw <code>rustc</code> argument rendering: high</li>
+<li>source-only large-surface confidence: high</li>
+<li>evidence-aware large-surface confidence: medium-high</li>
+<li>conservative rejection on difficult layouts: high</li>
 </ul>
-<p>For staged inspection, import the modules explicitly:</p>
+<h2 id="canonical-readiness-anchors"><a class="header" href="#canonical-readiness-anchors">Canonical Readiness Anchors</a></h2>
+<p>The release posture should be judged against these anchors first:</p>
 <ul>
-<li><code>gerc::gate::gate_package(...)</code></li>
-<li><code>gerc::lower::lower_package(...)</code></li>
+<li>source-only zlib</li>
+<li>source-only libpng</li>
+<li>emitted crate output from deterministic fixtures</li>
+<li>OpenSSL link directives</li>
+<li>combined Linux event-loop link directives</li>
 </ul>
-<p>The root also re-exports many <code>gerc::c::*</code> types directly, because the crate
-still supports staged and compatibility-style workflows over its own binding
-model.</p>
-<h2 id="preferred-public-surface"><a class="header" href="#preferred-public-surface">Preferred Public Surface</a></h2>
-<p>These are the main consumer-facing entrypoints:</p>
-<ul>
-<li><code>generate()</code> and <code>generate_from_source()</code></li>
-<li><code>GercInput</code>, <code>GercConfig</code>, and <code>GercOutput</code></li>
-<li><code>emit_source()</code>, <code>emit_crate()</code>, <code>emit_build_rs()</code>, and <code>emit_rustc_args()</code></li>
-<li>JSON metadata and projection helpers</li>
-<li>consumer-sidecar helpers</li>
-</ul>
-<h2 id="primary-workflow"><a class="header" href="#primary-workflow">Primary Workflow</a></h2>
-<p><code>generate_from_source()</code> is the preferred entrypoint when the caller already
-has a <code>SourcePackage</code>. Use <code>GercInput</code> directly when attaching optional
-translated evidence in parallel with source.</p>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>use gerc::{
-    emit_crate, emit_rustc_args, emit_source, generate, generate_from_source, GercConfig,
-    GercInput, OutputMode, OverwritePolicy,
-};
-
-let input = GercInput::from_source_package(source.clone())
-    .with_analysis(analysis)
-    .with_validation(validation)
-    .with_link_plan(plan);
-
-let output = generate_from_source(source, &amp;GercConfig::new("mylib_sys")).unwrap();
-
-let config = GercConfig::new("mylib_sys");
-let output = generate(&amp;input, &amp;config).unwrap();
-
-let source = emit_source(&amp;output.projection);
-let rustc_args = emit_rustc_args(&amp;output.projection);
-let emitted = emit_crate(
-    &amp;output.projection,
-    &amp;config,
-    std::path::Path::new("/tmp/mylib_sys"),
-    OutputMode::Crate,
-    OverwritePolicy::Overwrite,
-).unwrap();
-<span class="boring">}</span></code></pre>
-<p><code>GercInput</code> also exposes <code>from_source_json(...)</code> for explicit JSON intake.</p>
-<p>When validation evidence is attached, <code>generate()</code> filters out declarations
-that fail validation gating instead of emitting speculative Rust bindings.</p>
-<p>For lower-level staged work, the public API still supports:</p>
-<ul>
-<li><code>BindingPackage</code></li>
-<li><code>BindingItem</code></li>
-<li><code>BindingType</code></li>
-<li><code>gate::gate_package(...)</code></li>
-<li><code>lower::lower_package(...)</code></li>
-</ul>
-<p>The emitted crate path supports both:</p>
-<ul>
-<li>Cargo build-script rendering via <code>build.rs</code></li>
-<li>direct <code>rustc</code> argument rendering via <code>rustc-link-args.txt</code> and
-<code>emit_rustc_args(...)</code></li>
-</ul>
-<h2 id="downstream-posture"><a class="header" href="#downstream-posture">Downstream Posture</a></h2>
-<p>If you are integrating <code>gerc</code> into another tool, prefer:</p>
-<ol>
-<li>root-level generation APIs</li>
-<li>explicit <code>GercInput</code> construction when evidence is available</li>
-<li>emitted Rust/build outputs rather than internal lowering modules</li>
-<li>tests/examples/harnesses for any <code>parc</code> or <code>linc</code> artifact translation</li>
-</ol>
-<h2 id="integration-coverage"><a class="header" href="#integration-coverage">Integration Coverage</a></h2>
-<p>The current suite exercises realistic split-pipeline paths, not only
-hand-constructed packages:</p>
-<ul>
-<li><code>parc -&gt; gerc</code> source-only generation for zlib and libpng fixtures</li>
-<li><code>parc -&gt; linc -&gt; gerc</code> generation with declared link surfaces</li>
-<li><code>parc -&gt; linc -&gt; gerc</code> generation with resolved link-plan evidence</li>
-</ul>
-<p>Those paths are proved in tests and examples. They are not library-level crate
-dependencies.</p>
-<h2 id="configuration"><a class="header" href="#configuration">Configuration</a></h2>
-<p><code>GercConfig</code> controls what gets generated:</p>
-<div class="table-wrapper">
-<table>
-<thead>
-<tr><th>Field</th><th>Default</th><th>Description</th></tr>
-</thead>
-<tbody>
-<tr><td><code>crate_name</code></td><td><code>"gerc_output"</code></td><td>Name for the generated crate</td></tr>
-<tr><td><code>crate_version</code></td><td><code>"0.1.0"</code></td><td>Version string</td></tr>
-<tr><td><code>emit_functions</code></td><td><code>true</code></td><td>Emit <code>extern "C"</code> function declarations</td></tr>
-<tr><td><code>emit_records</code></td><td><code>true</code></td><td>Emit <code>#[repr(C)]</code> struct/union types</td></tr>
-<tr><td><code>emit_enums</code></td><td><code>true</code></td><td>Emit enum types</td></tr>
-<tr><td><code>emit_type_aliases</code></td><td><code>true</code></td><td>Emit type aliases</td></tr>
-<tr><td><code>emit_variables</code></td><td><code>true</code></td><td>Emit static variable declarations</td></tr>
-<tr><td><code>emit_constants</code></td><td><code>true</code></td><td>Emit constant definitions</td></tr>
-<tr><td><code>emit_build_script</code></td><td><code>true</code></td><td>Emit <code>build.rs</code> with link metadata</td></tr>
-</tbody>
-</table>
-</div>
-<h2 id="explicit-non-goals"><a class="header" href="#explicit-non-goals">Explicit Non-Goals</a></h2>
-<p>The current contract does not promise:</p>
-<ul>
-<li>parsing or preprocessing C</li>
-<li>binary inspection inside <code>gerc</code></li>
-<li>automatic invention of missing ABI facts</li>
-<li>library-level dependencies on upstream pipeline crates</li>
-</ul>
-<h2 id="error-handling"><a class="header" href="#error-handling">Error Handling</a></h2>
-<p>All fallible operations return <code>GercResult&lt;T&gt;</code>, which is <code>Result&lt;T, GercError&gt;</code>.</p>
-<h2 id="json-contract"><a class="header" href="#json-contract">JSON Contract</a></h2>
-<p>Output metadata can be serialized for downstream tooling:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>use gerc::contract::{output_meta, meta_to_json};
-
-let meta = output_meta(&amp;config, &amp;output);
-let json = meta_to_json(&amp;meta).unwrap();
-<span class="boring">}</span></code></pre>
-<p>The JSON includes <code>schema_version</code> as an artifact-shape gate.
-<code>meta_from_json()</code> rejects metadata with a schema version newer than the
-current build supports rather than guessing.</p>
-<h2 id="consumer-contract"><a class="header" href="#consumer-contract">Consumer Contract</a></h2>
-<p>Downstream tools implement the <code>GercConsumer</code> trait:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>use gerc::consumer::{GercConsumer, ConsumerReport};
-use gerc::ir::RustProjection;
-
-struct MyConsumer;
-
-impl GercConsumer for MyConsumer {
-    fn inspect(&amp;self, proj: &amp;RustProjection) -&gt; ConsumerReport {
-        ConsumerReport::default()
-    }
-}
-<span class="boring">}</span></code></pre>
-<p>A <code>MetadataSidecar</code> (JSON) can be generated alongside the crate for tools that
-do not need to parse Rust source:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>use gerc::consumer::{build_sidecar, sidecar_to_json};
-
-let sidecar = build_sidecar("mylib_sys", &amp;output.projection);
-let json = sidecar_to_json(&amp;sidecar).unwrap();
-<span class="boring">}</span></code></pre>
-<p>Generated crate metadata and crate-level <code>src/lib.rs</code> markers identify the
-emitter as <code>GERC</code>.</p>
+<p>If those anchors drift, the scorecard should drop even if the smaller unit tests
+still look healthy.</p>
 
                     </main>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
-                            <a rel="prev" href="architecture.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                            <a rel="prev" href="emitted-crate.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                             </a>
 
-                            <a rel="next prefetch" href="intake.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next prefetch" href="testing-and-release.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
                             </a>
 
@@ -381,11 +234,11 @@ emitter as <code>GERC</code>.</p>
             </div>
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
-                    <a rel="prev" href="architecture.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                    <a rel="prev" href="emitted-crate.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                     </a>
 
-                    <a rel="next prefetch" href="intake.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a rel="next prefetch" href="testing-and-release.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
                     </a>
             </nav>
