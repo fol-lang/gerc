@@ -12,6 +12,12 @@ PARC         (source parsing and extraction)
     → fol-visible surface
 ```
 
+Read this chapter as the workflow summary:
+
+1. `gec` receives its own input model
+2. any upstream artifact translation happens outside `gec/src/**`
+3. `gec` gates, lowers, and emits deterministic Rust/build artifacts
+
 ## What happens inside GERC
 
 1. **Intake** — `gec` receives its own source/evidence input model via
