@@ -53,11 +53,29 @@ Before releasing `gerc`:
 
 1. run `make build`
 2. run `make test`
-3. confirm the preferred public workflow in the README and book still matches
+3. confirm the canonical hardening anchors still pass
+   - source-only zlib
+   - source-only libpng conservative-failure path
+   - emitted crate output on deterministic fixtures
+   - OpenSSL link directives when available
+   - combined Linux event-loop link directives when available
+4. confirm the preferred public workflow in the README and book still matches
    the tested API
-4. confirm emitted Cargo and raw `rustc` paths still match the documented
+5. confirm emitted Cargo and raw `rustc` paths still match the documented
    output story
-5. confirm tests/examples still keep PARC/LINC translation outside `gerc/src/**`
+6. confirm tests/examples still keep PARC/LINC translation outside `gerc/src/**`
+
+## Hermeticity Split
+
+Read the large test surfaces in three groups:
+
+- always-on hermetic baselines
+- host-dependent but high-value evidence ladders
+- conservative rejection and degradation paths
+
+The hermetic baselines are the confidence floor. The host-dependent ladders
+raise confidence on real targets. The conservative-failure paths prove that
+GERC refuses unsound lowering instead of inventing answers.
 
 ## Maintenance Rule
 

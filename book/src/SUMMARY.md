@@ -14,4 +14,5 @@
 - [Hardening Matrix](./hardening-matrix.md)
 - [Code Generation](./codegen.md)
 - [Emitted Crate](./emitted-crate.md)
+- [Readiness Scorecard](./readiness-scorecard.md)
 - [Testing And Release](./testing-and-release.md)
