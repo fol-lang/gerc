@@ -71,6 +71,23 @@ Before releasing `gerc`:
    output story
 6. confirm tests/examples still keep PARC/LINC translation outside `gerc/src/**`
 
+For the Level 1 production claim, interpret that checklist in two layers:
+
+- hermetic production floor
+  - source-only sqlite3
+  - source-only zlib
+  - source-only libpng
+  - emitted crate output from deterministic fixtures
+  - source-only pointer-only opaque-handle lowering
+  - packed union acceptance with explicit representation evidence
+- host-dependent confidence raises
+  - OpenSSL link directives when available
+  - libxml2 link directives when available
+  - libcurl link directives when available
+  - Apple framework link directives
+  - Windows system-library link directives
+  - combined Linux event-loop link directives when available
+
 ## Hermeticity Split
 
 Read the large test surfaces in three groups:

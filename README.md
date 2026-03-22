@@ -11,6 +11,33 @@ It produces Rust-facing output from translated C-side inputs:
 - raw `rustc` link arguments
 - metadata sidecars for downstream consumers
 
+## Scoped Production Statement
+
+The current Level 1 production claim for the whole pipeline is:
+
+- Linux/ELF-first
+- canonical-corpus-backed
+- conservative rejection of unsupported layouts and declarations
+
+For GERC specifically, that means:
+
+- production-ready for the documented source-only and evidence-aware canonical
+  corpus
+- not a claim that every native surface lowers cleanly
+- not a claim that every rejected declaration family is a bug
+
+## Level 1 Support Matrix
+
+| Area | Level 1 status | Notes |
+|---|---|---|
+| source-only lowering on canonical corpus | primary production scope | zlib, libpng, sqlite3, and support-tier anchors are the core floor. |
+| evidence-aware Linux/ELF lowering | primary production scope | This is the intended first production path. |
+| Apple framework lowering | secondary confidence scope | Good proof surface, not the primary production claim. |
+| Windows system-library lowering | secondary confidence scope | Good proof surface, not the primary production claim. |
+| bitfield-bearing records | rejected | Explicit rejection is part of the contract. |
+| incomplete but pointer-safe opaque families | supported | Supported as opaque-pointer-compatible lowering. |
+| incomplete embedded layout-sensitive families | rejected | Honest layout is required. |
+
 ## What GERC Actually Exposes Today
 
 The crate is source-first, but its public API is not only `generate()` plus a
@@ -114,6 +141,17 @@ The suite covers:
 
 The tests are the best statement of what GERC actually supports.
 
+## Level 1 Contract
+
+For the Level 1 production claim, GERC's contract is:
+
+- supported families lower deterministically on the named canonical corpus
+- evidence-aware lowering may expand support beyond source-only mode
+- explicitly rejected families remain rejected until an honest representation
+  strategy exists
+- conservative rejection is part of the production contract, not a temporary
+  defect marker
+
 ## Hardening Matrix
 
 The current hardening ladder is easiest to read in four buckets:
@@ -170,6 +208,25 @@ surface lowers equally well today.
 - at least one Apple framework target
 - at least one Windows system-library target
 - at least one combined Linux/system link-directive target
+
+The Level 1 production floor is the hermetic subset of those gates:
+
+- source-only zlib
+- source-only libpng
+- source-only sqlite3
+- emitted crate output from deterministic fixtures
+- source-only pointer-only opaque-handle lowering
+- packed-union acceptance checks
+- keyword-safe placeholder emission checks
+
+The host-dependent confidence-raise layer is:
+
+- OpenSSL link directives
+- libxml2 link directives
+- libcurl link directives
+- Apple framework link directives
+- Windows system-library link directives
+- combined Linux event-loop link directives
 
 The current canonical generation surfaces are:
 

@@ -14,6 +14,10 @@ GERC should currently be read as:
 - still dependent on host availability for the biggest OpenSSL and Linux-system
   evidence ladders
 
+For Level 1 production, that posture should be read as Linux/ELF-first and
+canonical-corpus-backed, with Apple and Windows serving as confidence-raising
+secondary targets.
+
 That is a good release posture for a young lowering crate, but it is not yet a
 claim that every ugly native surface will lower cleanly.
 
@@ -47,3 +51,7 @@ The release posture should be judged against these anchors first:
 
 If those anchors drift, the scorecard should drop even if the smaller unit tests
 still look healthy.
+
+For the Level 1 production claim, the hermetic subset of those anchors is the
+minimum production floor. The host-dependent anchors are confidence raises, not
+the only basis for trust.
