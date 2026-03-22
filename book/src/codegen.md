@@ -15,6 +15,7 @@ Each item in the source-derived lowering package is evaluated against generation
 | Rule | Effect |
 |---|---|
 | Bitfield records | Rejected - no safe `repr(C)` representation |
+| Packed non-bitfield records | Allowed when representation evidence is explicit |
 | Anonymous records | Rejected - Rust requires named types |
 | Anonymous enums | Rejected - Rust requires named types |
 | Incomplete or opaque fields | Rejected - cannot determine layout |
