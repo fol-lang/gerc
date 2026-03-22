@@ -10,6 +10,7 @@ The target architecture is strict:
 - `gec` consumes translated source and evidence inputs
 - translation from PARC or LINC artifacts belongs only in tests, examples, or
   external harnesses
+- there is no shared ABI crate and no backward-compatibility burden for discarded pipeline shapes
 
 `gec` generates Rust FFI bindings from C declarations. The output is a
 complete Cargo-compatible Rust crate (or a loose source bundle), and it also

@@ -7,6 +7,13 @@ It consumes `gec`'s own source/evidence intake contracts and produces
 deterministic Rust FFI output: a projected Rust IR, emitted Rust source, and
 optionally a Cargo-compatible crate bundle with `build.rs`.
 
+Architecturally:
+
+- `gec/src/**` must not depend on `parc` or `linc`
+- `gec` owns its own intake model, projection model, and emitted artifacts
+- translation from PARC or LINC artifacts belongs only in tests, examples, or external harnesses
+- there is no shared ABI crate and no compatibility layer for discarded pipeline shapes
+
 ## Responsibilities
 
 - source-first intake from `gec::SourcePackage`
@@ -32,6 +39,10 @@ PARC (source contracts)
     -> GERC (`gec` crate today)
     -> generated Rust bindings crate
 ```
+
+That diagram is a responsibility diagram, not a library-dependency diagram.
+`gec` may be fed source and evidence that originated upstream, but the
+translation into `gec`'s own intake types must stay outside `gec/src/**`.
 
 ## Status
 
@@ -87,6 +98,18 @@ The crate root now re-exports the main API families:
 
 Generated crate manifests and `src/lib.rs` markers now use `GERC` naming for
 the emitter identity.
+
+## Artifact Boundary
+
+`gec` consumes its own input contracts and emits its own output artifacts.
+The practical split is:
+
+- `parc` owns source artifacts
+- `linc` owns evidence artifacts
+- tests/examples/harnesses may translate those artifacts into `gec` input
+- `gec` emits Rust source, build files, sidecars, and rustc argument files
+
+That keeps generation independent from upstream crate internals.
 
 ## Validation-gated generation
 

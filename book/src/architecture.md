@@ -50,6 +50,10 @@ GecInput (GERC-owned source + optional evidence)
             └── build_sidecar() → JSON metadata for consumers
 ```
 
+This is an internal `gec` data flow. It is not permission for `gec/src/**` to
+import upstream crate types. Upstream artifacts must be translated outside the
+library boundary and then handed to `gec` in `gec`'s own input model.
+
 ## Key types
 
 GERC should not import `parc` or `linc` in library code.

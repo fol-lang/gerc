@@ -93,6 +93,9 @@ hand-constructed packages:
 - vendored `parc -> linc -> gec` generation with declared link surfaces
 - vendored `parc -> linc -> gec` generation with resolved link-plan evidence
 
+Those paths are proved in tests and examples. They are not library-level crate
+dependencies.
+
 ## Configuration
 
 `GecConfig` controls what gets generated:
@@ -134,9 +137,9 @@ let meta = output_meta(&config, &output);
 let json = meta_to_json(&meta).unwrap();
 ```
 
-The JSON includes `schema_version` for forward compatibility.
+The JSON includes `schema_version` as an artifact-shape gate.
 `meta_from_json()` rejects metadata with a schema version newer than the
-current build supports.
+current build supports rather than guessing.
 
 ## Consumer contract
 
