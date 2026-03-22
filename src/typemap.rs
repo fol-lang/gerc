@@ -40,6 +40,10 @@ pub fn map_type(ty: &BindingType) -> RustType {
                 RustType::OpaquePtr {
                     is_const: *const_pointee,
                 }
+            } else if binding_type_is_unnameable_ref(pointee) {
+                RustType::OpaquePtr {
+                    is_const: *const_pointee,
+                }
             } else {
                 // 4.2: regular pointers
                 RustType::Pointer {
@@ -76,6 +80,20 @@ pub fn map_type(ty: &BindingType) -> RustType {
 
         // Qualified types: strip qualifiers and map inner type
         BindingType::Qualified { ty, .. } => map_type(ty),
+    }
+}
+
+fn binding_type_is_unnameable_ref(ty: &BindingType) -> bool {
+    match ty {
+        BindingType::TypedefRef(name)
+        | BindingType::RecordRef(name)
+        | BindingType::EnumRef(name)
+        | BindingType::Opaque(name) => {
+            let trimmed = name.trim();
+            trimmed.is_empty() || trimmed == "<anonymous>"
+        }
+        BindingType::Qualified { ty, .. } => binding_type_is_unnameable_ref(ty),
+        _ => false,
     }
 }
 
@@ -258,6 +276,30 @@ mod tests {
     fn map_opaque() {
         let ty = BindingType::Opaque("FILE".into());
         assert_eq!(map_type(&ty), RustType::Named("FILE".into()));
+    }
+
+    #[test]
+    fn map_pointer_to_anonymous_record_as_opaque_ptr() {
+        let ty = BindingType::ptr(BindingType::RecordRef("<anonymous>".into()));
+        assert_eq!(map_type(&ty), RustType::OpaquePtr { is_const: false });
+    }
+
+    #[test]
+    fn map_pointer_to_anonymous_enum_as_const_opaque_ptr() {
+        let ty = BindingType::const_ptr(BindingType::EnumRef("<anonymous>".into()));
+        assert_eq!(map_type(&ty), RustType::OpaquePtr { is_const: true });
+    }
+
+    #[test]
+    fn map_pointer_to_pointer_to_anonymous_record_preserves_outer_pointer() {
+        let ty = BindingType::ptr(BindingType::ptr(BindingType::RecordRef("<anonymous>".into())));
+        match map_type(&ty) {
+            RustType::Pointer { pointee, is_const } => {
+                assert!(!is_const);
+                assert_eq!(*pointee, RustType::OpaquePtr { is_const: false });
+            }
+            other => panic!("expected Pointer, got {:?}", other),
+        }
     }
 
     // 4.8: typedef chains

@@ -82,3 +82,35 @@ fn incomplete_support_pointer_to_opaque_fields_remain_projectable() {
     assert!(source.contains("pub next: *mut dispatch_queue"));
     assert!(source.contains("pub struct dispatch_queue { _opaque: [u8; 0] }"));
 }
+
+#[test]
+fn incomplete_support_direct_pointers_to_anonymous_records_lower_as_opaque_ptrs() {
+    let mut pkg = BindingPackage::new();
+    pkg.items.push(BindingItem::Function(FunctionBinding {
+        name: "borrow_payload".into(),
+        calling_convention: CallingConvention::C,
+        parameters: vec![
+            ParameterBinding {
+                name: Some("payload".into()),
+                ty: BindingType::ptr(BindingType::RecordRef("<anonymous>".into())),
+            },
+            ParameterBinding {
+                name: Some("out_payload".into()),
+                ty: BindingType::ptr(BindingType::ptr(BindingType::RecordRef(
+                    "<anonymous>".into(),
+                ))),
+            },
+        ],
+        return_type: BindingType::const_ptr(BindingType::EnumRef("<anonymous>".into())),
+        variadic: false,
+        source_offset: None,
+    }));
+
+    let output = generate(&input_from_binding(pkg), &GercConfig::new("anon_ptr_sys")).unwrap();
+    let source = emit_source(&output.projection);
+
+    assert!(source.contains("pub fn borrow_payload"));
+    assert!(source.contains("payload: *mut core::ffi::c_void"));
+    assert!(source.contains("out_payload: *mut *mut core::ffi::c_void"));
+    assert!(source.contains(") -> *const core::ffi::c_void;"));
+}
