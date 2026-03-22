@@ -7,7 +7,7 @@
 //! Categories covered:
 //!   - Compression: zlib
 //!   - Crypto/TLS: OpenSSL
-//!   - Networking: libpcap, Linux sockets/netlink
+//!   - Networking: libpcap, libcurl, Linux sockets/netlink
 //!   - Linux kernel UAPI: input subsystem, CAN bus, perf_event
 //!   - Graphics: libpng, X11/Xlib
 //!   - Audio: ALSA
@@ -343,6 +343,66 @@ fn pcap_e2e_deterministic() {
         return;
     };
     assert_deterministic(header, INCLUDE, &["pcap"], "pcap_sys");
+}
+
+#[test]
+fn libcurl_e2e() {
+    let header = if Path::new("/usr/include/curl/curl.h").exists() {
+        "/usr/include/curl/curl.h"
+    } else if Path::new("/usr/include/x86_64-linux-gnu/curl/curl.h").exists() {
+        "/usr/include/x86_64-linux-gnu/curl/curl.h"
+    } else {
+        return;
+    };
+
+    let Some(r) = bic_to_gerc(header, INCLUDE, &["curl"], &["struct curl_blob"], "curl_sys")
+    else {
+        return;
+    };
+
+    assert!(
+        r.item_count >= 20,
+        "libcurl: expected ≥20 items, got {}",
+        r.item_count
+    );
+    assert!(r.source.contains("curl_easy_init"));
+    assert!(r.source.contains("curl_easy_setopt"));
+    assert_balanced(&r.source, "libcurl");
+}
+
+#[test]
+fn libcurl_e2e_deterministic() {
+    let header = if Path::new("/usr/include/curl/curl.h").exists() {
+        "/usr/include/curl/curl.h"
+    } else if Path::new("/usr/include/x86_64-linux-gnu/curl/curl.h").exists() {
+        "/usr/include/x86_64-linux-gnu/curl/curl.h"
+    } else {
+        return;
+    };
+
+    assert_deterministic(header, INCLUDE, &["curl"], "curl_sys");
+}
+
+#[test]
+fn libcurl_e2e_emits_expected_link_directives() {
+    let header = if Path::new("/usr/include/curl/curl.h").exists() {
+        "/usr/include/curl/curl.h"
+    } else if Path::new("/usr/include/x86_64-linux-gnu/curl/curl.h").exists() {
+        "/usr/include/x86_64-linux-gnu/curl/curl.h"
+    } else {
+        return;
+    };
+
+    let Some(r) = bic_to_gerc(header, INCLUDE, &["curl"], &["struct curl_blob"], "curl_sys")
+    else {
+        return;
+    };
+
+    let build_rs = gerc::emit_build_rs(&r.projection);
+    let rustc_args = gerc::emit_rustc_args(&r.projection);
+
+    assert!(build_rs.contains("cargo:rustc-link-lib=dylib=curl"));
+    assert!(rustc_args.contains("-ldylib=curl"));
 }
 
 // ═══════════════════════════════════════════════════════════
