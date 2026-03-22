@@ -14,6 +14,12 @@ Architecturally:
 - translation from PARC or LINC artifacts belongs only in tests, examples, or external harnesses
 - there is no shared ABI crate and no compatibility layer for discarded pipeline shapes
 
+In the intended architecture:
+
+- `parc` owns source meaning
+- `linc` owns link and binary meaning
+- `gec` owns Rust lowering and emitted build metadata
+
 ## Responsibilities
 
 - source-first intake from `gec::SourcePackage`
