@@ -117,3 +117,44 @@ fn support_tier_bitfield_records_must_reject_in_source_only_mode() {
     assert!(output.diagnostics.iter().any(|diag| diag.message.contains("bitfields")));
     assert!(!source.contains("pub struct flags"));
 }
+
+#[test]
+fn support_tier_source_only_projection_is_deterministic() {
+    let make = || {
+        let output = generate_from_source(source_only_widget_api(), &GercConfig::new("widget_sys"))
+            .expect("source-only widget API should generate");
+        serde_json::to_string(&output.projection).expect("projection json")
+    };
+
+    assert_eq!(make(), make());
+}
+
+#[test]
+fn support_tier_evidence_aware_link_args_are_deterministic() {
+    let declared = LinkInput::Library(LinkLibrary {
+        name: "ssl".into(),
+        kind: LinkLibraryKind::Dynamic,
+        source: LinkRequirementSource::Declared,
+    });
+    let plan = ResolvedLinkPlan {
+        preferred_mode: LinkResolutionMode::PreferDynamic,
+        native_surface_kind: NativeSurfaceKind::LibraryNames,
+        inputs: vec![declared.clone()],
+        requirements: vec![ResolvedLinkRequirement {
+            declared,
+            source: LinkRequirementSource::Declared,
+            resolution: RequirementResolution::Resolved,
+            providers: vec![],
+        }],
+        ..ResolvedLinkPlan::default()
+    };
+
+    let make = || {
+        let input = GercInput::from_source_package(source_only_widget_api()).with_link_plan(plan.clone());
+        let output = generate(&input, &GercConfig::new("widget_ssl_sys"))
+            .expect("evidence-aware widget API should generate");
+        emit_rustc_link_args(&output.projection.link_requirements)
+    };
+
+    assert_eq!(make(), make());
+}
