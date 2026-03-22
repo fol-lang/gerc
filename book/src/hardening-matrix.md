@@ -11,7 +11,7 @@ are carrying confidence for lowering, emission, and build-output generation.
 These should stay green everywhere:
 
 - source-only zlib lowering
-- source-only libpng conservative-failure path
+- source-only libpng lowering
 - deterministic emitted crate output on vendored fixtures
 - large internal corpus fixtures and root API tests
 
@@ -37,7 +37,8 @@ evidence without taking a library dependency on upstream crates.
 
 These are good failures, not bad coverage:
 
-- anonymous-type lowering refusal
+- anonymous-type lowering fallback and refusal when by-value naming is not
+  honest
 - unsupported layout or ABI-sensitive gating
 - source-only degradation when link evidence is absent
 - explicit rejection of declarations that would produce unsound Rust
@@ -53,7 +54,7 @@ Those tests should remain:
 The most important repeat-run anchors right now are:
 
 - source-only zlib projection
-- vendored libpng conservative-failure path
+- source-only libpng projection
 - emitted crate output on deterministic fixtures
 - OpenSSL link directives when available
 - combined Linux event-loop link directives when available

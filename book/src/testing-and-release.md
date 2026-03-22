@@ -56,7 +56,7 @@ Before releasing `gerc`:
 2. run `make test`
 3. confirm the canonical hardening anchors still pass
    - source-only zlib
-   - source-only libpng conservative-failure path
+   - source-only libpng
    - emitted crate output on deterministic fixtures
    - OpenSSL link directives when available
    - combined Linux event-loop link directives when available
@@ -82,8 +82,8 @@ The grouped failure suites now live in:
 
 - `failure_matrix_gate` for validation-driven gate refusals
 - `failure_matrix_lower` for anonymous and unsupported lowering failures
-- `failure_matrix_pipeline` for the pinned source-only anonymous-type cargo-check
-  gap
+- `failure_matrix_pipeline` for the closed source-only anonymous-type cargo-check
+  regression
 
 ## Maintenance Rule
 

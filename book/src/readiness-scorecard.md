@@ -34,7 +34,7 @@ claim that every ugly native surface will lower cleanly.
 The release posture should be judged against these anchors first:
 
 - source-only zlib
-- source-only libpng conservative failure
+- source-only libpng
 - emitted crate output from deterministic fixtures
 - OpenSSL link directives
 - combined Linux event-loop link directives

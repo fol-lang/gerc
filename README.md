@@ -120,19 +120,19 @@ The current hardening ladder is easiest to read in four buckets:
 
 - hermetic vendored baselines
   - source-only zlib lowering
-  - source-only libpng lowering with conservative rejection
+  - source-only libpng lowering
   - emitted crate output on deterministic vendored surfaces
 - host-dependent evidence ladders
   - OpenSSL link-directive generation
   - combined Linux event-loop link-directive generation
 - failure and conservative-lowering surfaces
-  - anonymous-type rejection paths
+  - anonymous-type fallback and rejection paths
   - unsupported layout and ABI-sensitive gating
   - source-only degradation when link evidence is absent
   - explicit gate, lowering, and pipeline failure matrices
 - determinism anchors
   - source-only zlib projection
-  - vendored libpng conservative failure path
+  - source-only libpng projection
   - OpenSSL link directives when available
   - combined Linux event-loop link directives
 
@@ -155,7 +155,7 @@ surface lowers equally well today.
 The current canonical generation surfaces are:
 
 - source-only zlib
-- source-only libpng conservative failure
+- source-only libpng
 - emitted crate output from deterministic fixtures
 - OpenSSL link directives
 - combined Linux event-loop link directives
