@@ -280,6 +280,27 @@ fn openssl_e2e_fol_consumer() {
     assert!(report.items_inspected >= 20);
 }
 
+#[test]
+fn openssl_e2e_emits_expected_link_directives() {
+    let Some(r) = bic_to_gerc(
+        "/usr/include/openssl/ssl.h",
+        INCLUDE,
+        &["ssl", "crypto"],
+        &[],
+        "openssl_sys",
+    ) else {
+        return;
+    };
+
+    let build_rs = gerc::emit_build_rs(&r.projection);
+    let rustc_args = gerc::emit_rustc_args(&r.projection);
+
+    assert!(build_rs.contains("cargo:rustc-link-lib=dylib=ssl"));
+    assert!(build_rs.contains("cargo:rustc-link-lib=dylib=crypto"));
+    assert!(rustc_args.contains("-ldylib=ssl"));
+    assert!(rustc_args.contains("-ldylib=crypto"));
+}
+
 // ═══════════════════════════════════════════════════════════
 //  NETWORKING: libpcap
 // ═══════════════════════════════════════════════════════════
