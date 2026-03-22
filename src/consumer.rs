@@ -1,7 +1,7 @@
 //! Downstream consumer contract and metadata sidecar.
 //!
 //! Defines the generic consumer interface for tools (like `fol-interloop-rust`)
-//! that inspect `gec`-generated crates.  This module intentionally avoids
+//! that inspect `gerc`-generated crates.  This module intentionally avoids
 //! `fol`-specific assumptions while providing concrete hooks for it.
 
 use serde::{Deserialize, Serialize};
@@ -11,14 +11,14 @@ use crate::ir::{RustItem, RustProjection, RustType};
 
 /// Generic downstream-consumer contract.
 ///
-/// Any tool that consumes `gec` output should use this trait to inspect
+/// Any tool that consumes `gerc` output should use this trait to inspect
 /// the generated projection.
-pub trait GecConsumer {
+pub trait GercConsumer {
     /// Inspect the projection and produce consumer-specific output.
     fn inspect(&self, proj: &RustProjection) -> ConsumerReport;
 }
 
-/// Report produced by a consumer inspecting a `gec` projection.
+/// Report produced by a consumer inspecting a `gerc` projection.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct ConsumerReport {
     pub consumer_name: String,
@@ -49,7 +49,7 @@ pub enum FindingKind {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MetadataSidecar {
     pub schema_version: u32,
-    pub gec_version: String,
+    pub gerc_version: String,
     pub crate_name: String,
     pub items: Vec<SidecarItem>,
     pub link_libraries: Vec<String>,
@@ -94,7 +94,7 @@ pub fn build_sidecar(crate_name: &str, proj: &RustProjection) -> MetadataSidecar
 
     MetadataSidecar {
         schema_version: SCHEMA_VERSION,
-        gec_version: env!("CARGO_PKG_VERSION").to_string(),
+        gerc_version: env!("CARGO_PKG_VERSION").to_string(),
         crate_name: crate_name.into(),
         items,
         link_libraries,
@@ -172,7 +172,7 @@ fn item_kind(item: &RustItem) -> SidecarItemKind {
 /// A minimal example consumer that reports all items as usable.
 pub struct PassthroughConsumer;
 
-impl GecConsumer for PassthroughConsumer {
+impl GercConsumer for PassthroughConsumer {
     fn inspect(&self, proj: &RustProjection) -> ConsumerReport {
         ConsumerReport {
             consumer_name: "passthrough".into(),
@@ -193,7 +193,7 @@ impl GecConsumer for PassthroughConsumer {
 /// A fol-oriented example consumer (without making it the core contract).
 pub struct FolConsumer;
 
-impl GecConsumer for FolConsumer {
+impl GercConsumer for FolConsumer {
     fn inspect(&self, proj: &RustProjection) -> ConsumerReport {
         let mut findings = Vec::new();
         for item in &proj.items {
@@ -422,18 +422,18 @@ mod tests {
         assert_eq!(sidecar.schema_version, SCHEMA_VERSION);
     }
 
-    // 12.9: what remains outside gec
-    // This is a documentation slice — gec does not own:
+    // 12.9: what remains outside gerc
+    // This is a documentation slice — gerc does not own:
     // - C parsing (bic)
     // - fol surface generation
     // - runtime loader policy
     // The test proves the contract boundaries are clean.
     #[test]
-    fn gec_does_not_expose_linc_internals() {
-        // The consumer module uses only gec::ir types, not linc types
+    fn gerc_does_not_expose_linc_internals() {
+        // The consumer module uses only gerc::ir types, not linc types
         let proj = sample_projection();
         let sidecar = build_sidecar("boundary_test", &proj);
-        // Sidecar is purely gec-typed
+        // Sidecar is purely gerc-typed
         let json = sidecar_to_json(&sidecar).unwrap();
         assert!(!json.contains("BindingType")); // no linc types leak
         assert!(!json.contains("BindingItem"));
@@ -443,9 +443,9 @@ mod tests {
     #[test]
     fn full_consumer_pipeline() {
         // Build a package, run full generate, then consumer inspect
-        use crate::config::GecConfig;
+        use crate::config::GercConfig;
         use crate::contract::generate;
-        use crate::intake::GecInput;
+        use crate::intake::GercInput;
         use crate::c::*;
 
         let mut pkg = BindingPackage::new();
@@ -459,8 +459,8 @@ mod tests {
         }));
 
         let input =
-            GecInput::from_source_package(crate::intake::source_package_from_binding(&pkg));
-        let cfg = GecConfig::new("final_test");
+            GercInput::from_source_package(crate::intake::source_package_from_binding(&pkg));
+        let cfg = GercConfig::new("final_test");
         let output = generate(&input, &cfg).unwrap();
 
         // Consumer inspection

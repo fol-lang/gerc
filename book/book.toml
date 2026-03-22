@@ -1,8 +1,8 @@
 [book]
-title = "gec"
+title = "gerc"
 authors = ["Trim Bresilla"]
 language = "en"
 src = "src"
 
 [output.html]
-git-repository-url = "https://github.com/bresilla/gec"
+git-repository-url = "https://github.com/bresilla/gerc"

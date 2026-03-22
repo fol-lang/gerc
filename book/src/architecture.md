@@ -2,7 +2,7 @@
 
 ## What GERC Owns
 
-`gec` owns Rust lowering, projection, emission, and generated build output for
+`gerc` owns Rust lowering, projection, emission, and generated build output for
 this toolchain layer.
 
 It does not own:
@@ -25,15 +25,15 @@ It does not own:
 | `linkgen` | Lowers native link surfaces into `build.rs` and `rustc` directives |
 | `contract` | Top-level `generate()` entry point and JSON output contract |
 | `consumer` | Generic downstream-consumer contract and metadata sidecar |
-| `config` | Generation configuration (`GecConfig`) |
-| `output` | Generation output container (`GecOutput`, diagnostics) |
-| `error` | Crate error types (`GecError`, `GecResult`) |
+| `config` | Generation configuration (`GercConfig`) |
+| `output` | Generation output container (`GercOutput`, diagnostics) |
+| `error` | Crate error types (`GercError`, `GercResult`) |
 
-`gec` is the only Rust emitter in this pipeline layer. If older Rust-emission
+`gerc` is the only Rust emitter in this pipeline layer. If older Rust-emission
 logic still exists elsewhere, the intended end state is to move the useful
 behavior here and delete the duplicate path.
 
-At the crate root, `gec` now exposes four top-level API families without
+At the crate root, `gerc` now exposes four top-level API families without
 module-qualified imports for routine use:
 
 - generation and crate emission
@@ -44,7 +44,7 @@ module-qualified imports for routine use:
 ## Data flow
 
 ```text
-GecInput (GERC-owned source + optional evidence)
+GercInput (GERC-owned source + optional evidence)
     │
     ├── gate::gate_package()  →  Vec<GateDecision> + diagnostics
     │       │
@@ -54,26 +54,26 @@ GecInput (GERC-owned source + optional evidence)
     │
     ├── lower_link_surface()  →  Vec<RustLinkRequirement>
     │
-    └── GecOutput { projection, diagnostics }
+    └── GercOutput { projection, diagnostics }
             │
             ├── emit_source()  →  Rust source string
             ├── emit_crate()   →  Cargo crate on disk
             └── build_sidecar() → JSON metadata for consumers
 ```
 
-This is an internal `gec` data flow. It is not permission for `gec/src/**` to
+This is an internal `gerc` data flow. It is not permission for `gerc/src/**` to
 import upstream crate types. Upstream artifacts must be translated outside the
-library boundary and then handed to `gec` in `gec`'s own input model.
+library boundary and then handed to `gerc` in `gerc`'s own input model.
 
 ## Artifact boundary
 
-`gec` consumes its own source/evidence model and emits its own generation
+`gerc` consumes its own source/evidence model and emits its own generation
 artifacts.
 
 The boundary rule is:
 
-- `gec/src/**` must not depend on `parc` or `linc`
-- tests/examples/external harnesses may translate upstream artifacts into `gec`
+- `gerc/src/**` must not depend on `parc` or `linc`
+- tests/examples/external harnesses may translate upstream artifacts into `gerc`
   input
 - generated Rust/build outputs are the downstream-facing product
 

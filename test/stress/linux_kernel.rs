@@ -1002,7 +1002,7 @@ pub fn linux_kernel_package() -> BindingPackage {
         });
     }
 
-    // unsupported items (things gec should reject)
+    // unsupported items (things gerc should reject)
     pkg.items.push(BindingItem::Unsupported(UnsupportedItem {
         name: Some("__kernel_sigset_t".into()),
         reason: "platform-specific opaque kernel type".into(),

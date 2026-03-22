@@ -2,21 +2,21 @@
 
 ## First principle
 
-`gec` is the Rust lowering and emission layer of the toolchain.
+`gerc` is the Rust lowering and emission layer of the toolchain.
 
 The safest downstream posture is:
 
 1. prefer crate-root APIs first
-2. provide `gec`'s own source/evidence inputs directly
-3. keep upstream artifact translation outside `gec/src/**`
+2. provide `gerc`'s own source/evidence inputs directly
+3. keep upstream artifact translation outside `gerc/src/**`
 4. treat emitted Rust/build artifacts as the product boundary
 
 ## API tiers
 
-`gec` organizes its public API into two tiers:
+`gerc` organizes its public API into two tiers:
 
-- **Tier 1 (stable)**: `generate()`, `generate_from_source()`, `GecConfig`, `GecInput`, `GecOutput`,
-  `GecOutputMeta`, `SCHEMA_VERSION`
+- **Tier 1 (stable)**: `generate()`, `generate_from_source()`, `GercConfig`, `GercInput`, `GercOutput`,
+  `GercOutputMeta`, `SCHEMA_VERSION`
 - **Tier 2 (public but less stable)**: individual modules (`lower`, `gate`,
   `emit`, `typemap`, `linkgen`, `crategen`, `consumer`)
 
@@ -32,22 +32,22 @@ For explicit staged workflows, the crate root also re-exports:
 - `GateDecision` for explicit gating inspection results
 - `output_meta`, `meta_to_json`, `meta_from_json`, `projection_to_json`, and
   `projection_from_json` for JSON contracts
-- `GecConsumer`, `ConsumerReport`, `ConsumerFinding`, `FindingKind`,
+- `GercConsumer`, `ConsumerReport`, `ConsumerFinding`, `FindingKind`,
   `PassthroughConsumer`, `FolConsumer`, `build_sidecar`, `sidecar_to_json`,
   `sidecar_from_json`, `extern_function_names`, `record_names`, and
   `type_alias_names` for downstream inspection
 
 For staged inspection, import the modules explicitly:
 
-- `gec::gate::gate_package(...)`
-- `gec::lower::lower_package(...)`
+- `gerc::gate::gate_package(...)`
+- `gerc::lower::lower_package(...)`
 
 ## Preferred public surface
 
 These are the main consumer-facing entrypoints:
 
 - `generate()` and `generate_from_source()`
-- `GecInput`, `GecConfig`, and `GecOutput`
+- `GercInput`, `GercConfig`, and `GercOutput`
 - `emit_source()`, `emit_crate()`, `emit_build_rs()`, and `emit_rustc_args()`
 - JSON metadata/projection helpers
 - consumer-sidecar helpers
@@ -55,23 +55,23 @@ These are the main consumer-facing entrypoints:
 ## Primary workflow
 
 `generate_from_source()` is the preferred entrypoint when the caller already
-has a `gec::SourcePackage`. Use `GecInput` directly when attaching optional
+has a `gerc::SourcePackage`. Use `GercInput` directly when attaching optional
 translated evidence in parallel with source.
 
 ```rust
-use gec::{
-    emit_crate, emit_rustc_args, emit_source, generate, generate_from_source, GecConfig,
-    GecInput, OutputMode, OverwritePolicy,
+use gerc::{
+    emit_crate, emit_rustc_args, emit_source, generate, generate_from_source, GercConfig,
+    GercInput, OutputMode, OverwritePolicy,
 };
 
 // 1a. Preferred: build input from a SourcePackage
-let input = GecInput::from_source_package(source.clone()).with_analysis(analysis);
+let input = GercInput::from_source_package(source.clone()).with_analysis(analysis);
 
 // 1b. Or generate directly from a SourcePackage
-let output = generate_from_source(source, &GecConfig::new("mylib_sys")).unwrap();
+let output = generate_from_source(source, &GercConfig::new("mylib_sys")).unwrap();
 
 // 3. Configure generation for the explicit-input path
-let config = GecConfig::new("mylib_sys");
+let config = GercConfig::new("mylib_sys");
 
 // 4. Run the pipeline
 let output = generate(&input, &config).unwrap();
@@ -88,9 +88,9 @@ let emitted = emit_crate(
 ).unwrap();
 ```
 
-`GecInput` exposes an explicit source-contract JSON constructor:
+`GercInput` exposes an explicit source-contract JSON constructor:
 
-- `GecInput::from_source_json(...)`
+- `GercInput::from_source_json(...)`
 
 When validation evidence is attached, `generate()` filters out declarations
 that fail validation gating instead of emitting speculative Rust bindings.
@@ -107,10 +107,10 @@ The emitted crate path now supports both:
 
 ## Downstream posture
 
-If you are integrating `gec` into another tool, prefer:
+If you are integrating `gerc` into another tool, prefer:
 
 1. root-level generation APIs
-2. explicit `GecInput` construction when evidence is available
+2. explicit `GercInput` construction when evidence is available
 3. emitted Rust/build outputs rather than internal lowering modules
 4. tests/examples/harnesses for any `parc` or `linc` artifact translation
 
@@ -119,20 +119,20 @@ If you are integrating `gec` into another tool, prefer:
 The current suite exercises realistic split-pipeline paths, not only
 hand-constructed packages:
 
-- vendored `parc -> gec` source-only generation for zlib and libpng fixtures
-- vendored `parc -> linc -> gec` generation with declared link surfaces
-- vendored `parc -> linc -> gec` generation with resolved link-plan evidence
+- vendored `parc -> gerc` source-only generation for zlib and libpng fixtures
+- vendored `parc -> linc -> gerc` generation with declared link surfaces
+- vendored `parc -> linc -> gerc` generation with resolved link-plan evidence
 
 Those paths are proved in tests and examples. They are not library-level crate
 dependencies.
 
 ## Configuration
 
-`GecConfig` controls what gets generated:
+`GercConfig` controls what gets generated:
 
 | Field | Default | Description |
 |---|---|---|
-| `crate_name` | `"gec_output"` | Name for the generated crate |
+| `crate_name` | `"gerc_output"` | Name for the generated crate |
 | `crate_version` | `"0.1.0"` | Version string |
 | `emit_functions` | `true` | Emit `extern "C"` function declarations |
 | `emit_records` | `true` | Emit `#[repr(C)]` struct/union types |
@@ -147,17 +147,17 @@ dependencies.
 The current contract does not promise:
 
 - parsing or preprocessing C
-- binary inspection inside `gec`
+- binary inspection inside `gerc`
 - automatic invention of missing ABI facts
 - library-level dependencies on upstream pipeline crates
 
 ## Error handling
 
-All fallible operations return `GecResult<T>`, which is
-`Result<T, GecError>`.
+All fallible operations return `GercResult<T>`, which is
+`Result<T, GercError>`.
 
 ```rust
-pub enum GecError {
+pub enum GercError {
     EmptyInput,
     InvalidConfig { reason: String },
     Io(std::io::Error),
@@ -170,7 +170,7 @@ pub enum GecError {
 Output metadata can be serialized for downstream tooling:
 
 ```rust
-use gec::contract::{output_meta, meta_to_json};
+use gerc::contract::{output_meta, meta_to_json};
 
 let meta = output_meta(&config, &output);
 let json = meta_to_json(&meta).unwrap();
@@ -182,15 +182,15 @@ current build supports rather than guessing.
 
 ## Consumer contract
 
-Downstream tools implement the `GecConsumer` trait:
+Downstream tools implement the `GercConsumer` trait:
 
 ```rust
-use gec::consumer::{GecConsumer, ConsumerReport};
-use gec::ir::RustProjection;
+use gerc::consumer::{GercConsumer, ConsumerReport};
+use gerc::ir::RustProjection;
 
 struct MyConsumer;
 
-impl GecConsumer for MyConsumer {
+impl GercConsumer for MyConsumer {
     fn inspect(&self, proj: &RustProjection) -> ConsumerReport {
         // inspect the projection...
         ConsumerReport::default()
@@ -202,7 +202,7 @@ A `MetadataSidecar` (JSON) can be generated alongside the crate for tools
 that don't need to parse Rust source:
 
 ```rust
-use gec::consumer::{build_sidecar, sidecar_to_json};
+use gerc::consumer::{build_sidecar, sidecar_to_json};
 
 let sidecar = build_sidecar("mylib_sys", &output.projection);
 let json = sidecar_to_json(&sidecar).unwrap();

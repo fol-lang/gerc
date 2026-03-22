@@ -5,7 +5,7 @@ mod linc_common;
 
 use std::path::{Path, PathBuf};
 
-use gec::{emit_source, generate, generate_from_source, GecConfig, GecInput};
+use gerc::{emit_source, generate, generate_from_source, GercConfig, GercInput};
 
 fn vendored_root(name: &str) -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -14,7 +14,7 @@ fn vendored_root(name: &str) -> PathBuf {
         .join("header")
 }
 
-fn parse_vendored_source(entry: &Path, include_dirs: &[PathBuf]) -> Option<gec::SourcePackage> {
+fn parse_vendored_source(entry: &Path, include_dirs: &[PathBuf]) -> Option<gerc::SourcePackage> {
     let mut cpp_options = vec!["-E".to_string()];
     for dir in include_dirs {
         cpp_options.push(format!("-I{}", dir.display()));
@@ -33,7 +33,7 @@ fn parse_vendored_source(entry: &Path, include_dirs: &[PathBuf]) -> Option<gec::
 }
 
 #[test]
-fn vendored_zlib_parc_to_gec_source_only() {
+fn vendored_zlib_parc_to_gerc_source_only() {
     let root = vendored_root("zlib");
     let include_dir = root.join("include");
     let entry = root.join("main.c");
@@ -42,7 +42,7 @@ fn vendored_zlib_parc_to_gec_source_only() {
         return;
     };
 
-    let output = generate_from_source(source, &GecConfig::new("zlib_sys")).unwrap();
+    let output = generate_from_source(source, &GercConfig::new("zlib_sys")).unwrap();
     let emitted = emit_source(&output.projection);
 
     assert!(
@@ -56,14 +56,14 @@ fn vendored_zlib_parc_to_gec_source_only() {
 }
 
 #[test]
-fn vendored_zlib_parc_to_gec_is_deterministic() {
+fn vendored_zlib_parc_to_gerc_is_deterministic() {
     let root = vendored_root("zlib");
     let include_dir = root.join("include");
     let entry = root.join("main.c");
 
     let make = || {
         let source = parse_vendored_source(&entry, std::slice::from_ref(&include_dir)).unwrap();
-        let output = generate_from_source(source, &GecConfig::new("zlib_sys")).unwrap();
+        let output = generate_from_source(source, &GercConfig::new("zlib_sys")).unwrap();
         emit_source(&output.projection)
     };
 
@@ -71,7 +71,7 @@ fn vendored_zlib_parc_to_gec_is_deterministic() {
 }
 
 #[test]
-fn vendored_libpng_parc_to_gec_source_only() {
+fn vendored_libpng_parc_to_gerc_source_only() {
     let root = vendored_root("libpng");
     let include_dir = root.join("include");
     let entry = root.join("main.c");
@@ -80,7 +80,7 @@ fn vendored_libpng_parc_to_gec_source_only() {
         return;
     };
 
-    let output = generate_from_source(source, &GecConfig::new("png_sys")).unwrap();
+    let output = generate_from_source(source, &GercConfig::new("png_sys")).unwrap();
     let emitted = emit_source(&output.projection);
 
     assert!(
@@ -97,7 +97,7 @@ fn vendored_libpng_parc_to_gec_source_only() {
 }
 
 #[test]
-fn vendored_zlib_parc_linc_gec_link_surface() {
+fn vendored_zlib_parc_linc_gerc_link_surface() {
     let root = vendored_root("zlib");
     let include_dir = root.join("include");
     let entry = root.join("main.c");
@@ -112,8 +112,8 @@ fn vendored_zlib_parc_linc_gec_link_surface() {
     .unwrap();
 
     let output = generate(
-        &GecInput::from_source_package(common::from_binding_package(&result.package)),
-        &GecConfig::new("zlib_sys"),
+        &GercInput::from_source_package(common::from_binding_package(&result.package)),
+        &GercConfig::new("zlib_sys"),
     )
     .unwrap();
     let emitted = emit_source(&output.projection);
@@ -127,7 +127,7 @@ fn vendored_zlib_parc_linc_gec_link_surface() {
 }
 
 #[test]
-fn vendored_zlib_parc_linc_gec_resolved_link_plan() {
+fn vendored_zlib_parc_linc_gerc_resolved_link_plan() {
     let root = vendored_root("zlib");
     let include_dir = root.join("include");
     let entry = root.join("main.c");
@@ -143,9 +143,9 @@ fn vendored_zlib_parc_linc_gec_resolved_link_plan() {
 
     let plan = linc::resolve_link_plan(&result.package);
     let output = generate(
-        &GecInput::from_source_package(common::from_binding_package(&result.package))
+        &GercInput::from_source_package(common::from_binding_package(&result.package))
             .with_link_plan(common::from_linc_link_plan(&plan)),
-        &GecConfig::new("zlib_sys"),
+        &GercConfig::new("zlib_sys"),
     )
     .unwrap();
 
@@ -155,11 +155,11 @@ fn vendored_zlib_parc_linc_gec_resolved_link_plan() {
         .link_requirements
         .iter()
         .any(|req| req.name == "z"));
-    assert!(gec::emit_build_rs(&output.projection).contains("cargo:rustc-link-lib=dylib=z"));
+    assert!(gerc::emit_build_rs(&output.projection).contains("cargo:rustc-link-lib=dylib=z"));
 }
 
 #[test]
-fn vendored_libpng_parc_linc_gec_link_surface() {
+fn vendored_libpng_parc_linc_gerc_link_surface() {
     let root = vendored_root("libpng");
     let include_dir = root.join("include");
     let entry = root.join("main.c");
@@ -174,8 +174,8 @@ fn vendored_libpng_parc_linc_gec_link_surface() {
     .unwrap();
 
     let output = generate(
-        &GecInput::from_source_package(common::from_binding_package(&result.package)),
-        &GecConfig::new("png_sys"),
+        &GercInput::from_source_package(common::from_binding_package(&result.package)),
+        &GercConfig::new("png_sys"),
     )
     .unwrap();
     let emitted = emit_source(&output.projection);

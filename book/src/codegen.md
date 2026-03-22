@@ -1,12 +1,12 @@
 # Code Generation
 
-`gec` owns Rust FFI emission in the split `PARC -> LINC -> GERC` pipeline.
-Useful older emitter behavior is rehomed here when it still belongs in `gec`;
+`gerc` owns Rust FFI emission in the split `PARC -> LINC -> GERC` pipeline.
+Useful older emitter behavior is rehomed here when it still belongs in `gerc`;
 obsolete output shapes are not kept alive just to preserve dead paths.
 
 ## Pipeline stages
 
-Code generation in `gec` proceeds through several stages:
+Code generation in `gerc` proceeds through several stages:
 
 ### 1. Safety gating (`gate`)
 
@@ -44,7 +44,7 @@ C types are mapped to Rust FFI-safe equivalents:
 
 ### 3. Lowering (`lower`)
 
-Accepted items are lowered from `gec`'s C-side model to `gec`'s internal IR:
+Accepted items are lowered from `gerc`'s C-side model to `gerc`'s internal IR:
 
 - **Functions** → `RustFunction` (name, parameters, return type, variadic flag)
 - **Structs** → `RustRecord` with `RustRecordKind::Struct`
@@ -77,7 +77,7 @@ Some emitted forms intentionally differ from older `linc` Rust output:
 - enums emit as `#[repr(...)] pub enum NAME { ... }`, not typedef-plus-const groups
 - function-pointer aliases emit as `Option<unsafe extern "C" fn(...)>`
 
-These are the supported `gec` forms going forward.
+These are the supported `gerc` forms going forward.
 
 ## Link metadata (`linkgen`)
 
@@ -92,5 +92,5 @@ Link evidence is lowered into Cargo-compatible `build.rs` directives:
 Platform filtering is supported via `cfg!()` guards when platform constraints
 are specified.
 
-When a resolved `ResolvedLinkPlan` is attached to `GecInput`, `gec` prefers
+When a resolved `ResolvedLinkPlan` is attached to `GercInput`, `gerc` prefers
 that evidence over the source-declared raw link surface.

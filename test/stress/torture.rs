@@ -1,7 +1,7 @@
 use linc::ir::*;
 
 /// Build a pathological BindingPackage designed to exercise every edge case
-/// in the gec pipeline: mixed accept/reject items, deep pointer chains,
+/// in the gerc pipeline: mixed accept/reject items, deep pointer chains,
 /// variadic functions, function pointer callbacks, flexible arrays, opaque
 /// types, anonymous (rejected) types, bitfields (rejected), unsupported items,
 /// and large enum spaces.

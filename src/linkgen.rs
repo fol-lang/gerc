@@ -1,6 +1,6 @@
 //! Native link metadata lowering and `build.rs` emission.
 //!
-//! Turns `gec`'s C-side link surfaces and resolved link plans into Rust-side
+//! Turns `gerc`'s C-side link surfaces and resolved link plans into Rust-side
 //! `RustLinkRequirement` values and emitted `build.rs` content.
 
 use crate::c::{

@@ -1,4 +1,4 @@
-//! Type mapping from `gec`'s C-side model to `gec::ir::RustType`.
+//! Type mapping from `gerc`'s C-side model to `gerc::ir::RustType`.
 //!
 //! This module is the core C→Rust type projection.  It maps primitive types,
 //! pointers, arrays, function pointers, typedefs, and opaque handles into
@@ -8,7 +8,7 @@ use crate::c::BindingType;
 
 use crate::ir::RustType;
 
-/// Map a `BindingType` to a `gec::ir::RustType`.
+/// Map a `BindingType` to a `gerc::ir::RustType`.
 pub fn map_type(ty: &BindingType) -> RustType {
     match ty {
         // 4.1: primitive integer and float types

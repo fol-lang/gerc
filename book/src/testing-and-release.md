@@ -15,7 +15,7 @@ The core questions are:
 
 The main contract tests should cover:
 
-- source-first intake through `GecInput` and `generate_from_source`
+- source-first intake through `GercInput` and `generate_from_source`
 - evidence-aware gating when validation and link evidence are attached
 - deterministic projection and emission
 - emitted crate/build output for the documented modes

@@ -3,7 +3,7 @@ mod common;
 #[path = "../../linc/tests/common/mod.rs"]
 mod linc_common;
 
-use gec::{emit_source, generate, generate_from_source, GecConfig, GecInput};
+use gerc::{emit_source, generate, generate_from_source, GercConfig, GercInput};
 
 fn parc_source_artifact(source: &str) -> parc::ir::SourcePackage {
     let package = parc::extract::extract_from_source(source).expect("parc extraction should work");
@@ -11,7 +11,7 @@ fn parc_source_artifact(source: &str) -> parc::ir::SourcePackage {
     serde_json::from_str(&json).expect("parc artifact roundtrip")
 }
 
-fn gerc_source_from_parc_artifact(package: &parc::ir::SourcePackage) -> gec::SourcePackage {
+fn gerc_source_from_parc_artifact(package: &parc::ir::SourcePackage) -> gerc::SourcePackage {
     let binding = linc_common::from_parc_package(package);
     common::from_binding_package(&binding)
 }
@@ -28,7 +28,7 @@ fn parc_artifact_roundtrip_can_drive_gerc_source_generation() {
 
     let output = generate_from_source(
         gerc_source_from_parc_artifact(&parc_pkg),
-        &GecConfig::new("demo_sys"),
+        &GercConfig::new("demo_sys"),
     )
     .unwrap();
     let emitted = emit_source(&output.projection);
@@ -60,9 +60,9 @@ fn parc_and_linc_artifact_roundtrips_can_drive_gerc_evidence_aware_generation() 
         serde_json::from_str(&analysis_json).expect("analysis artifact roundtrip");
 
     let output = generate(
-        &GecInput::from_source_package(gerc_source_from_parc_artifact(&parc_pkg))
+        &GercInput::from_source_package(gerc_source_from_parc_artifact(&parc_pkg))
             .with_analysis(common::from_linc_analysis(&analysis_artifact)),
-        &GecConfig::new("demo_sys"),
+        &GercConfig::new("demo_sys"),
     )
     .unwrap();
 

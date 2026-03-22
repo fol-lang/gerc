@@ -1,14 +1,14 @@
 //! Crate emission — writes a full Cargo-compatible Rust crate to disk.
 //!
-//! This module takes a `RustProjection` and a `GecConfig` and writes out a
+//! This module takes a `RustProjection` and a `GercConfig` and writes out a
 //! complete crate directory: `Cargo.toml`, `src/lib.rs`, and optionally
 //! `build.rs`.
 
 use std::path::{Path, PathBuf};
 
-use crate::config::GecConfig;
+use crate::config::GercConfig;
 use crate::emit::emit_source;
-use crate::error::{GecError, GecResult};
+use crate::error::{GercError, GercResult};
 use crate::ir::RustProjection;
 use crate::linkgen::{emit_build_rs_filtered, emit_rustc_link_args};
 
@@ -22,7 +22,7 @@ pub struct CrateManifest {
 }
 
 impl CrateManifest {
-    pub fn from_config(cfg: &GecConfig) -> Self {
+    pub fn from_config(cfg: &GercConfig) -> Self {
         Self {
             name: cfg.crate_name.clone(),
             version: cfg.crate_version.clone(),
@@ -63,7 +63,7 @@ pub enum OverwritePolicy {
 }
 
 /// Validates and normalizes a crate name.
-pub fn normalize_crate_name(name: &str) -> GecResult<String> {
+pub fn normalize_crate_name(name: &str) -> GercResult<String> {
     let normalized: String = name
         .chars()
         .map(|c| {
@@ -75,12 +75,12 @@ pub fn normalize_crate_name(name: &str) -> GecResult<String> {
         })
         .collect();
     if normalized.is_empty() {
-        return Err(GecError::InvalidConfig {
+        return Err(GercError::InvalidConfig {
             reason: "crate name must not be empty".into(),
         });
     }
     if normalized.starts_with(|c: char| c.is_ascii_digit()) {
-        return Err(GecError::InvalidConfig {
+        return Err(GercError::InvalidConfig {
             reason: "crate name must not start with a digit".into(),
         });
     }
@@ -90,11 +90,11 @@ pub fn normalize_crate_name(name: &str) -> GecResult<String> {
 /// Emit a full crate directory from a projection and config.
 pub fn emit_crate(
     proj: &RustProjection,
-    cfg: &GecConfig,
+    cfg: &GercConfig,
     output_dir: &Path,
     mode: OutputMode,
     policy: OverwritePolicy,
-) -> GecResult<EmittedCrate> {
+) -> GercResult<EmittedCrate> {
     let crate_name = normalize_crate_name(&cfg.crate_name)?;
 
     // Handle output directory
@@ -105,7 +105,7 @@ pub fn emit_crate(
                     .map(|mut d| d.next().is_some())
                     .unwrap_or(false);
                 if has_content {
-                    return Err(GecError::InvalidConfig {
+                    return Err(GercError::InvalidConfig {
                         reason: format!(
                             "output directory '{}' is non-empty (use Clean or Overwrite policy)",
                             output_dir.display()
@@ -131,7 +131,7 @@ pub fn emit_crate(
 
     // Emit Cargo.toml (crate mode only)
     if mode == OutputMode::Crate {
-        let manifest = CrateManifest::from_config(&GecConfig {
+        let manifest = CrateManifest::from_config(&GercConfig {
             crate_name: crate_name.clone(),
             ..cfg.clone()
         });
@@ -224,8 +224,8 @@ mod tests {
         proj
     }
 
-    fn sample_config() -> GecConfig {
-        GecConfig::new("test_bindings")
+    fn sample_config() -> GercConfig {
+        GercConfig::new("test_bindings")
     }
 
     // 8.1: manifest model
@@ -596,7 +596,7 @@ mod tests {
     }
 
     fn tempdir(name: &str) -> PathBuf {
-        let dir = std::env::temp_dir().join(format!("gec_test_{}", name));
+        let dir = std::env::temp_dir().join(format!("gerc_test_{}", name));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         dir

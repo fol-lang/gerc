@@ -1,6 +1,6 @@
 # Overview
 
-`GERC` currently ships as the `gec` crate and sits between `parc`, `linc`, and downstream Rust tooling in the
+`GERC` currently ships as the `gerc` crate and sits between `parc`, `linc`, and downstream Rust tooling in the
 following pipeline:
 
 ```text
@@ -14,14 +14,14 @@ PARC         (source parsing and extraction)
 
 Read this chapter as the workflow summary:
 
-1. `gec` receives its own input model
-2. any upstream artifact translation happens outside `gec/src/**`
-3. `gec` gates, lowers, and emits deterministic Rust/build artifacts
+1. `gerc` receives its own input model
+2. any upstream artifact translation happens outside `gerc/src/**`
+3. `gerc` gates, lowers, and emits deterministic Rust/build artifacts
 
 ## What happens inside GERC
 
-1. **Intake** — `gec` receives its own source/evidence input model via
-   `GecInput`. Tests/examples or external harnesses may translate PARC and LINC
+1. **Intake** — `gerc` receives its own source/evidence input model via
+   `GercInput`. Tests/examples or external harnesses may translate PARC and LINC
    artifacts into that model.
 
 2. **Safety gating** — Each declaration is checked against generation rules.
@@ -29,7 +29,7 @@ Read this chapter as the workflow summary:
    records, incomplete types) are rejected with diagnostics.
 
 3. **Lowering** — Accepted declarations are lowered from GERC-owned source
-   types into `gec`'s internal Rust projection IR (`RustProjection`).
+   types into `gerc`'s internal Rust projection IR (`RustProjection`).
 
 4. **Type mapping** — C types (`int`, `void*`, pointers, arrays, function
    pointers, etc.) are mapped to Rust FFI-safe equivalents.
@@ -38,7 +38,7 @@ Read this chapter as the workflow summary:
    Items are emitted in a stable order: constants, type aliases, enums,
    records, then an `extern "C"` block for functions and statics.
 
-6. **Crate generation** — Optionally, `gec` writes a full Cargo-compatible
+6. **Crate generation** — Optionally, `gerc` writes a full Cargo-compatible
    crate directory: `Cargo.toml`, `src/lib.rs`, and a `build.rs` with native
    link metadata.
 
@@ -46,9 +46,9 @@ Read this chapter as the workflow summary:
 
 - **Deterministic** — The same input always produces the same output.
 - **Conservative** — Prefer refusing generation over emitting unsound code.
-- **Library-first** — `gec` is a Rust library, not a CLI tool.
+- **Library-first** — `gerc` is a Rust library, not a CLI tool.
 - **Generic** — No `fol`-specific assumptions in the core crate.
 - **Artifact-boundary integration** — cross-package composition belongs outside
-  `gec/src/**`.
+  `gerc/src/**`.
 - **No crate-level back-compat burden** — dead pipeline shapes should be
   deleted, not carried indefinitely.

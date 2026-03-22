@@ -1,6 +1,6 @@
 //! ABI and safety gating for Rust projection.
 //!
-//! This module defines rules for when `gec` should refuse to generate Rust
+//! This module defines rules for when `gerc` should refuse to generate Rust
 //! code because the attached evidence is insufficient for safe FFI.
 
 use crate::c::{
@@ -8,7 +8,7 @@ use crate::c::{
     ItemKind, MatchStatus, SymbolMatch, ValidationReport, VariableBinding, RecordBinding,
 };
 
-use crate::output::{GecDiagnostic, GecSeverity};
+use crate::output::{GercDiagnostic, GercSeverity};
 
 /// Result of gating a single item.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -23,15 +23,15 @@ pub enum GateDecision {
 pub fn gate_package(
     pkg: &BindingPackage,
     validation: Option<&ValidationReport>,
-) -> (Vec<GateDecision>, Vec<GecDiagnostic>) {
+) -> (Vec<GateDecision>, Vec<GercDiagnostic>) {
     let mut decisions = Vec::new();
     let mut diags = Vec::new();
 
     for item in &pkg.items {
         let decision = gate_item(item, validation);
         if let GateDecision::Reject(ref reason) = decision {
-            diags.push(GecDiagnostic {
-                severity: GecSeverity::Warning,
+            diags.push(GercDiagnostic {
+                severity: GercSeverity::Warning,
                 message: reason.clone(),
                 item_name: item_name(item),
             });
@@ -933,7 +933,7 @@ mod tests {
         assert!(matches!(decisions[0], GateDecision::Reject(_)));
         assert_eq!(decisions[1], GateDecision::Accept);
         assert_eq!(diags.len(), 1);
-        assert_eq!(diags[0].severity, GecSeverity::Warning);
+        assert_eq!(diags[0].severity, GercSeverity::Warning);
     }
 
     // 6.9: accepted vs rejected generation tests

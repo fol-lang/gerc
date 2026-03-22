@@ -17,11 +17,11 @@ pub(crate) fn source_package_from_binding(package: &BindingPackage) -> SourcePac
     source::source_package_from_binding(package)
 }
 
-/// Primary input container for a `gec` generation run.
+/// Primary input container for a `gerc` generation run.
 ///
 /// Wraps a required source contract plus optional link/binary evidence.
 /// Source meaning comes from `SourcePackage`; binary/link evidence comes
-/// separately so `gec` does not have to receive source meaning through `linc`.
+/// separately so `gerc` does not have to receive source meaning through `linc`.
 ///
 /// ## Required vs optional `linc` evidence
 ///
@@ -32,16 +32,16 @@ pub(crate) fn source_package_from_binding(package: &BindingPackage) -> SourcePac
 ///   Useful for gating generation on verified symbols but not required for
 ///   basic projection.
 /// - **Optional**: `ResolvedLinkPlan` — resolved native link requirements.
-///   When absent, `gec` uses the source-derived raw link surface.
+///   When absent, `gerc` uses the source-derived raw link surface.
 #[derive(Debug, Clone)]
-pub struct GecInput {
+pub struct GercInput {
     /// Required source contract.
     pub source: SourcePackage,
     /// Optional validation and link evidence.
     pub evidence: EvidenceInputs,
 }
 
-impl GecInput {
+impl GercInput {
     /// Create a new input from a `SourcePackage`.
     pub fn from_source_package(source: SourcePackage) -> Self {
         Self {
@@ -125,7 +125,7 @@ impl GecInput {
     }
 }
 
-impl From<SourcePackage> for GecInput {
+impl From<SourcePackage> for GercInput {
     fn from(source: SourcePackage) -> Self {
         Self::from_source_package(source)
     }
@@ -231,13 +231,13 @@ mod tests {
         source
     }
 
-    fn input_from_binding(pkg: BindingPackage) -> GecInput {
-        GecInput::from_source_package(source::source_package_from_binding(&pkg))
+    fn input_from_binding(pkg: BindingPackage) -> GercInput {
+        GercInput::from_source_package(source::source_package_from_binding(&pkg))
     }
 
     #[test]
     fn from_source_package_basic_empty() {
-        let input = GecInput::from_source_package(SourcePackage::default());
+        let input = GercInput::from_source_package(SourcePackage::default());
         assert!(input.is_empty());
         assert_eq!(input.item_count(), 0);
         assert!(!input.has_analysis());
@@ -263,7 +263,7 @@ mod tests {
             function_like: false,
         });
 
-        let input = GecInput::from_source_package(source);
+        let input = GercInput::from_source_package(source);
         assert_eq!(input.item_count(), 1);
         assert_eq!(input.source.macros.len(), 1);
         assert_eq!(input.source.macros[0].name, "FOO");
@@ -280,13 +280,13 @@ mod tests {
                 source_offset: None,
             }));
 
-        let input: GecInput = source.into();
+        let input: GercInput = source.into();
         assert_eq!(input.item_count(), 1);
     }
 
     #[test]
     fn with_link_plan() {
-        let input = GecInput::from_source_package(SourcePackage::default())
+        let input = GercInput::from_source_package(SourcePackage::default())
             .with_link_plan(ResolvedLinkPlan::default());
         assert!(input.has_link_plan());
         assert!(!input.has_analysis());
@@ -295,14 +295,14 @@ mod tests {
 
     #[test]
     fn with_analysis() {
-        let input = GecInput::from_source_package(SourcePackage::default())
+        let input = GercInput::from_source_package(SourcePackage::default())
             .with_analysis(LinkAnalysisPackage::default());
         assert!(input.has_analysis());
     }
 
     #[test]
     fn with_evidence_sets_both_optional_inputs() {
-        let input = GecInput::from_source_package(SourcePackage::default()).with_evidence(EvidenceInputs {
+        let input = GercInput::from_source_package(SourcePackage::default()).with_evidence(EvidenceInputs {
             analysis: Some(LinkAnalysisPackage::default()),
             validation: Some(ValidationReport {
                 phases: Vec::new(),
@@ -373,13 +373,13 @@ mod tests {
                 }}
             ]
         }"#;
-        let input = GecInput::from_source_json(json).unwrap();
+        let input = GercInput::from_source_json(json).unwrap();
         assert_eq!(input.item_count(), 1);
     }
 
     #[test]
     fn source_fixture_contract_matches_binding_projection() {
-        let input = GecInput::from_source_package(fixture_source_package());
+        let input = GercInput::from_source_package(fixture_source_package());
         let package = input.binding_package();
 
         assert_eq!(input.item_count(), 2);
@@ -398,7 +398,7 @@ mod tests {
     #[test]
     fn from_source_json_fixture_contract() {
         let json = to_string_pretty(&fixture_source_package()).unwrap();
-        let input = GecInput::from_source_json(&json).unwrap();
+        let input = GercInput::from_source_json(&json).unwrap();
         let package = input.binding_package();
 
         assert_eq!(input.item_count(), 2);
@@ -416,7 +416,7 @@ mod tests {
 
     #[test]
     fn from_source_json_invalid() {
-        let result = GecInput::from_source_json("not json");
+        let result = GercInput::from_source_json("not json");
         assert!(result.is_err());
     }
 

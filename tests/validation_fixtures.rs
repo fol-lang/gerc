@@ -2,10 +2,10 @@
 
 mod common;
 
-use gec::config::GecConfig;
-use gec::contract::generate;
-use gec::intake::GecInput;
-use gec::ir::RustItem;
+use gerc::config::GercConfig;
+use gerc::contract::generate;
+use gerc::intake::GercInput;
+use gerc::ir::RustItem;
 use linc::{
     EvidenceKind, ItemKind, MatchConfidence, MatchStatus, SymbolMatch, SymbolVisibility,
     ValidationReport, ValidationSummary,
@@ -14,8 +14,8 @@ use linc::ir::{
     BindingItem, BindingPackage, BindingType, CallingConvention, FunctionBinding, VariableBinding,
 };
 
-fn input_from_binding(pkg: BindingPackage) -> GecInput {
-    GecInput::from_source_package(common::from_binding_package(&pkg))
+fn input_from_binding(pkg: BindingPackage) -> GercInput {
+    GercInput::from_source_package(common::from_binding_package(&pkg))
 }
 
 fn fixture_package() -> BindingPackage {
@@ -133,7 +133,7 @@ fn fixture_validation() -> ValidationReport {
 fn validation_fixture_filters_unusable_function_states() {
     let input = input_from_binding(fixture_package())
         .with_validation(common::from_linc_validation(&fixture_validation()));
-    let output = generate(&input, &GecConfig::new("demo_sys")).unwrap();
+    let output = generate(&input, &GercConfig::new("demo_sys")).unwrap();
 
     assert!(output
         .projection
@@ -162,7 +162,7 @@ fn validation_fixture_filters_unusable_function_states() {
 fn validation_fixture_filters_unusable_variable_states() {
     let input = input_from_binding(fixture_package())
         .with_validation(common::from_linc_validation(&fixture_validation()));
-    let output = generate(&input, &GecConfig::new("demo_sys")).unwrap();
+    let output = generate(&input, &GercConfig::new("demo_sys")).unwrap();
 
     assert!(output
         .projection

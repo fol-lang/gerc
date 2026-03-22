@@ -1,6 +1,6 @@
-//! Item lowering from `gec`'s C-side declarations to Rust projection IR.
+//! Item lowering from `gerc`'s C-side declarations to Rust projection IR.
 //!
-//! This module converts `BindingItem` values into `gec::ir::RustItem`
+//! This module converts `BindingItem` values into `gerc::ir::RustItem`
 //! values, using the type mapping from `typemap`.
 
 use crate::c::{
@@ -10,13 +10,13 @@ use crate::c::{
 };
 
 use crate::ir::*;
-use crate::output::{GecDiagnostic, GecSeverity};
+use crate::output::{GercDiagnostic, GercSeverity};
 use crate::typemap::map_type;
 
 /// Lower an entire `BindingPackage` into a `RustProjection`.
 ///
 /// Returns the projection and any diagnostics produced during lowering.
-pub fn lower_package(pkg: &BindingPackage) -> (RustProjection, Vec<GecDiagnostic>) {
+pub fn lower_package(pkg: &BindingPackage) -> (RustProjection, Vec<GercDiagnostic>) {
     let mut proj = RustProjection::new();
     let mut diags = Vec::new();
 
@@ -27,7 +27,7 @@ pub fn lower_package(pkg: &BindingPackage) -> (RustProjection, Vec<GecDiagnostic
                 let name = rust_item_name(&rust_item);
                 proj.notes.push(ProjectionNote {
                     kind: NoteKind::Projected,
-                    message: "lowered from gec C model".into(),
+                    message: "lowered from gerc C model".into(),
                     item_name: name.clone(),
                 });
                 proj.items.push(rust_item);
@@ -37,8 +37,8 @@ pub fn lower_package(pkg: &BindingPackage) -> (RustProjection, Vec<GecDiagnostic
             }
             Err(reason) => {
                 let name = binding_item_name(item);
-                diags.push(GecDiagnostic {
-                    severity: GecSeverity::Warning,
+                diags.push(GercDiagnostic {
+                    severity: GercSeverity::Warning,
                     message: reason.clone(),
                     item_name: name.clone(),
                 });

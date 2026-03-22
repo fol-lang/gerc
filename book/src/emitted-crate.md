@@ -2,8 +2,8 @@
 
 ## Output modes
 
-`gec` supports two output modes via the crate-root `OutputMode` re-export
-(or `gec::crategen::OutputMode` if you want the module path explicitly):
+`gerc` supports two output modes via the crate-root `OutputMode` re-export
+(or `gerc::crategen::OutputMode` if you want the module path explicitly):
 
 ### Crate mode
 
@@ -43,7 +43,7 @@ edition = "2021"
 
 ## build.rs
 
-When link requirements exist, `gec` generates a `build.rs` that emits
+When link requirements exist, `gerc` generates a `build.rs` that emits
 Cargo link directives:
 
 ```rust
@@ -55,7 +55,7 @@ fn main() {
 
 ## rustc-link-args.txt
 
-When link requirements exist, `gec` also generates a plain text file with
+When link requirements exist, `gerc` also generates a plain text file with
 direct `rustc` arguments:
 
 ```text
@@ -87,7 +87,7 @@ already exists:
 ## Usage
 
 ```rust
-use gec::{emit_crate, OutputMode, OverwritePolicy};
+use gerc::{emit_crate, OutputMode, OverwritePolicy};
 
 let emitted = emit_crate(
     &output.projection,

@@ -1,4 +1,4 @@
-//! True end-to-end tests: real C headers -> linc -> gec -> Rust source.
+//! True end-to-end tests: real C headers -> linc -> gerc -> Rust source.
 //!
 //! These tests require system headers to be installed. Each test gates
 //! on header existence and returns early if missing — they never fail
@@ -23,16 +23,16 @@ mod linc_common;
 
 use std::path::Path;
 
-use gec::config::GecConfig;
-use gec::consumer::{build_sidecar, sidecar_from_json, sidecar_to_json, FolConsumer, GecConsumer};
-use gec::contract::{generate, projection_from_json, projection_to_json};
-use gec::emit::emit_source;
-use gec::intake::GecInput;
+use gerc::config::GercConfig;
+use gerc::consumer::{build_sidecar, sidecar_from_json, sidecar_to_json, FolConsumer, GercConsumer};
+use gerc::contract::{generate, projection_from_json, projection_to_json};
+use gerc::emit::emit_source;
+use gerc::intake::GercInput;
 
 const INCLUDE: &[&str] = &["/usr/include", "/usr/include/x86_64-linux-gnu"];
 
-/// Parse a real C header through linc, then run the result through gec.
-fn bic_to_gec(
+/// Parse a real C header through linc, then run the result through gerc.
+fn bic_to_gerc(
     header: &str,
     include_dirs: &[&str],
     link_libs: &[&str],
@@ -60,9 +60,9 @@ fn bic_to_gec(
     }
 
     let linc_result = linc_common::process(&cfg).ok()?;
-    let input = GecInput::from_source_package(common::from_binding_package(&linc_result.package));
-    let gec_cfg = GecConfig::new(crate_name);
-    let output = generate(&input, &gec_cfg).ok()?;
+    let input = GercInput::from_source_package(common::from_binding_package(&linc_result.package));
+    let gerc_cfg = GercConfig::new(crate_name);
+    let output = generate(&input, &gerc_cfg).ok()?;
     let source = emit_source(&output.projection);
 
     Some(E2EResult {
@@ -74,8 +74,8 @@ fn bic_to_gec(
     })
 }
 
-/// Same as linc_to_gec but takes multiple headers.
-fn bic_to_gec_multi(
+/// Same as linc_to_gerc but takes multiple headers.
+fn bic_to_gerc_multi(
     headers: &[&str],
     include_dirs: &[&str],
     link_libs: &[&str],
@@ -106,9 +106,9 @@ fn bic_to_gec_multi(
     }
 
     let linc_result = linc_common::process(&cfg).ok()?;
-    let input = GecInput::from_source_package(common::from_binding_package(&linc_result.package));
-    let gec_cfg = GecConfig::new(crate_name);
-    let output = generate(&input, &gec_cfg).ok()?;
+    let input = GercInput::from_source_package(common::from_binding_package(&linc_result.package));
+    let gerc_cfg = GercConfig::new(crate_name);
+    let output = generate(&input, &gerc_cfg).ok()?;
     let source = emit_source(&output.projection);
 
     Some(E2EResult {
@@ -131,7 +131,7 @@ fn assert_deterministic(header: &str, include_dirs: &[&str], link_libs: &[&str],
         return;
     }
     let make = || {
-        bic_to_gec(header, include_dirs, link_libs, &[], crate_name)
+        bic_to_gerc(header, include_dirs, link_libs, &[], crate_name)
             .unwrap()
             .source
     };
@@ -148,7 +148,7 @@ struct E2EResult {
     diagnostic_count: usize,
     source: String,
     link_libs: usize,
-    projection: gec::ir::RustProjection,
+    projection: gerc::ir::RustProjection,
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -157,7 +157,7 @@ struct E2EResult {
 
 #[test]
 fn zlib_e2e() {
-    let Some(r) = bic_to_gec(
+    let Some(r) = bic_to_gerc(
         "/usr/include/zlib.h",
         INCLUDE,
         &["z"],
@@ -187,7 +187,7 @@ fn zlib_e2e_deterministic() {
 
 #[test]
 fn zlib_e2e_json_roundtrip() {
-    let Some(r) = bic_to_gec("/usr/include/zlib.h", INCLUDE, &["z"], &[], "zlib_sys") else {
+    let Some(r) = bic_to_gerc("/usr/include/zlib.h", INCLUDE, &["z"], &[], "zlib_sys") else {
         return;
     };
     let json = projection_to_json(&r.projection).unwrap();
@@ -197,7 +197,7 @@ fn zlib_e2e_json_roundtrip() {
 
 #[test]
 fn zlib_e2e_sidecar() {
-    let Some(r) = bic_to_gec("/usr/include/zlib.h", INCLUDE, &["z"], &[], "zlib_sys") else {
+    let Some(r) = bic_to_gerc("/usr/include/zlib.h", INCLUDE, &["z"], &[], "zlib_sys") else {
         return;
     };
     let sidecar = build_sidecar("zlib_sys", &r.projection);
@@ -213,7 +213,7 @@ fn zlib_e2e_sidecar() {
 
 #[test]
 fn openssl_e2e() {
-    let Some(r) = bic_to_gec(
+    let Some(r) = bic_to_gerc(
         "/usr/include/openssl/ssl.h",
         INCLUDE,
         &["ssl", "crypto"],
@@ -249,7 +249,7 @@ fn openssl_e2e_deterministic() {
 
 #[test]
 fn openssl_e2e_json_roundtrip() {
-    let Some(r) = bic_to_gec(
+    let Some(r) = bic_to_gerc(
         "/usr/include/openssl/ssl.h",
         INCLUDE,
         &["ssl", "crypto"],
@@ -265,7 +265,7 @@ fn openssl_e2e_json_roundtrip() {
 
 #[test]
 fn openssl_e2e_fol_consumer() {
-    let Some(r) = bic_to_gec(
+    let Some(r) = bic_to_gerc(
         "/usr/include/openssl/ssl.h",
         INCLUDE,
         &["ssl", "crypto"],
@@ -294,7 +294,7 @@ fn pcap_e2e() {
         return;
     };
 
-    let Some(r) = bic_to_gec(header, INCLUDE, &["pcap"], &[], "pcap_sys") else {
+    let Some(r) = bic_to_gerc(header, INCLUDE, &["pcap"], &[], "pcap_sys") else {
         return;
     };
 
@@ -330,7 +330,7 @@ fn pcap_e2e_deterministic() {
 
 #[test]
 fn libpng_e2e() {
-    let Some(r) = bic_to_gec("/usr/include/png.h", INCLUDE, &["png"], &[], "png_sys") else {
+    let Some(r) = bic_to_gerc("/usr/include/png.h", INCLUDE, &["png"], &[], "png_sys") else {
         return;
     };
 
@@ -358,7 +358,7 @@ fn libpng_e2e_deterministic() {
 
 #[test]
 fn xlib_e2e() {
-    let Some(r) = bic_to_gec("/usr/include/X11/Xlib.h", INCLUDE, &["X11"], &[], "x11_sys") else {
+    let Some(r) = bic_to_gerc("/usr/include/X11/Xlib.h", INCLUDE, &["X11"], &[], "x11_sys") else {
         return;
     };
 
@@ -387,7 +387,7 @@ fn xlib_e2e_deterministic() {
 
 #[test]
 fn alsa_e2e() {
-    let Some(r) = bic_to_gec(
+    let Some(r) = bic_to_gerc(
         "/usr/include/alsa/asoundlib.h",
         INCLUDE,
         &["asound"],
@@ -427,7 +427,7 @@ fn alsa_e2e_deterministic() {
 
 #[test]
 fn ncurses_e2e() {
-    let Some(r) = bic_to_gec(
+    let Some(r) = bic_to_gerc(
         "/usr/include/ncurses.h",
         INCLUDE,
         &["ncurses"],
@@ -437,7 +437,7 @@ fn ncurses_e2e() {
         return;
     };
 
-    // ncurses is heavily macro-based; gec may only see a subset of the API
+    // ncurses is heavily macro-based; gerc may only see a subset of the API
     assert!(
         r.item_count >= 1,
         "ncurses: expected ≥1 items, got {}",
@@ -462,7 +462,7 @@ fn ncurses_e2e_deterministic() {
 
 #[test]
 fn libxml2_e2e() {
-    let Some(r) = bic_to_gec(
+    let Some(r) = bic_to_gerc(
         "/usr/include/libxml2/libxml/parser.h",
         &[
             "/usr/include",
@@ -491,7 +491,7 @@ fn libxml2_e2e() {
 
 #[test]
 fn linux_input_e2e() {
-    let Some(r) = bic_to_gec(
+    let Some(r) = bic_to_gerc(
         "/usr/include/linux/input.h",
         INCLUDE,
         &[],
@@ -526,7 +526,7 @@ fn linux_input_e2e_deterministic() {
 
 #[test]
 fn linux_can_e2e() {
-    let Some(r) = bic_to_gec(
+    let Some(r) = bic_to_gerc(
         "/usr/include/linux/can.h",
         INCLUDE,
         &[],
@@ -551,7 +551,7 @@ fn linux_can_e2e() {
 
 #[test]
 fn linux_netlink_e2e() {
-    let Some(r) = bic_to_gec(
+    let Some(r) = bic_to_gerc(
         "/usr/include/linux/netlink.h",
         INCLUDE,
         &[],
@@ -576,7 +576,7 @@ fn linux_netlink_e2e() {
 
 #[test]
 fn linux_perf_event_e2e() {
-    let Some(r) = bic_to_gec(
+    let Some(r) = bic_to_gerc(
         "/usr/include/linux/perf_event.h",
         INCLUDE,
         &[],
@@ -602,7 +602,7 @@ fn linux_perf_event_e2e() {
 
 #[test]
 fn stdio_e2e() {
-    let Some(r) = bic_to_gec("/usr/include/stdio.h", INCLUDE, &["c"], &[], "stdio_sys") else {
+    let Some(r) = bic_to_gerc("/usr/include/stdio.h", INCLUDE, &["c"], &[], "stdio_sys") else {
         return;
     };
 
@@ -631,7 +631,7 @@ fn stdio_e2e_deterministic() {
 
 #[test]
 fn stdlib_e2e() {
-    let Some(r) = bic_to_gec("/usr/include/stdlib.h", INCLUDE, &["c"], &[], "stdlib_sys") else {
+    let Some(r) = bic_to_gerc("/usr/include/stdlib.h", INCLUDE, &["c"], &[], "stdlib_sys") else {
         return;
     };
 
@@ -655,7 +655,7 @@ fn stdlib_e2e() {
 
 #[test]
 fn string_e2e() {
-    let Some(r) = bic_to_gec("/usr/include/string.h", INCLUDE, &["c"], &[], "string_sys") else {
+    let Some(r) = bic_to_gerc("/usr/include/string.h", INCLUDE, &["c"], &[], "string_sys") else {
         return;
     };
 
@@ -679,7 +679,7 @@ fn string_e2e() {
 
 #[test]
 fn math_e2e() {
-    let Some(r) = bic_to_gec("/usr/include/math.h", INCLUDE, &["m"], &[], "math_sys") else {
+    let Some(r) = bic_to_gerc("/usr/include/math.h", INCLUDE, &["m"], &[], "math_sys") else {
         return;
     };
 
@@ -693,7 +693,7 @@ fn math_e2e() {
 
 #[test]
 fn pthread_e2e() {
-    let Some(r) = bic_to_gec(
+    let Some(r) = bic_to_gerc(
         "/usr/include/pthread.h",
         INCLUDE,
         &["pthread"],
@@ -734,7 +734,7 @@ fn pthread_e2e_deterministic() {
 
 #[test]
 fn dlfcn_e2e() {
-    let Some(r) = bic_to_gec("/usr/include/dlfcn.h", INCLUDE, &["dl"], &[], "dl_sys") else {
+    let Some(r) = bic_to_gerc("/usr/include/dlfcn.h", INCLUDE, &["dl"], &[], "dl_sys") else {
         return;
     };
 
@@ -755,7 +755,7 @@ fn dlfcn_e2e() {
 
 #[test]
 fn signal_e2e() {
-    let Some(r) = bic_to_gec("/usr/include/signal.h", INCLUDE, &["c"], &[], "signal_sys") else {
+    let Some(r) = bic_to_gerc("/usr/include/signal.h", INCLUDE, &["c"], &[], "signal_sys") else {
         return;
     };
 
@@ -773,7 +773,7 @@ fn signal_e2e() {
 
 #[test]
 fn unistd_e2e() {
-    let Some(r) = bic_to_gec("/usr/include/unistd.h", INCLUDE, &["c"], &[], "unistd_sys") else {
+    let Some(r) = bic_to_gerc("/usr/include/unistd.h", INCLUDE, &["c"], &[], "unistd_sys") else {
         return;
     };
 
@@ -797,7 +797,7 @@ fn unistd_e2e() {
 
 #[test]
 fn fcntl_e2e() {
-    let Some(r) = bic_to_gec("/usr/include/fcntl.h", INCLUDE, &["c"], &[], "fcntl_sys") else {
+    let Some(r) = bic_to_gerc("/usr/include/fcntl.h", INCLUDE, &["c"], &[], "fcntl_sys") else {
         return;
     };
 
@@ -817,7 +817,7 @@ fn fcntl_e2e() {
 fn socket_e2e() {
     let sock = "/usr/include/x86_64-linux-gnu/sys/socket.h";
     let netin = "/usr/include/netinet/in.h";
-    let Some(r) = bic_to_gec_multi(&[sock, netin], INCLUDE, &["c"], &[], "socket_sys") else {
+    let Some(r) = bic_to_gerc_multi(&[sock, netin], INCLUDE, &["c"], &[], "socket_sys") else {
         return;
     };
 
@@ -841,7 +841,7 @@ fn socket_e2e() {
 
 #[test]
 fn mman_e2e() {
-    let Some(r) = bic_to_gec(
+    let Some(r) = bic_to_gerc(
         "/usr/include/x86_64-linux-gnu/sys/mman.h",
         INCLUDE,
         &["c"],
@@ -868,7 +868,7 @@ fn mman_e2e() {
 
 #[test]
 fn epoll_e2e() {
-    let Some(r) = bic_to_gec(
+    let Some(r) = bic_to_gerc(
         "/usr/include/x86_64-linux-gnu/sys/epoll.h",
         INCLUDE,
         &["c"],
@@ -897,7 +897,7 @@ fn epoll_e2e() {
 
 #[test]
 fn stat_e2e() {
-    let Some(r) = bic_to_gec(
+    let Some(r) = bic_to_gerc(
         "/usr/include/x86_64-linux-gnu/sys/stat.h",
         INCLUDE,
         &["c"],
@@ -931,7 +931,7 @@ fn combined_event_loop_e2e() {
         "/usr/include/errno.h",
     ];
 
-    let Some(r) = bic_to_gec_multi(&headers, INCLUDE, &["c"], &[], "event_loop_sys") else {
+    let Some(r) = bic_to_gerc_multi(&headers, INCLUDE, &["c"], &[], "event_loop_sys") else {
         return;
     };
 
@@ -980,7 +980,7 @@ fn combined_event_loop_e2e_deterministic() {
     }
 
     let make = || {
-        bic_to_gec_multi(&headers, INCLUDE, &["c"], &[], "event_loop_sys")
+        bic_to_gerc_multi(&headers, INCLUDE, &["c"], &[], "event_loop_sys")
             .unwrap()
             .source
     };
@@ -995,7 +995,7 @@ fn combined_event_loop_e2e_json_roundtrip() {
         "/usr/include/x86_64-linux-gnu/sys/epoll.h",
         "/usr/include/signal.h",
     ];
-    let Some(r) = bic_to_gec_multi(&headers, INCLUDE, &["c"], &[], "event_loop_sys") else {
+    let Some(r) = bic_to_gerc_multi(&headers, INCLUDE, &["c"], &[], "event_loop_sys") else {
         return;
     };
     let json = projection_to_json(&r.projection).unwrap();
@@ -1011,7 +1011,7 @@ fn combined_event_loop_e2e_sidecar() {
         "/usr/include/x86_64-linux-gnu/sys/epoll.h",
         "/usr/include/signal.h",
     ];
-    let Some(r) = bic_to_gec_multi(&headers, INCLUDE, &["c"], &[], "event_loop_sys") else {
+    let Some(r) = bic_to_gerc_multi(&headers, INCLUDE, &["c"], &[], "event_loop_sys") else {
         return;
     };
     let sidecar = build_sidecar("event_loop_sys", &r.projection);
@@ -1037,7 +1037,7 @@ fn combined_networking_e2e() {
         headers.push("/usr/include/pcap.h");
     }
 
-    let Some(r) = bic_to_gec_multi(&headers, INCLUDE, &["c", "pcap"], &[], "networking_sys") else {
+    let Some(r) = bic_to_gerc_multi(&headers, INCLUDE, &["c", "pcap"], &[], "networking_sys") else {
         return;
     };
 
@@ -1069,7 +1069,7 @@ fn combined_full_libc_e2e() {
         "/usr/include/errno.h",
     ];
 
-    let Some(r) = bic_to_gec_multi(
+    let Some(r) = bic_to_gerc_multi(
         &headers,
         INCLUDE,
         &["c", "m", "pthread", "dl"],
@@ -1099,7 +1099,7 @@ fn combined_full_libc_e2e_deterministic() {
     }
 
     let make = || {
-        bic_to_gec_multi(&headers, INCLUDE, &["c", "pthread"], &[], "libc_full_sys")
+        bic_to_gerc_multi(&headers, INCLUDE, &["c", "pthread"], &[], "libc_full_sys")
             .unwrap()
             .source
     };
@@ -1116,7 +1116,7 @@ fn combined_full_libc_e2e_fol_consumer() {
         "/usr/include/pthread.h",
         "/usr/include/dlfcn.h",
     ];
-    let Some(r) = bic_to_gec_multi(
+    let Some(r) = bic_to_gerc_multi(
         &headers,
         INCLUDE,
         &["c", "pthread", "dl"],

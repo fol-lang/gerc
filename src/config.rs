@@ -1,9 +1,9 @@
-/// Configuration for a `gec` generation run.
+/// Configuration for a `gerc` generation run.
 ///
 /// Controls what gets generated and how.  Defaults produce a reasonable
 /// binding crate with all supported item kinds enabled.
 #[derive(Debug, Clone)]
-pub struct GecConfig {
+pub struct GercConfig {
     /// Name for the generated crate (used in `Cargo.toml` and module docs).
     pub crate_name: String,
     /// Version string for the generated crate.
@@ -24,7 +24,7 @@ pub struct GecConfig {
     pub emit_build_script: bool,
 }
 
-impl Default for GecConfig {
+impl Default for GercConfig {
     fn default() -> Self {
         Self {
             crate_name: "generated_bindings".into(),
@@ -40,7 +40,7 @@ impl Default for GecConfig {
     }
 }
 
-impl GecConfig {
+impl GercConfig {
     pub fn new(crate_name: impl Into<String>) -> Self {
         Self {
             crate_name: crate_name.into(),
@@ -55,7 +55,7 @@ mod tests {
 
     #[test]
     fn default_config_enables_all() {
-        let cfg = GecConfig::default();
+        let cfg = GercConfig::default();
         assert!(cfg.emit_functions);
         assert!(cfg.emit_records);
         assert!(cfg.emit_enums);
@@ -67,14 +67,14 @@ mod tests {
 
     #[test]
     fn new_sets_crate_name() {
-        let cfg = GecConfig::new("my_bindings");
+        let cfg = GercConfig::new("my_bindings");
         assert_eq!(cfg.crate_name, "my_bindings");
         assert!(cfg.emit_functions);
     }
 
     #[test]
     fn config_is_clone() {
-        let cfg = GecConfig::default();
+        let cfg = GercConfig::default();
         let cfg2 = cfg.clone();
         assert_eq!(cfg.crate_name, cfg2.crate_name);
     }

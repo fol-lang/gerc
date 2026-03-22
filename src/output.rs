@@ -1,33 +1,33 @@
 use crate::ir::RustProjection;
 
-/// Result of a `gec` generation run.
+/// Result of a `gerc` generation run.
 ///
 /// Contains the projected Rust IR and any diagnostics produced during
 /// the projection process.
 #[derive(Debug, Clone, Default)]
-pub struct GecOutput {
+pub struct GercOutput {
     /// The projected Rust items.
     pub projection: RustProjection,
     /// Diagnostics produced during projection (warnings, skips, etc.).
-    pub diagnostics: Vec<GecDiagnostic>,
+    pub diagnostics: Vec<GercDiagnostic>,
 }
 
 /// Severity level for generation diagnostics.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum GecSeverity {
+pub enum GercSeverity {
     Warning,
     Info,
 }
 
 /// One diagnostic produced during projection.
 #[derive(Debug, Clone)]
-pub struct GecDiagnostic {
-    pub severity: GecSeverity,
+pub struct GercDiagnostic {
+    pub severity: GercSeverity,
     pub message: String,
     pub item_name: Option<String>,
 }
 
-impl GecOutput {
+impl GercOutput {
     pub fn new() -> Self {
         Self::default()
     }
@@ -44,10 +44,10 @@ impl GecOutput {
         !self.diagnostics.is_empty()
     }
 
-    pub fn warnings(&self) -> impl Iterator<Item = &GecDiagnostic> {
+    pub fn warnings(&self) -> impl Iterator<Item = &GercDiagnostic> {
         self.diagnostics
             .iter()
-            .filter(|d| d.severity == GecSeverity::Warning)
+            .filter(|d| d.severity == GercSeverity::Warning)
     }
 }
 
@@ -57,7 +57,7 @@ mod tests {
 
     #[test]
     fn output_default_is_empty() {
-        let out = GecOutput::new();
+        let out = GercOutput::new();
         assert!(out.is_empty());
         assert_eq!(out.item_count(), 0);
         assert!(!out.has_diagnostics());
@@ -65,16 +65,16 @@ mod tests {
 
     #[test]
     fn warnings_filter() {
-        let out = GecOutput {
+        let out = GercOutput {
             projection: RustProjection::default(),
             diagnostics: vec![
-                GecDiagnostic {
-                    severity: GecSeverity::Info,
+                GercDiagnostic {
+                    severity: GercSeverity::Info,
                     message: "info".into(),
                     item_name: None,
                 },
-                GecDiagnostic {
-                    severity: GecSeverity::Warning,
+                GercDiagnostic {
+                    severity: GercSeverity::Warning,
                     message: "warn".into(),
                     item_name: Some("foo".into()),
                 },

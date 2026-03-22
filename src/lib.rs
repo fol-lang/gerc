@@ -1,4 +1,4 @@
-//! `GERC` implementation crate, currently published as `gec`.
+//! `GERC` implementation crate, currently published as `gerc`.
 //!
 //! This crate consumes translated source/evidence inputs and generates Rust FFI-facing
 //! code from C declarations.  It is designed as a library-first crate: the
@@ -24,7 +24,7 @@
 //! ```text
 //! PARC (source contracts)
 //!     -> LINC (link and evidence contracts)
-//!     -> GERC (`gec` crate today)
+//!     -> GERC (`gerc` crate today)
 //!     -> generated Rust bindings crate
 //!     -> fol-interloop-rust (optional downstream)
 //! ```
@@ -33,9 +33,9 @@
 //!
 //! The primary workflow is:
 //!
-//! 1. Build a [`GecConfig`] describing what to generate.
-//! 2. Feed it a [`GecInput`] (wrapping a source contract plus optional evidence).
-//! 3. Receive a [`GecOutput`] containing the projected Rust IR and generation results.
+//! 1. Build a [`GercConfig`] describing what to generate.
+//! 2. Feed it a [`GercInput`] (wrapping a source contract plus optional evidence).
+//! 3. Receive a [`GercOutput`] containing the projected Rust IR and generation results.
 //!
 //! The crate root exposes four routine API families:
 //!
@@ -65,10 +65,10 @@ pub mod typemap;
 
 pub use contract::{
     generate, generate_from_source, meta_from_json, meta_to_json, output_meta,
-    projection_from_json, projection_to_json, GecOutputMeta, SCHEMA_VERSION,
+    projection_from_json, projection_to_json, GercOutputMeta, SCHEMA_VERSION,
 };
 
-pub use config::GecConfig;
+pub use config::GercConfig;
 pub use c::{
     BindingItem, BindingLinkSurface, BindingPackage, BindingType, EvidenceKind, ItemKind,
     LinkAnalysisPackage, LinkArtifact, LinkArtifactKind, LinkFramework, LinkInput, LinkLibrary,
@@ -78,7 +78,7 @@ pub use c::{
 };
 pub use consumer::{
     build_sidecar, extern_function_names, record_names, sidecar_from_json, sidecar_to_json,
-    type_alias_names, ConsumerFinding, ConsumerReport, FindingKind, FolConsumer, GecConsumer,
+    type_alias_names, ConsumerFinding, ConsumerReport, FindingKind, FolConsumer, GercConsumer,
     MetadataSidecar, PassthroughConsumer, SidecarItem, SidecarItemKind,
 };
 pub use crategen::{
@@ -86,12 +86,12 @@ pub use crategen::{
     EmittedCrate, OutputMode, OverwritePolicy,
 };
 pub use emit::{emit_source, emit_type};
-pub use error::{GecError, GecResult};
+pub use error::{GercError, GercResult};
 pub use gate::GateDecision;
 pub use intake::{
-    EvidenceInputs, GecInput, SourceDeclaration, SourceEnum, SourceEnumVariant, SourceField,
+    EvidenceInputs, GercInput, SourceDeclaration, SourceEnum, SourceEnumVariant, SourceField,
     SourceFunction, SourceLinkKind, SourceLinkRequirement, SourceMacro, SourcePackage,
     SourceParameter, SourceRecord, SourceType, SourceTypeAlias, SourceVariable,
 };
 pub use linkgen::emit_rustc_link_args;
-pub use output::GecOutput;
+pub use output::GercOutput;

@@ -1,6 +1,6 @@
 //! Regression corpus — synthetic and real-world binding fixtures.
 //!
-//! These tests exercise the full `gec` pipeline: intake → lower → gate → emit.
+//! These tests exercise the full `gerc` pipeline: intake → lower → gate → emit.
 
 #[cfg(test)]
 mod tests {

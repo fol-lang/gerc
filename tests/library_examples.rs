@@ -1,5 +1,5 @@
 //! Integration tests exercising realistic library surfaces through the full
-//! gec pipeline: intake → gate → lower → emit → crate generation.
+//! gerc pipeline: intake → gate → lower → emit → crate generation.
 
 mod common;
 
@@ -12,15 +12,15 @@ mod sqlite;
 #[path = "../test/stress/zlib.rs"]
 mod zlib;
 
-use gec::config::GecConfig;
-use gec::consumer::{build_sidecar, sidecar_to_json, GecConsumer, PassthroughConsumer};
-use gec::contract::{generate, meta_to_json, output_meta, projection_to_json};
-use gec::emit::emit_source;
-use gec::intake::GecInput;
+use gerc::config::GercConfig;
+use gerc::consumer::{build_sidecar, sidecar_to_json, GercConsumer, PassthroughConsumer};
+use gerc::contract::{generate, meta_to_json, output_meta, projection_to_json};
+use gerc::emit::emit_source;
+use gerc::intake::GercInput;
 
 fn run_full_pipeline(pkg: linc::ir::BindingPackage, crate_name: &str) -> PipelineResult {
-    let input = GecInput::from_source_package(common::from_binding_package(&pkg));
-    let cfg = GecConfig::new(crate_name);
+    let input = GercInput::from_source_package(common::from_binding_package(&pkg));
+    let cfg = GercConfig::new(crate_name);
     let output = generate(&input, &cfg).unwrap();
     let source = emit_source(&output.projection);
     let meta = output_meta(&cfg, &output);
@@ -84,16 +84,16 @@ fn zlib_deterministic() {
     let pkg = zlib::zlib_package();
     let s1 = emit_source(
         &generate(
-            &GecInput::from_source_package(common::from_binding_package(&pkg.clone())),
-            &GecConfig::new("z"),
+            &GercInput::from_source_package(common::from_binding_package(&pkg.clone())),
+            &GercConfig::new("z"),
         )
             .unwrap()
             .projection,
     );
     let s2 = emit_source(
         &generate(
-            &GecInput::from_source_package(common::from_binding_package(&pkg)),
-            &GecConfig::new("z"),
+            &GercInput::from_source_package(common::from_binding_package(&pkg)),
+            &GercConfig::new("z"),
         )
             .unwrap()
             .projection,
@@ -156,12 +156,12 @@ fn sqlite3_variadic_functions() {
 fn sqlite3_json_roundtrip() {
     let pkg = sqlite::sqlite3_package();
     let output = generate(
-        &GecInput::from_source_package(common::from_binding_package(&pkg)),
-        &GecConfig::new("sqlite3_sys"),
+        &GercInput::from_source_package(common::from_binding_package(&pkg)),
+        &GercConfig::new("sqlite3_sys"),
     )
     .unwrap();
     let json = projection_to_json(&output.projection).unwrap();
-    let proj2 = gec::contract::projection_from_json(&json).unwrap();
+    let proj2 = gerc::contract::projection_from_json(&json).unwrap();
     assert_eq!(proj2.len(), output.projection.len());
 }
 
@@ -169,8 +169,8 @@ fn sqlite3_json_roundtrip() {
 fn sqlite3_sidecar_completeness() {
     let pkg = sqlite::sqlite3_package();
     let output = generate(
-        &GecInput::from_source_package(common::from_binding_package(&pkg)),
-        &GecConfig::new("sqlite3_sys"),
+        &GercInput::from_source_package(common::from_binding_package(&pkg)),
+        &GercConfig::new("sqlite3_sys"),
     )
     .unwrap();
     let sidecar = build_sidecar("sqlite3_sys", &output.projection);

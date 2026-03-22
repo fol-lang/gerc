@@ -1,27 +1,27 @@
 //! Public API contract, JSON output, and schema versioning.
 //!
-//! This module defines the stable, JSON-serializable output contract for `gec`,
+//! This module defines the stable, JSON-serializable output contract for `gerc`,
 //! including schema versioning and deterministic generation guarantees.
 
 use serde::{Deserialize, Serialize};
 
-use crate::config::GecConfig;
-use crate::error::{GecError, GecResult};
+use crate::config::GercConfig;
+use crate::error::{GercError, GercResult};
 use crate::gate::{gate_package, GateDecision};
-use crate::intake::{GecInput, SourcePackage};
+use crate::intake::{GercInput, SourcePackage};
 use crate::ir::RustProjection;
 use crate::linkgen::{lower_declared_link_surface, lower_link_surface, lower_resolved_plan};
 use crate::lower::lower_package;
-use crate::output::{GecOutput, GecSeverity};
+use crate::output::{GercOutput, GercSeverity};
 
-/// Current schema version for `gec` output metadata.
+/// Current schema version for `gerc` output metadata.
 pub const SCHEMA_VERSION: u32 = 1;
 
 /// JSON-serializable output metadata for downstream tooling.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct GecOutputMeta {
+pub struct GercOutputMeta {
     pub schema_version: u32,
-    pub gec_version: String,
+    pub gerc_version: String,
     pub crate_name: String,
     pub item_count: usize,
     pub accepted_count: usize,
@@ -29,21 +29,21 @@ pub struct GecOutputMeta {
     pub diagnostic_count: usize,
 }
 
-/// The top-level public API entry point: run the full `gec` pipeline.
+/// The top-level public API entry point: run the full `gerc` pipeline.
 ///
-/// This is the primary way downstream consumers should use `gec`.
+/// This is the primary way downstream consumers should use `gerc`.
 ///
 /// ## API tiers
 ///
-/// - **Tier 1 (stable)**: `generate`, `GecConfig`, `GecInput`, `GecOutput`, `GecOutputMeta`
+/// - **Tier 1 (stable)**: `generate`, `GercConfig`, `GercInput`, `GercOutput`, `GercOutputMeta`
 /// - **Tier 2 (public but less stable)**: individual modules (`lower`, `gate`, `emit`, etc.)
-pub fn generate(input: &GecInput, _config: &GecConfig) -> GecResult<GecOutput> {
+pub fn generate(input: &GercInput, _config: &GercConfig) -> GercResult<GercOutput> {
     let mut input_clone = input.clone();
     input_clone.normalize();
     let package = input_clone.binding_package();
 
     if input_clone.is_empty() {
-        return Err(GecError::EmptyInput);
+        return Err(GercError::EmptyInput);
     }
 
     let validation = input_clone
@@ -101,31 +101,31 @@ pub fn generate(input: &GecInput, _config: &GecConfig) -> GecResult<GecOutput> {
     let mut all_diags = gate_diags;
     all_diags.extend(lower_diags);
 
-    Ok(GecOutput {
+    Ok(GercOutput {
         projection: proj,
         diagnostics: all_diags,
     })
 }
 
-/// Generate directly from a `gec` source package.
+/// Generate directly from a `gerc` source package.
 pub fn generate_from_source(
     source: SourcePackage,
-    config: &GecConfig,
-) -> GecResult<GecOutput> {
-    let input = GecInput::from_source_package(source);
+    config: &GercConfig,
+) -> GercResult<GercOutput> {
+    let input = GercInput::from_source_package(source);
     generate(&input, config)
 }
 
 /// Generate JSON-serializable output metadata.
-pub fn output_meta(config: &GecConfig, output: &GecOutput) -> GecOutputMeta {
+pub fn output_meta(config: &GercConfig, output: &GercOutput) -> GercOutputMeta {
     let rejected = output
         .diagnostics
         .iter()
-        .filter(|d| d.severity == GecSeverity::Warning)
+        .filter(|d| d.severity == GercSeverity::Warning)
         .count();
-    GecOutputMeta {
+    GercOutputMeta {
         schema_version: SCHEMA_VERSION,
-        gec_version: env!("CARGO_PKG_VERSION").to_string(),
+        gerc_version: env!("CARGO_PKG_VERSION").to_string(),
         crate_name: config.crate_name.clone(),
         item_count: output.item_count(),
         accepted_count: output.item_count(),
@@ -135,18 +135,18 @@ pub fn output_meta(config: &GecConfig, output: &GecOutput) -> GecOutputMeta {
 }
 
 /// Serialize output metadata to JSON.
-pub fn meta_to_json(meta: &GecOutputMeta) -> GecResult<String> {
-    serde_json::to_string_pretty(meta).map_err(|e| GecError::Serialization(e.to_string()))
+pub fn meta_to_json(meta: &GercOutputMeta) -> GercResult<String> {
+    serde_json::to_string_pretty(meta).map_err(|e| GercError::Serialization(e.to_string()))
 }
 
 /// Deserialize output metadata from JSON.
-pub fn meta_from_json(json: &str) -> GecResult<GecOutputMeta> {
-    let meta: GecOutputMeta =
-        serde_json::from_str(json).map_err(|e| GecError::Serialization(e.to_string()))?;
+pub fn meta_from_json(json: &str) -> GercResult<GercOutputMeta> {
+    let meta: GercOutputMeta =
+        serde_json::from_str(json).map_err(|e| GercError::Serialization(e.to_string()))?;
     if meta.schema_version > SCHEMA_VERSION {
-        return Err(GecError::InvalidConfig {
+        return Err(GercError::InvalidConfig {
             reason: format!(
-                "unsupported gec schema version {} (this build supports up to {})",
+                "unsupported gerc schema version {} (this build supports up to {})",
                 meta.schema_version, SCHEMA_VERSION
             ),
         });
@@ -155,13 +155,13 @@ pub fn meta_from_json(json: &str) -> GecResult<GecOutputMeta> {
 }
 
 /// Serialize a `RustProjection` to JSON.
-pub fn projection_to_json(proj: &RustProjection) -> GecResult<String> {
-    serde_json::to_string_pretty(proj).map_err(|e| GecError::Serialization(e.to_string()))
+pub fn projection_to_json(proj: &RustProjection) -> GercResult<String> {
+    serde_json::to_string_pretty(proj).map_err(|e| GercError::Serialization(e.to_string()))
 }
 
 /// Deserialize a `RustProjection` from JSON.
-pub fn projection_from_json(json: &str) -> GecResult<RustProjection> {
-    serde_json::from_str(json).map_err(|e| GecError::Serialization(e.to_string()))
+pub fn projection_from_json(json: &str) -> GercResult<RustProjection> {
+    serde_json::from_str(json).map_err(|e| GercError::Serialization(e.to_string()))
 }
 
 #[cfg(test)]
@@ -170,15 +170,15 @@ mod tests {
         generate, generate_from_source, meta_from_json, meta_to_json, output_meta,
         projection_from_json, projection_to_json, SCHEMA_VERSION,
     };
-    use crate::config::GecConfig;
-    use crate::error::GecError;
+    use crate::config::GercConfig;
+    use crate::error::GercError;
     use crate::intake::{
-        GecInput, SourceDeclaration, SourceFunction, SourcePackage, SourceType,
+        GercInput, SourceDeclaration, SourceFunction, SourcePackage, SourceType,
     };
     use crate::ir::RustItem;
     use crate::c::*;
 
-    fn sample_input() -> GecInput {
+    fn sample_input() -> GercInput {
         let mut pkg = BindingPackage::new();
         pkg.items.push(BindingItem::Function(FunctionBinding {
             name: "foo".into(),
@@ -211,14 +211,14 @@ mod tests {
             abi_confidence: None,
             source_offset: None,
         }));
-        GecInput::from_source_package(crate::intake::source_package_from_binding(&pkg))
+        GercInput::from_source_package(crate::intake::source_package_from_binding(&pkg))
     }
 
     // 11.1: root-level public API tiers
     #[test]
     fn generate_basic() {
         let input = sample_input();
-        let cfg = GecConfig::default();
+        let cfg = GercConfig::default();
         let output = generate(&input, &cfg).unwrap();
         assert!(!output.is_empty());
         assert_eq!(output.item_count(), 3);
@@ -226,8 +226,8 @@ mod tests {
 
     #[test]
     fn generate_empty_input_error() {
-        let input = GecInput::from_source_package(SourcePackage::default());
-        let cfg = GecConfig::default();
+        let input = GercInput::from_source_package(SourcePackage::default());
+        let cfg = GercConfig::default();
         let result = generate(&input, &cfg);
         assert!(result.is_err());
     }
@@ -245,14 +245,14 @@ mod tests {
                 source_offset: None,
             }));
 
-        let cfg = GecConfig::default();
+        let cfg = GercConfig::default();
         let output = generate_from_source(source, &cfg).unwrap();
         assert_eq!(output.item_count(), 1);
     }
 
     #[test]
     fn generate_from_source_empty_input_error() {
-        let cfg = GecConfig::default();
+        let cfg = GercConfig::default();
         let result = generate_from_source(SourcePackage::default(), &cfg);
         assert!(result.is_err());
     }
@@ -274,7 +274,7 @@ mod tests {
             source: LinkRequirementSource::Declared,
         });
 
-        let input = GecInput::from_source_package(crate::intake::source_package_from_binding(&pkg)).with_link_plan(ResolvedLinkPlan {
+        let input = GercInput::from_source_package(crate::intake::source_package_from_binding(&pkg)).with_link_plan(ResolvedLinkPlan {
             preferred_mode: LinkResolutionMode::Default,
             native_surface_kind: NativeSurfaceKind::LibraryNames,
             platform_constraints: Vec::new(),
@@ -287,7 +287,7 @@ mod tests {
             transitive_dependencies: Vec::new(),
         });
 
-        let cfg = GecConfig::default();
+        let cfg = GercConfig::default();
         let output = generate(&input, &cfg).unwrap();
         let link_names: Vec<&str> = output
             .projection
@@ -312,7 +312,7 @@ mod tests {
             source_offset: None,
         }));
 
-        let input = GecInput::from_source_package(crate::intake::source_package_from_binding(&pkg)).with_link_plan(ResolvedLinkPlan {
+        let input = GercInput::from_source_package(crate::intake::source_package_from_binding(&pkg)).with_link_plan(ResolvedLinkPlan {
             preferred_mode: LinkResolutionMode::PreferStatic,
             native_surface_kind: NativeSurfaceKind::Mixed,
             platform_constraints: Vec::new(),
@@ -331,7 +331,7 @@ mod tests {
             transitive_dependencies: Vec::new(),
         });
 
-        let cfg = GecConfig::default();
+        let cfg = GercConfig::default();
         let output = generate(&input, &cfg).unwrap();
 
         assert_eq!(output.projection.link_requirements.len(), 2);
@@ -346,17 +346,17 @@ mod tests {
     // 11.2: typed error taxonomy
     #[test]
     fn error_types_exhaustive() {
-        let _ = GecError::EmptyInput;
-        let _ = GecError::InvalidConfig { reason: "x".into() };
-        let _ = GecError::Io(std::io::Error::new(std::io::ErrorKind::Other, "x"));
-        let _ = GecError::Serialization("x".into());
+        let _ = GercError::EmptyInput;
+        let _ = GercError::InvalidConfig { reason: "x".into() };
+        let _ = GercError::Io(std::io::Error::new(std::io::ErrorKind::Other, "x"));
+        let _ = GercError::Serialization("x".into());
     }
 
     // 11.3: JSON-serializable output contract
     #[test]
     fn output_meta_json_roundtrip() {
         let input = sample_input();
-        let cfg = GecConfig::new("test");
+        let cfg = GercConfig::new("test");
         let output = generate(&input, &cfg).unwrap();
         let meta = output_meta(&cfg, &output);
         let json = meta_to_json(&meta).unwrap();
@@ -369,7 +369,7 @@ mod tests {
     // 11.4: schema versioning policy
     #[test]
     fn reject_future_schema_version() {
-        let json = r#"{"schema_version": 99, "gec_version": "0.1.0", "crate_name": "x", "item_count": 0, "accepted_count": 0, "rejected_count": 0, "diagnostic_count": 0}"#;
+        let json = r#"{"schema_version": 99, "gerc_version": "0.1.0", "crate_name": "x", "item_count": 0, "accepted_count": 0, "rejected_count": 0, "diagnostic_count": 0}"#;
         let result = meta_from_json(json);
         assert!(result.is_err());
     }
@@ -377,7 +377,7 @@ mod tests {
     #[test]
     fn accept_current_schema_version() {
         let json = format!(
-            r#"{{"schema_version": {}, "gec_version": "0.1.0", "crate_name": "x", "item_count": 0, "accepted_count": 0, "rejected_count": 0, "diagnostic_count": 0}}"#,
+            r#"{{"schema_version": {}, "gerc_version": "0.1.0", "crate_name": "x", "item_count": 0, "accepted_count": 0, "rejected_count": 0, "diagnostic_count": 0}}"#,
             SCHEMA_VERSION
         );
         let meta = meta_from_json(&json).unwrap();
@@ -389,7 +389,7 @@ mod tests {
     fn meta_missing_fields_deserialize() {
         // Older metadata without diagnostic_count should still work with serde defaults
         let json = format!(
-            r#"{{"schema_version": {}, "gec_version": "0.1.0", "crate_name": "x", "item_count": 0, "accepted_count": 0, "rejected_count": 0, "diagnostic_count": 0}}"#,
+            r#"{{"schema_version": {}, "gerc_version": "0.1.0", "crate_name": "x", "item_count": 0, "accepted_count": 0, "rejected_count": 0, "diagnostic_count": 0}}"#,
             SCHEMA_VERSION
         );
         let meta = meta_from_json(&json).unwrap();
@@ -400,7 +400,7 @@ mod tests {
     #[test]
     fn projection_json_roundtrip() {
         let input = sample_input();
-        let cfg = GecConfig::default();
+        let cfg = GercConfig::default();
         let output = generate(&input, &cfg).unwrap();
         let json = projection_to_json(&output.projection).unwrap();
         let proj2 = projection_from_json(&json).unwrap();
@@ -434,8 +434,8 @@ mod tests {
             source_offset: None,
         }));
 
-        let input = GecInput::from_source_package(crate::intake::source_package_from_binding(&pkg));
-        let output = generate(&input, &GecConfig::default()).unwrap();
+        let input = GercInput::from_source_package(crate::intake::source_package_from_binding(&pkg));
+        let output = generate(&input, &GercConfig::default()).unwrap();
         // Only the function should be in the projection (bitfield filtered out)
         assert_eq!(output.item_count(), 1);
         assert!(output.has_diagnostics());
@@ -487,8 +487,8 @@ mod tests {
             ],
         };
 
-        let input = GecInput::from_source_package(crate::intake::source_package_from_binding(&pkg)).with_validation(report);
-        let output = generate(&input, &GecConfig::default()).unwrap();
+        let input = GercInput::from_source_package(crate::intake::source_package_from_binding(&pkg)).with_validation(report);
+        let output = generate(&input, &GercConfig::default()).unwrap();
 
         assert_eq!(output.item_count(), 1);
         assert!(output.projection.items.iter().any(|item| {
@@ -543,8 +543,8 @@ mod tests {
             ],
         };
 
-        let input = GecInput::from_source_package(crate::intake::source_package_from_binding(&pkg)).with_validation(report);
-        let output = generate(&input, &GecConfig::default()).unwrap();
+        let input = GercInput::from_source_package(crate::intake::source_package_from_binding(&pkg)).with_validation(report);
+        let output = generate(&input, &GercConfig::default()).unwrap();
 
         assert_eq!(output.item_count(), 1);
         assert!(output.projection.items.iter().any(|item| {
@@ -560,14 +560,14 @@ mod tests {
     }
 
     // 11.7: non-goals (informational — tested by absence)
-    // gec does not parse C, does not own fol surface, etc.
+    // gerc does not parse C, does not own fol surface, etc.
     // This is enforced by the module structure.
 
     // 11.8: deterministic generation guarantees
     #[test]
     fn deterministic_output() {
         let input = sample_input();
-        let cfg = GecConfig::default();
+        let cfg = GercConfig::default();
         let output1 = generate(&input, &cfg).unwrap();
         let output2 = generate(&input, &cfg).unwrap();
         let json1 = projection_to_json(&output1.projection).unwrap();
@@ -578,7 +578,7 @@ mod tests {
     #[test]
     fn deterministic_output_10_runs() {
         let input = sample_input();
-        let cfg = GecConfig::default();
+        let cfg = GercConfig::default();
         let first = projection_to_json(&generate(&input, &cfg).unwrap().projection).unwrap();
         for _ in 0..9 {
             let json = projection_to_json(&generate(&input, &cfg).unwrap().projection).unwrap();
@@ -604,8 +604,8 @@ mod tests {
             source: LinkRequirementSource::Declared,
         });
 
-        let input = GecInput::from_source_package(crate::intake::source_package_from_binding(&pkg));
-        let cfg = GecConfig::new("mylib_sys");
+        let input = GercInput::from_source_package(crate::intake::source_package_from_binding(&pkg));
+        let cfg = GercConfig::new("mylib_sys");
         let output = generate(&input, &cfg).unwrap();
 
         // Meta

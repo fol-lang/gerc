@@ -1,8 +1,8 @@
 use std::fmt;
 
-/// Crate-wide error type for `gec`.
+/// Crate-wide error type for `gerc`.
 #[derive(Debug)]
-pub enum GecError {
+pub enum GercError {
     /// The input was empty or contained no usable declarations.
     EmptyInput,
     /// A configuration value was invalid or contradictory.
@@ -14,39 +14,39 @@ pub enum GecError {
 }
 
 /// Convenience alias used throughout the crate.
-pub type GecResult<T> = Result<T, GecError>;
+pub type GercResult<T> = Result<T, GercError>;
 
-impl fmt::Display for GecError {
+impl fmt::Display for GercError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            GecError::EmptyInput => write!(f, "input contains no usable declarations"),
-            GecError::InvalidConfig { reason } => {
+            GercError::EmptyInput => write!(f, "input contains no usable declarations"),
+            GercError::InvalidConfig { reason } => {
                 write!(f, "invalid configuration: {reason}")
             }
-            GecError::Io(e) => write!(f, "I/O error: {e}"),
-            GecError::Serialization(msg) => write!(f, "serialization error: {msg}"),
+            GercError::Io(e) => write!(f, "I/O error: {e}"),
+            GercError::Serialization(msg) => write!(f, "serialization error: {msg}"),
         }
     }
 }
 
-impl std::error::Error for GecError {
+impl std::error::Error for GercError {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
-            GecError::Io(e) => Some(e),
+            GercError::Io(e) => Some(e),
             _ => None,
         }
     }
 }
 
-impl From<std::io::Error> for GecError {
+impl From<std::io::Error> for GercError {
     fn from(e: std::io::Error) -> Self {
-        GecError::Io(e)
+        GercError::Io(e)
     }
 }
 
-impl From<serde_json::Error> for GecError {
+impl From<serde_json::Error> for GercError {
     fn from(e: serde_json::Error) -> Self {
-        GecError::Serialization(e.to_string())
+        GercError::Serialization(e.to_string())
     }
 }
 
@@ -56,13 +56,13 @@ mod tests {
 
     #[test]
     fn display_empty_input() {
-        let e = GecError::EmptyInput;
+        let e = GercError::EmptyInput;
         assert_eq!(e.to_string(), "input contains no usable declarations");
     }
 
     #[test]
     fn display_invalid_config() {
-        let e = GecError::InvalidConfig {
+        let e = GercError::InvalidConfig {
             reason: "bad value".into(),
         };
         assert!(e.to_string().contains("bad value"));
@@ -71,33 +71,33 @@ mod tests {
     #[test]
     fn display_io() {
         let io = std::io::Error::new(std::io::ErrorKind::NotFound, "gone");
-        let e = GecError::Io(io);
+        let e = GercError::Io(io);
         assert!(e.to_string().contains("gone"));
     }
 
     #[test]
     fn display_serialization() {
-        let e = GecError::Serialization("bad json".into());
+        let e = GercError::Serialization("bad json".into());
         assert!(e.to_string().contains("bad json"));
     }
 
     #[test]
     fn from_io_error() {
         let io = std::io::Error::new(std::io::ErrorKind::PermissionDenied, "denied");
-        let e: GecError = io.into();
-        assert!(matches!(e, GecError::Io(_)));
+        let e: GercError = io.into();
+        assert!(matches!(e, GercError::Io(_)));
     }
 
     #[test]
     fn error_source_io() {
         let io = std::io::Error::new(std::io::ErrorKind::Other, "inner");
-        let e = GecError::Io(io);
+        let e = GercError::Io(io);
         assert!(std::error::Error::source(&e).is_some());
     }
 
     #[test]
     fn error_source_none_for_others() {
-        let e = GecError::EmptyInput;
+        let e = GercError::EmptyInput;
         assert!(std::error::Error::source(&e).is_none());
     }
 }

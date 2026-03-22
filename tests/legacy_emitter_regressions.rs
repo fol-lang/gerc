@@ -1,14 +1,14 @@
 mod common;
 
-use gec::{emit_source, generate, GecConfig, GecInput};
+use gerc::{emit_source, generate, GercConfig, GercInput};
 use linc::ir::{
     BindingItem, BindingPackage, BindingType, CallingConvention, EnumBinding, EnumVariant,
     FieldBinding, FunctionBinding, ParameterBinding, RecordBinding, RecordKind, TypeAliasBinding,
 };
 
 fn generate_source(pkg: BindingPackage) -> String {
-    let input = GecInput::from_source_package(common::from_binding_package(&pkg));
-    let output = generate(&input, &GecConfig::new("legacy_sys")).unwrap();
+    let input = GercInput::from_source_package(common::from_binding_package(&pkg));
+    let output = generate(&input, &GercConfig::new("legacy_sys")).unwrap();
     emit_source(&output.projection)
 }
 

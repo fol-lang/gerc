@@ -1,8 +1,8 @@
 mod common;
 
-use gec::emit::emit_source;
-use gec::{
-    generate, generate_from_source, GecConfig, GecInput, SourceDeclaration, SourceFunction,
+use gerc::emit::emit_source;
+use gerc::{
+    generate, generate_from_source, GercConfig, GercInput, SourceDeclaration, SourceFunction,
     SourceLinkKind, SourceLinkRequirement, SourcePackage, SourceRecord, SourceType,
     SourceVariable,
 };
@@ -46,7 +46,7 @@ fn source_fixture() -> SourcePackage {
 
 #[test]
 fn generate_from_source_integrates_real_source_contracts() {
-    let output = generate_from_source(source_fixture(), &GecConfig::new("demo_sys")).unwrap();
+    let output = generate_from_source(source_fixture(), &GercConfig::new("demo_sys")).unwrap();
     let emitted = emit_source(&output.projection);
 
     assert_eq!(output.item_count(), 2);
@@ -60,7 +60,7 @@ fn generate_from_source_integrates_real_source_contracts() {
 }
 
 #[test]
-fn gec_input_from_source_accepts_evidence() {
+fn gerc_input_from_source_accepts_evidence() {
     let mut source = source_fixture();
     source
         .declarations
@@ -71,7 +71,7 @@ fn gec_input_from_source_accepts_evidence() {
         }));
     source.link_requirements[0].name = "rawdemo".into();
 
-    let input = GecInput::from_source_package(source)
+    let input = GercInput::from_source_package(source)
         .with_validation(common::from_linc_validation(&ValidationReport {
             phases: Vec::new(),
             entries: Vec::new(),
@@ -110,7 +110,7 @@ fn gec_input_from_source_accepts_evidence() {
             transitive_dependencies: Vec::new(),
         }));
 
-    let output = generate(&input, &GecConfig::new("demo_sys")).unwrap();
+    let output = generate(&input, &GercConfig::new("demo_sys")).unwrap();
     let emitted = emit_source(&output.projection);
 
     assert!(emitted.contains("pub fn demo_init"));
@@ -181,8 +181,8 @@ fn generate_prefers_parallel_linc_analysis_evidence() {
     };
 
     let output = generate(
-        &GecInput::from_source_package(source).with_analysis(common::from_linc_analysis(&analysis)),
-        &GecConfig::new("demo_sys"),
+        &GercInput::from_source_package(source).with_analysis(common::from_linc_analysis(&analysis)),
+        &GercConfig::new("demo_sys"),
     )
     .unwrap();
     let emitted = emit_source(&output.projection);
