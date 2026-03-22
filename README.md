@@ -156,9 +156,31 @@ The current canonical generation surfaces are:
 
 - source-only zlib
 - source-only libpng
+- source-only support-tier widget fixture
 - emitted crate output from deterministic fixtures
 - OpenSSL link directives
 - combined Linux event-loop link directives
+
+## Canonical Corpus
+
+The current GERC production corpus is intentionally named:
+
+- hermetic vendored
+  - source-only zlib
+  - source-only libpng
+  - deterministic emitted-crate checks on vendored fixtures
+- hermetic support-tier anchors
+  - source-only supported widget fixture
+  - source-only rejected bitfield fixture
+  - evidence-aware link-plan fixture
+- host-dependent raises
+  - OpenSSL evidence-aware generation
+  - combined Linux event-loop evidence-aware generation
+- conservative-failure anchors
+  - anonymous-type rejection ledger
+  - explicit gate/lower/pipeline failure matrices
+
+Those are the generation surfaces GERC should be judged against first.
 
 ## Build And Test
 
