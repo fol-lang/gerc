@@ -58,6 +58,15 @@ Before releasing `gerc`:
    output story
 5. confirm tests/examples still keep PARC/LINC translation outside `gerc/src/**`
 
+## Maintenance Rule
+
+When `gerc` changes:
+
+1. update the smallest meaningful test first
+2. update emitted-output docs in the same patch when behavior changes
+3. keep upstream translation in tests/examples/harnesses only
+4. delete stale workflow language instead of preserving it for history
+
 ## What "supported" means
 
 For `gerc`, support means:

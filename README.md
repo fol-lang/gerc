@@ -117,6 +117,25 @@ The practical split is:
 
 That keeps generation independent from upstream crate internals.
 
+## Tested Scope
+
+The suite currently exercises:
+
+- source-only generation from translated source artifacts
+- evidence-aware generation from translated source and evidence artifacts
+- deterministic projection and emitted-source behavior
+- emitted Cargo crate output and raw `rustc` argument output
+- larger fixture corpora including hostile surfaces and real-library examples
+
+The tests are the main statement of supported behavior.
+
+## Build And Test
+
+```sh
+make build
+make test
+```
+
 ## Validation-gated generation
 
 When a `ValidationReport` is attached, `gec` only projects declarations with
