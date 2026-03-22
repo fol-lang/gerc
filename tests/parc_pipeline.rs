@@ -134,6 +134,34 @@ fn vendored_libpng_parc_to_gerc_source_only() {
 }
 
 #[test]
+fn vendored_libpng_parc_to_gerc_emits_checkable_crate() {
+    let root = vendored_root("libpng");
+    let include_dir = root.join("include");
+    let entry = root.join("main.c");
+
+    let Some(source) = parse_vendored_source(&entry, &[include_dir]) else {
+        return;
+    };
+
+    let cfg = GercConfig::new("png_sys");
+    let output = generate_from_source(source, &cfg).unwrap();
+    let dir = tempdir("libpng_source_only");
+    let emitted = emit_crate(
+        &output.projection,
+        &cfg,
+        &dir,
+        OutputMode::Crate,
+        OverwritePolicy::Overwrite,
+    )
+    .unwrap();
+
+    let lib_rs = std::fs::read_to_string(emitted.root.join("src/lib.rs")).unwrap();
+
+    assert!(emitted.root.join("Cargo.toml").exists());
+    assert!(lib_rs.contains("png_"));
+}
+
+#[test]
 fn vendored_zlib_parc_linc_gerc_link_surface() {
     let root = vendored_root("zlib");
     let include_dir = root.join("include");
@@ -264,4 +292,43 @@ fn vendored_libpng_parc_linc_gerc_link_surface() {
         .link_requirements
         .iter()
         .any(|req| req.name == "png"));
+}
+
+#[test]
+fn vendored_libpng_parc_linc_gerc_emits_link_aware_crate() {
+    let root = vendored_root("libpng");
+    let include_dir = root.join("include");
+    let entry = root.join("main.c");
+
+    let result = linc_common::process(
+        &linc::raw_headers::HeaderConfig::new()
+            .header(&entry)
+            .include_dir(&include_dir)
+            .link_lib("png")
+            .no_origin_filter(),
+    )
+    .unwrap();
+
+    let cfg = GercConfig::new("png_sys");
+    let output = generate(
+        &GercInput::from_source_package(common::from_binding_package(&result.package)),
+        &cfg,
+    )
+    .unwrap();
+    let dir = tempdir("libpng_with_evidence");
+    let emitted = emit_crate(
+        &output.projection,
+        &cfg,
+        &dir,
+        OutputMode::Crate,
+        OverwritePolicy::Overwrite,
+    )
+    .unwrap();
+
+    let build_rs = std::fs::read_to_string(emitted.root.join("build.rs")).unwrap();
+    let rustc_args =
+        std::fs::read_to_string(emitted.root.join("rustc-link-args.txt")).unwrap();
+
+    assert!(build_rs.contains("cargo:rustc-link-lib=dylib=png"));
+    assert!(rustc_args.contains("-ldylib=png"));
 }
