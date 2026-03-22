@@ -1,5 +1,16 @@
 # Architecture
 
+## What GERC Owns
+
+`gec` owns Rust lowering, projection, emission, and generated build output for
+this toolchain layer.
+
+It does not own:
+
+- source parsing
+- binary inspection
+- upstream artifact translation inside `src/**`
+
 ## Module layout
 
 | Module | Purpose |
@@ -53,6 +64,18 @@ GecInput (GERC-owned source + optional evidence)
 This is an internal `gec` data flow. It is not permission for `gec/src/**` to
 import upstream crate types. Upstream artifacts must be translated outside the
 library boundary and then handed to `gec` in `gec`'s own input model.
+
+## Artifact boundary
+
+`gec` consumes its own source/evidence model and emits its own generation
+artifacts.
+
+The boundary rule is:
+
+- `gec/src/**` must not depend on `parc` or `linc`
+- tests/examples/external harnesses may translate upstream artifacts into `gec`
+  input
+- generated Rust/build outputs are the downstream-facing product
 
 ## Key types
 
