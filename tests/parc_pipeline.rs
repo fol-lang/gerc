@@ -42,6 +42,15 @@ fn tempdir(name: &str) -> PathBuf {
     dir
 }
 
+fn cargo_check(crate_dir: &Path) -> std::process::Output {
+    std::process::Command::new("cargo")
+        .arg("check")
+        .arg("--quiet")
+        .current_dir(crate_dir)
+        .output()
+        .expect("spawn cargo check")
+}
+
 #[test]
 fn vendored_zlib_parc_to_gerc_source_only() {
     let root = vendored_root("zlib");
@@ -159,6 +168,61 @@ fn vendored_libpng_parc_to_gerc_emits_checkable_crate() {
 
     assert!(emitted.root.join("Cargo.toml").exists());
     assert!(lib_rs.contains("png_"));
+}
+
+#[test]
+fn vendored_source_only_crates_fail_on_known_anonymous_type_lowering_gap() {
+    let libpng_root = vendored_root("libpng");
+    let libpng_include_dir = libpng_root.join("include");
+    let libpng_entry = libpng_root.join("main.c");
+
+    let Some(libpng_source) = parse_vendored_source(&libpng_entry, &[libpng_include_dir]) else {
+        return;
+    };
+
+    let libpng_cfg = GercConfig::new("png_sys");
+    let libpng_output = generate_from_source(libpng_source, &libpng_cfg).unwrap();
+    let libpng_dir = tempdir("libpng_cargo_check");
+    let libpng_emitted = emit_crate(
+        &libpng_output.projection,
+        &libpng_cfg,
+        &libpng_dir,
+        OutputMode::Crate,
+        OverwritePolicy::Overwrite,
+    )
+    .unwrap();
+
+    let libpng_check = cargo_check(&libpng_emitted.root);
+    let libpng_stderr = String::from_utf8_lossy(&libpng_check.stderr);
+    assert!(!libpng_check.status.success());
+    assert!(libpng_stderr.contains("pub type max_align_t = <anonymous>;"));
+    assert!(libpng_stderr.contains("expected `::`, found `;`"));
+
+    let zlib_root = vendored_root("zlib");
+    let zlib_include_dir = zlib_root.join("include");
+    let zlib_entry = zlib_root.join("main.c");
+
+    let Some(zlib_source) = parse_vendored_source(&zlib_entry, &[zlib_include_dir]) else {
+        return;
+    };
+
+    let zlib_cfg = GercConfig::new("zlib_sys");
+    let zlib_output = generate_from_source(zlib_source, &zlib_cfg).unwrap();
+    let zlib_dir = tempdir("zlib_cargo_check");
+    let zlib_emitted = emit_crate(
+        &zlib_output.projection,
+        &zlib_cfg,
+        &zlib_dir,
+        OutputMode::Crate,
+        OverwritePolicy::Overwrite,
+    )
+    .unwrap();
+
+    let zlib_check = cargo_check(&zlib_emitted.root);
+    let zlib_stderr = String::from_utf8_lossy(&zlib_check.stderr);
+    assert!(!zlib_check.status.success());
+    assert!(zlib_stderr.contains("pub type max_align_t = <anonymous>;"));
+    assert!(zlib_stderr.contains("expected `::`, found `;`"));
 }
 
 #[test]
