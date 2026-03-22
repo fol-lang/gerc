@@ -85,3 +85,69 @@ fn closure_ledger_rejection_messages_remain_actionable() {
     assert!(messages.iter().any(|msg| msg.contains("anonymous enum cannot be projected")));
     assert!(messages.iter().any(|msg| msg.contains("unsupported declaration: vendor extension")));
 }
+
+#[test]
+fn closure_ledger_incomplete_fields_and_missing_representation_evidence_stay_explicit() {
+    let mut pkg = BindingPackage::new();
+    pkg.items.push(BindingItem::Record(RecordBinding {
+        kind: RecordKind::Struct,
+        name: Some("opaque_field_holder".into()),
+        fields: Some(vec![FieldBinding {
+            name: Some("next".into()),
+            ty: BindingType::Opaque("dispatch_queue".into()),
+            bit_width: None,
+            layout: None,
+        }]),
+        source_offset: None,
+        representation: Some(RecordRepresentation {
+            size: Some(8),
+            align: Some(8),
+            completeness: Some("Complete".into()),
+        }),
+        abi_confidence: Some(AbiConfidence::RepresentationProbed),
+    }));
+    pkg.items.push(BindingItem::Record(RecordBinding {
+        kind: RecordKind::Struct,
+        name: Some("size_unknown".into()),
+        fields: Some(vec![FieldBinding {
+            name: Some("value".into()),
+            ty: BindingType::Int,
+            bit_width: None,
+            layout: None,
+        }]),
+        source_offset: None,
+        representation: Some(RecordRepresentation {
+            size: None,
+            align: Some(4),
+            completeness: Some("Complete".into()),
+        }),
+        abi_confidence: Some(AbiConfidence::RepresentationProbed),
+    }));
+    pkg.items.push(BindingItem::Record(RecordBinding {
+        kind: RecordKind::Struct,
+        name: Some("align_unknown".into()),
+        fields: Some(vec![FieldBinding {
+            name: Some("value".into()),
+            ty: BindingType::Int,
+            bit_width: None,
+            layout: None,
+        }]),
+        source_offset: None,
+        representation: Some(RecordRepresentation {
+            size: Some(4),
+            align: None,
+            completeness: Some("Complete".into()),
+        }),
+        abi_confidence: Some(AbiConfidence::RepresentationProbed),
+    }));
+
+    let (decisions, diagnostics) = gate_package(&pkg, None);
+    let messages: Vec<_> = diagnostics.iter().map(|diag| diag.message.as_str()).collect();
+
+    assert!(matches!(&decisions[0], GateDecision::Reject(reason) if reason.contains("incomplete field types")));
+    assert!(matches!(&decisions[1], GateDecision::Reject(reason) if reason.contains("lacks representation size evidence")));
+    assert!(matches!(&decisions[2], GateDecision::Reject(reason) if reason.contains("lacks representation alignment evidence")));
+    assert!(messages.iter().any(|msg| msg.contains("opaque_field_holder")));
+    assert!(messages.iter().any(|msg| msg.contains("size_unknown")));
+    assert!(messages.iter().any(|msg| msg.contains("align_unknown")));
+}
