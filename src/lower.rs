@@ -6,7 +6,7 @@
 use crate::c::{
     BindingItem, BindingPackage, DeclarationProvenance, EnumBinding, FunctionBinding, MacroBinding,
     MacroCategory, MacroValue, RecordBinding, RecordKind, TypeAliasBinding, UnsupportedItem,
-    VariableBinding,
+    VariableBinding, BindingType,
 };
 
 use crate::ir::*;
@@ -192,11 +192,72 @@ fn lower_enum(e: &EnumBinding) -> Result<RustItem, String> {
 
 /// 5.6: Lower typedef aliases.
 fn lower_type_alias(t: &TypeAliasBinding) -> Result<RustItem, String> {
+    if let Some(target) = lower_unnameable_alias_target(&t.target) {
+        return Ok(RustItem::TypeAlias(RustTypeAlias {
+            name: t.name.clone(),
+            target,
+            doc: None,
+        }));
+    }
+
+    let mapped = map_type(&t.target);
+    if matches!(&mapped, RustType::Named(name) if name == &t.name) {
+        return Err(format!(
+            "type alias '{}' is a redundant self-alias for an emitted named declaration",
+            t.name
+        ));
+    }
+
+    if binding_type_is_unnameable(&t.target) {
+        return Err(format!(
+            "type alias '{}' targets an anonymous or unnameable declaration",
+            t.name
+        ));
+    }
+
     Ok(RustItem::TypeAlias(RustTypeAlias {
         name: t.name.clone(),
-        target: map_type(&t.target),
+        target: mapped,
         doc: None,
     }))
+}
+
+fn lower_unnameable_alias_target(ty: &BindingType) -> Option<RustType> {
+    match ty {
+        BindingType::Pointer {
+            pointee,
+            const_pointee,
+            ..
+        } if binding_type_is_unnameable(pointee) => Some(RustType::OpaquePtr {
+            is_const: *const_pointee,
+        }),
+        BindingType::Qualified { ty, .. } => lower_unnameable_alias_target(ty),
+        _ => None,
+    }
+}
+
+fn binding_type_is_unnameable(ty: &BindingType) -> bool {
+    match ty {
+        BindingType::TypedefRef(name)
+        | BindingType::RecordRef(name)
+        | BindingType::EnumRef(name)
+        | BindingType::Opaque(name) => {
+            let trimmed = name.trim();
+            trimmed.is_empty() || trimmed == "<anonymous>"
+        }
+        BindingType::Pointer { pointee, .. } => binding_type_is_unnameable(pointee),
+        BindingType::Array(element, _) => binding_type_is_unnameable(element),
+        BindingType::Qualified { ty, .. } => binding_type_is_unnameable(ty),
+        BindingType::FunctionPointer {
+            return_type,
+            parameters,
+            ..
+        } => {
+            binding_type_is_unnameable(return_type)
+                || parameters.iter().any(binding_type_is_unnameable)
+        }
+        _ => false,
+    }
 }
 
 /// 5.7: Lower macro constants into Rust constants where supported.
@@ -586,6 +647,57 @@ mod tests {
         assert_eq!(diags.len(), 1);
         match &proj.items[0] {
             RustItem::Unsupported(u) => assert!(u.reason.contains("bad_thing")),
+            other => panic!("expected Unsupported, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn lower_anonymous_alias_target_becomes_unsupported() {
+        let pkg = make_package(vec![BindingItem::TypeAlias(TypeAliasBinding {
+            name: "max_align_t".into(),
+            target: BindingType::RecordRef("<anonymous>".into()),
+            canonical_resolution: None,
+            abi_confidence: None,
+            source_offset: None,
+        })]);
+        let (proj, diags) = lower_package(&pkg);
+        assert_eq!(diags.len(), 1);
+        match &proj.items[0] {
+            RustItem::Unsupported(u) => assert!(u.reason.contains("anonymous")),
+            other => panic!("expected Unsupported, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn lower_pointer_to_anonymous_alias_becomes_opaque_ptr() {
+        let pkg = make_package(vec![BindingItem::TypeAlias(TypeAliasBinding {
+            name: "png_imagep".into(),
+            target: BindingType::ptr(BindingType::RecordRef("<anonymous>".into())),
+            canonical_resolution: None,
+            abi_confidence: None,
+            source_offset: None,
+        })]);
+        let (proj, diags) = lower_package(&pkg);
+        assert!(diags.is_empty());
+        match &proj.items[0] {
+            RustItem::TypeAlias(t) => assert_eq!(t.target, RustType::OpaquePtr { is_const: false }),
+            other => panic!("expected TypeAlias, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn lower_self_alias_becomes_unsupported() {
+        let pkg = make_package(vec![BindingItem::TypeAlias(TypeAliasBinding {
+            name: "pthread_attr_t".into(),
+            target: BindingType::RecordRef("pthread_attr_t".into()),
+            canonical_resolution: None,
+            abi_confidence: None,
+            source_offset: None,
+        })]);
+        let (proj, diags) = lower_package(&pkg);
+        assert_eq!(diags.len(), 1);
+        match &proj.items[0] {
+            RustItem::Unsupported(u) => assert!(u.reason.contains("self-alias")),
             other => panic!("expected Unsupported, got {:?}", other),
         }
     }

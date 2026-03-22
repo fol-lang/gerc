@@ -3,6 +3,7 @@
 //! Turns `RustProjection` items into deterministic Rust source text.
 
 use crate::ir::*;
+use std::collections::BTreeSet;
 
 /// Emit a complete Rust source file from a projection.
 pub fn emit_source(proj: &RustProjection) -> String {
@@ -31,6 +32,8 @@ pub fn emit_source(proj: &RustProjection) -> String {
             out.push('\n');
         }
     }
+
+    emit_missing_named_type_placeholders(&mut out, proj);
 
     // 7.7: Emit type aliases
     for item in &other_items {
@@ -141,13 +144,13 @@ fn note_kind_label(kind: NoteKind) -> &'static str {
 fn emit_function_decl(out: &mut String, f: &RustFunction) {
     emit_doc_comment(out, f.doc.as_deref(), "    ");
     out.push_str("    pub fn ");
-    out.push_str(&f.name);
+    out.push_str(&escape_ident(&f.name));
     out.push('(');
     for (i, p) in f.parameters.iter().enumerate() {
         if i > 0 {
             out.push_str(", ");
         }
-        out.push_str(&p.name);
+        out.push_str(&escape_ident(&p.name));
         out.push_str(": ");
         out.push_str(&emit_type(&p.ty));
     }
@@ -169,7 +172,7 @@ fn emit_function_decl(out: &mut String, f: &RustFunction) {
 fn emit_constant(out: &mut String, c: &RustConstant) {
     emit_doc_comment(out, c.doc.as_deref(), "");
     out.push_str("pub const ");
-    out.push_str(&c.name);
+    out.push_str(&escape_ident(&c.name));
     out.push_str(": ");
     out.push_str(&emit_type(&c.ty));
     out.push_str(" = ");
@@ -198,7 +201,7 @@ fn emit_record(out: &mut String, r: &RustRecord) {
     out.push_str(" {\n");
     for field in &r.fields {
         out.push_str("    pub ");
-        out.push_str(&field.name);
+        out.push_str(&escape_ident(&field.name));
         out.push_str(": ");
         out.push_str(&emit_type(&field.ty));
         out.push_str(",\n");
@@ -216,7 +219,7 @@ fn emit_enum(out: &mut String, e: &RustEnum) {
     out.push_str(" {\n");
     for v in &e.variants {
         out.push_str("    ");
-        out.push_str(&v.name);
+        out.push_str(&escape_ident(&v.name));
         if let Some(val) = v.value {
             out.push_str(&format!(" = {}", val));
         }
@@ -242,10 +245,117 @@ fn emit_static_decl(out: &mut String, s: &RustStatic) {
     if s.mutable {
         out.push_str("mut ");
     }
-    out.push_str(&s.name);
+    out.push_str(&escape_ident(&s.name));
     out.push_str(": ");
     out.push_str(&emit_type(&s.ty));
     out.push_str(";\n");
+}
+
+fn emit_missing_named_type_placeholders(out: &mut String, proj: &RustProjection) {
+    let defined = collect_defined_type_names(proj);
+    let referenced = collect_referenced_type_names(proj);
+    let mut emitted_any = false;
+
+    for name in referenced.difference(&defined) {
+        if !is_placeholder_safe_name(name) {
+            continue;
+        }
+        if !emitted_any {
+            out.push_str("// Opaque placeholders for unresolved named C types\n");
+            emitted_any = true;
+        }
+        out.push_str("#[repr(C)]\n");
+        out.push_str("pub struct ");
+        out.push_str(name);
+        out.push_str(" { _opaque: [u8; 0] }\n\n");
+    }
+}
+
+fn collect_defined_type_names(proj: &RustProjection) -> BTreeSet<String> {
+    let mut names = BTreeSet::new();
+    for item in &proj.items {
+        match item {
+            RustItem::Record(r) => {
+                names.insert(r.name.clone());
+            }
+            RustItem::Enum(e) => {
+                names.insert(e.name.clone());
+            }
+            RustItem::TypeAlias(t) => {
+                names.insert(t.name.clone());
+            }
+            _ => {}
+        }
+    }
+    names
+}
+
+fn collect_referenced_type_names(proj: &RustProjection) -> BTreeSet<String> {
+    let mut names = BTreeSet::new();
+    for item in &proj.items {
+        match item {
+            RustItem::Function(f) => {
+                collect_named_types(&f.return_type, &mut names);
+                for p in &f.parameters {
+                    collect_named_types(&p.ty, &mut names);
+                }
+            }
+            RustItem::Record(r) => {
+                for field in &r.fields {
+                    collect_named_types(&field.ty, &mut names);
+                }
+            }
+            RustItem::Enum(_) => {}
+            RustItem::TypeAlias(t) => collect_named_types(&t.target, &mut names),
+            RustItem::Constant(c) => collect_named_types(&c.ty, &mut names),
+            RustItem::Static(s) => collect_named_types(&s.ty, &mut names),
+            RustItem::Unsupported(_) => {}
+        }
+    }
+    names
+}
+
+fn collect_named_types(ty: &RustType, names: &mut BTreeSet<String>) {
+    match ty {
+        RustType::Pointer { pointee, .. } => collect_named_types(pointee, names),
+        RustType::Array { element, .. } => collect_named_types(element, names),
+        RustType::FnPointer { params, ret, .. } => {
+            collect_named_types(ret, names);
+            for param in params {
+                collect_named_types(param, names);
+            }
+        }
+        RustType::Named(name) => {
+            names.insert(name.clone());
+        }
+        _ => {}
+    }
+}
+
+fn is_placeholder_safe_name(name: &str) -> bool {
+    let mut chars = name.chars();
+    let Some(first) = chars.next() else {
+        return false;
+    };
+    if !(first == '_' || first.is_ascii_alphabetic()) {
+        return false;
+    }
+    chars.all(|ch| ch == '_' || ch.is_ascii_alphanumeric())
+}
+
+fn escape_ident(name: &str) -> String {
+    const KEYWORDS: &[&str] = &[
+        "as", "break", "const", "continue", "crate", "else", "enum", "extern", "false", "fn",
+        "for", "if", "impl", "in", "let", "loop", "match", "mod", "move", "mut", "pub", "ref",
+        "return", "self", "Self", "static", "struct", "super", "trait", "true", "type",
+        "unsafe", "use", "where", "while", "async", "await", "dyn",
+    ];
+
+    if KEYWORDS.contains(&name) {
+        format!("r#{name}")
+    } else {
+        name.to_string()
+    }
 }
 
 /// Emit a Rust type as source text.
@@ -377,6 +487,39 @@ mod tests {
         let src = emit_source(&proj);
         assert!(src.contains("extern \"C\""));
         assert!(src.contains("pub fn foo(x: core::ffi::c_int) -> core::ffi::c_int;"));
+    }
+
+    #[test]
+    fn emit_function_escapes_keyword_parameter_names() {
+        let proj = make_projection(vec![RustItem::Function(RustFunction {
+            name: "png_get_pCAL".into(),
+            parameters: vec![RustParameter {
+                name: "type".into(),
+                ty: RustType::CInt,
+            }],
+            return_type: RustType::Void,
+            variadic: false,
+            doc: None,
+        })]);
+
+        let src = emit_source(&proj);
+        assert!(src.contains("pub fn png_get_pCAL(r#type: core::ffi::c_int);"));
+    }
+
+    #[test]
+    fn emit_missing_named_type_placeholders_before_aliases() {
+        let proj = make_projection(vec![RustItem::TypeAlias(RustTypeAlias {
+            name: "__gnuc_va_list".into(),
+            target: RustType::Named("__builtin_va_list".into()),
+            doc: None,
+        })]);
+
+        let src = emit_source(&proj);
+        let placeholder = "#[repr(C)]\npub struct __builtin_va_list { _opaque: [u8; 0] }";
+        let alias = "pub type __gnuc_va_list = __builtin_va_list;";
+        assert!(src.contains(placeholder));
+        assert!(src.contains(alias));
+        assert!(src.find(placeholder).unwrap() < src.find(alias).unwrap());
     }
 
     #[test]

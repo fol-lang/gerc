@@ -49,7 +49,7 @@ fn cargo_check(crate_dir: &Path) -> std::process::Output {
 }
 
 #[test]
-fn failure_matrix_pipeline_known_anonymous_type_gap_stays_pinned() {
+fn failure_matrix_pipeline_anonymous_alias_gap_is_closed() {
     for (name, crate_name) in [("libpng", "png_sys"), ("zlib", "zlib_sys")] {
         let root = vendored_root(name);
         let include_dir = root.join("include");
@@ -71,9 +71,8 @@ fn failure_matrix_pipeline_known_anonymous_type_gap_stays_pinned() {
         .unwrap();
 
         let checked = cargo_check(&emitted.root);
-        let stderr = String::from_utf8_lossy(&checked.stderr);
-        assert!(!checked.status.success());
-        assert!(stderr.contains("pub type max_align_t = <anonymous>;"));
-        assert!(stderr.contains("expected `::`, found `;`"));
+        let lib_rs = std::fs::read_to_string(emitted.root.join("src/lib.rs")).unwrap();
+        assert!(checked.status.success());
+        assert!(!lib_rs.contains("pub type max_align_t = <anonymous>;"));
     }
 }
