@@ -20,6 +20,7 @@ The main contract tests should cover:
 - staged `BindingPackage -> gate -> lower` paths
 - deterministic projection and emission
 - emitted crate and source-bundle output for the documented modes
+- grouped gate, lowering, and pipeline failure matrices
 
 Those tests are the practical statement of what downstream code may rely on.
 
@@ -76,6 +77,13 @@ Read the large test surfaces in three groups:
 The hermetic baselines are the confidence floor. The host-dependent ladders
 raise confidence on real targets. The conservative-failure paths prove that
 GERC refuses unsound lowering instead of inventing answers.
+
+The grouped failure suites now live in:
+
+- `failure_matrix_gate` for validation-driven gate refusals
+- `failure_matrix_lower` for anonymous and unsupported lowering failures
+- `failure_matrix_pipeline` for the pinned source-only anonymous-type cargo-check
+  gap
 
 ## Maintenance Rule
 

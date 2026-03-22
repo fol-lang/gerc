@@ -110,6 +110,7 @@ The suite covers:
 - raw `rustc` argument output
 - larger fixture surfaces and artifact-boundary tests
 - OpenSSL, libpng, and combined Linux event-loop link-directive generation
+- explicit gate, lowering, and pipeline failure matrices
 
 The tests are the best statement of what GERC actually supports.
 
@@ -128,6 +129,7 @@ The current hardening ladder is easiest to read in four buckets:
   - anonymous-type rejection paths
   - unsupported layout and ABI-sensitive gating
   - source-only degradation when link evidence is absent
+  - explicit gate, lowering, and pipeline failure matrices
 - determinism anchors
   - source-only zlib projection
   - vendored libpng conservative failure path
