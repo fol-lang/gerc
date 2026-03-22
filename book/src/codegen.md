@@ -1,8 +1,8 @@
 # Code Generation
 
 `gec` owns Rust FFI emission in the split `PARC -> LINC -> GERC` pipeline.
-Useful legacy emitter behavior is rehomed here; obsolete output shapes are not
-kept just for compatibility.
+Useful older emitter behavior is rehomed here when it still belongs in `gec`;
+obsolete output shapes are not kept alive just to preserve dead paths.
 
 ## Pipeline stages
 

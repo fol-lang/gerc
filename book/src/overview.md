@@ -44,3 +44,5 @@ PARC         (source parsing and extraction)
 - **Generic** — No `fol`-specific assumptions in the core crate.
 - **Artifact-boundary integration** — cross-package composition belongs outside
   `gec/src/**`.
+- **No crate-level back-compat burden** — dead pipeline shapes should be
+  deleted, not carried indefinitely.
