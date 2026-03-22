@@ -1,66 +1,97 @@
 # GERC (`gerc` crate)
 
-`gerc` is the Rust lowering and emission layer in the `PARC -> LINC -> GERC`
+`gerc` is the Rust lowering and emission layer in the `parc -> linc -> gerc`
 toolchain.
 
-It consumes `gerc`-owned source and evidence inputs and produces deterministic
-Rust FFI output: projected Rust IR, emitted Rust source, Cargo crate
-scaffolding, `build.rs`, and plain `rustc` link arguments.
+It produces Rust-facing output from translated C-side inputs:
 
-Architecturally:
+- a `RustProjection`
+- emitted Rust source
+- emitted crate directories and `build.rs`
+- raw `rustc` link arguments
+- metadata sidecars for downstream consumers
 
-- `gerc/src/**` must not depend on `parc` or `linc`
-- translation from PARC or LINC artifacts belongs only in tests, examples, or external harnesses
-- `gerc` owns its own intake model, projection model, and emitted artifacts
-- there is no shared ABI crate
-- there is no backward-compatibility burden for discarded pipeline shapes
+## What GERC Actually Exposes Today
 
-In the intended split:
+The crate is source-first, but its public API is not only `generate()` plus a
+few helpers.
 
-- `parc` owns source meaning
-- `linc` owns link and binary meaning
-- `gerc` owns Rust lowering, Rust emission, and emitted build metadata
+It currently exposes:
+
+- `GercInput`, `GercConfig`, `GercOutput`, and the root generation helpers
+- staged `gate` and `lower` modules
+- a large crate-owned C-side model in `gerc::c`
+- emission and crate-writing helpers
+- consumer/sidecar helpers
+
+The docs need to match that breadth rather than flattening everything into one
+perfectly clean layer.
 
 ## Responsibilities
 
-- intake of `gerc::SourcePackage` plus optional evidence inputs
-- conservative gating of unsupported or under-evidenced declarations
-- lowering into a `RustProjection`
+- intake of GERC-owned source and evidence contracts
+- conservative gating of declarations
+- lowering into `RustProjection`
 - deterministic Rust source emission
-- Cargo crate and source-bundle emission
-- native link metadata emission for Cargo and direct `rustc`
+- crate/build output generation
+- Cargo and raw `rustc` link metadata rendering
 
 ## Non-responsibilities
 
 - parsing or preprocessing C source
-- inspecting native binaries directly
-- inventing ABI facts that should come from upstream contracts
-- downstream runtime policy or loader strategy
+- direct native binary inspection
+- inventing missing ABI facts
+- runtime loader policy
 - library-level dependency on `parc` or `linc`
 
-## Artifact Boundary
+## Boundary
 
-`gerc` consumes its own contracts and emits its own artifacts.
+`gerc/src/**` must stay independent from `parc` and `linc`.
 
-- `parc` may serialize source artifacts
-- `linc` may serialize evidence artifacts
-- tests/examples/harnesses may translate those artifacts into `gerc` input
-- `gerc` library code stays on its own side of the boundary
+Cross-package translation belongs in tests, examples, or external harnesses.
+The library consumes its own input model and emits its own artifacts.
 
-That keeps generation independent from upstream crate internals and keeps the
-book honest about what belongs in `src/**`.
+## Fastest Working Paths
+
+Source-first generation:
+
+```rust
+use gerc::{generate_from_source, emit_source, GercConfig};
+use gerc::{SourceDeclaration, SourceFunction, SourcePackage, SourceType};
+
+let mut source = SourcePackage::default();
+source.declarations.push(SourceDeclaration::Function(SourceFunction {
+    name: "demo_init".into(),
+    parameters: vec![],
+    return_type: SourceType::Int,
+    variadic: false,
+    source_offset: None,
+}));
+
+let output = generate_from_source(source, &GercConfig::new("demo_sys")).unwrap();
+println!("{}", emit_source(&output.projection));
+```
+
+Staged workflow:
+
+```rust
+use gerc::gate::gate_package;
+use gerc::lower::lower_package;
+```
+
+That staged flow is still public and tested.
 
 ## Tested Scope
 
-The suite currently exercises:
+The suite covers:
 
-- source-only generation from translated source artifacts
-- evidence-aware generation from translated source and evidence artifacts
-- deterministic projection and emitted-source behavior
-- emitted Cargo crate output and raw `rustc` argument output
-- larger fixture corpora including hostile surfaces and real-library examples
-
-The tests are the main statement of supported behavior.
+- source-only generation
+- evidence-aware generation
+- staged gate/lower usage
+- root API re-exports
+- emitted crate output
+- raw `rustc` argument output
+- larger fixture surfaces and artifact-boundary tests
 
 ## Build And Test
 
@@ -68,19 +99,3 @@ The tests are the main statement of supported behavior.
 make build
 make test
 ```
-
-## Book Structure
-
-The book is arranged as a normal toolchain guide:
-
-1. introduction
-2. overview
-3. architecture
-4. intake contract
-5. API contract
-6. code generation
-7. emitted crate
-8. testing and release
-
-Each chapter explains the same split from a different angle so the docs stay
-parallel to `parc` and `linc`.

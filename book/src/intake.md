@@ -10,6 +10,12 @@
 
 `GercInput` is therefore the crate-owned intake boundary.
 
+In practice there are two real intake layers:
+
+1. the preferred `GercInput` path
+2. the lower-level crate-owned `gerc::c` model that staged helpers and some
+   tests still use directly
+
 ## Optional Enrichment
 
 Additional evidence forms can optionally be attached.
@@ -68,6 +74,10 @@ let input = GercInput::from_source_json(source_json).unwrap();
 - deduplicates function declarations by name
 - aligns provenance markers
 - is idempotent
+
+Internally, normalization still routes through the crate-owned binding-style
+model before reconstructing source-shaped state. That is important drift from
+the cleaner architecture story, and the docs should say so plainly.
 
 ## What GERC Does Not Accept
 

@@ -19,6 +19,13 @@ The target architecture is strict:
 standalone Rust source bundle or a Cargo-compatible crate directory, and it
 also emits plain `rustc` link arguments for non-Cargo toolchains.
 
+One correction matters up front: the current public crate surface is broader
+than just `generate()` and `generate_from_source()`. The crate also exposes:
+
+- a crate-owned C-side model under `gerc::c`
+- explicit staged `gate` / `lower` modules
+- consumer-side inspection and sidecar helpers
+
 In the toolchain split:
 
 - `parc` owns source meaning

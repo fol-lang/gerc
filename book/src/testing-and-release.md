@@ -17,6 +17,7 @@ The main contract tests should cover:
 
 - source-first intake through `GercInput` and `generate_from_source`
 - evidence-aware gating when validation and link evidence are attached
+- staged `BindingPackage -> gate -> lower` paths
 - deterministic projection and emission
 - emitted crate and source-bundle output for the documented modes
 

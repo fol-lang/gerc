@@ -41,6 +41,11 @@ At the crate root, `gerc` exposes four top-level API families:
 - JSON metadata and projection contracts
 - consumer inspection helpers and metadata sidecars
 
+It also exposes a large crate-owned C-side compatibility model through
+`gerc::c`. That model exists because `gerc` still supports staged workflows
+and internal lowering paths that operate on binding-style inputs, even though
+the preferred top-level story is source-first.
+
 ## Data Flow
 
 ```text
@@ -106,3 +111,10 @@ The central IR type. It contains:
 
 Either `Accept` or `Reject(reason)`. Rejected items produce diagnostics but no
 Rust code.
+
+### `gerc::c::*`
+
+This module is a crate-owned C-side model used by staged lowering, tests, and
+compatibility-style flows. It is public and root-reexported, so the
+documentation needs to treat it as part of the actual surface, not as a hidden
+implementation detail.

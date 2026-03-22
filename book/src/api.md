@@ -18,7 +18,7 @@ The safest downstream posture is:
 - **Tier 1**: `generate()`, `generate_from_source()`, `GercConfig`,
   `GercInput`, `GercOutput`, `GercOutputMeta`, `SCHEMA_VERSION`
 - **Tier 2**: the individual modules (`lower`, `gate`, `emit`, `typemap`,
-  `linkgen`, `crategen`, `consumer`)
+  `linkgen`, `crategen`, `consumer`, `c`)
 
 The crate root also re-exports the common emission entrypoints so downstream
 code does not need to import `emit` or `crategen` directly for routine use:
@@ -41,6 +41,10 @@ For staged inspection, import the modules explicitly:
 
 - `gerc::gate::gate_package(...)`
 - `gerc::lower::lower_package(...)`
+
+The root also re-exports many `gerc::c::*` types directly, because the crate
+still supports staged and compatibility-style workflows over its own binding
+model.
 
 ## Preferred Public Surface
 
@@ -89,6 +93,14 @@ let emitted = emit_crate(
 
 When validation evidence is attached, `generate()` filters out declarations
 that fail validation gating instead of emitting speculative Rust bindings.
+
+For lower-level staged work, the public API still supports:
+
+- `BindingPackage`
+- `BindingItem`
+- `BindingType`
+- `gate::gate_package(...)`
+- `lower::lower_package(...)`
 
 The emitted crate path supports both:
 
