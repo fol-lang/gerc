@@ -81,6 +81,23 @@ use gerc::lower::lower_package;
 
 That staged flow is still public and tested.
 
+## Artifact Boundary
+
+`gerc` owns its own lowering and emission model plus the emitted build-side
+artifacts.
+
+The durable boundaries are:
+
+- the crate-owned intake model in `gerc::c`
+- emitted Rust source
+- emitted crate directories and `build.rs`
+- rendered raw `rustc` link-argument files
+- metadata sidecars for downstream consumers
+
+Cross-package translation still belongs outside `gerc/src/**`. GERC can be used
+in integration tests and harnesses, but its library code is not where upstream
+`parc` or `linc` wiring should live.
+
 ## Tested Scope
 
 The suite covers:
@@ -92,6 +109,54 @@ The suite covers:
 - emitted crate output
 - raw `rustc` argument output
 - larger fixture surfaces and artifact-boundary tests
+- OpenSSL, libpng, and combined Linux event-loop link-directive generation
+
+The tests are the best statement of what GERC actually supports.
+
+## Hardening Matrix
+
+The current hardening ladder is easiest to read in four buckets:
+
+- hermetic vendored baselines
+  - source-only zlib lowering
+  - source-only libpng lowering with conservative rejection
+  - emitted crate output on deterministic vendored surfaces
+- host-dependent evidence ladders
+  - OpenSSL link-directive generation
+  - combined Linux event-loop link-directive generation
+- failure and conservative-lowering surfaces
+  - anonymous-type rejection paths
+  - unsupported layout and ABI-sensitive gating
+  - source-only degradation when link evidence is absent
+- determinism anchors
+  - source-only zlib projection
+  - vendored libpng conservative failure path
+  - OpenSSL link directives when available
+  - combined Linux event-loop link directives
+
+Read those as the current confidence anchors, not as a claim that every native
+surface lowers equally well today.
+
+## Release Gates
+
+`gerc` should only be treated as release-ready when all of these remain green:
+
+- `make build`
+- `make test`
+- source-only suites
+- evidence-aware suites
+- emitted-crate output checks
+- raw `rustc` argument checks
+- at least one OpenSSL-style host-dependent evidence target
+- at least one combined Linux/system link-directive target
+
+The current canonical generation surfaces are:
+
+- source-only zlib
+- source-only libpng conservative failure
+- emitted crate output from deterministic fixtures
+- OpenSSL link directives
+- combined Linux event-loop link directives
 
 ## Build And Test
 
