@@ -723,11 +723,11 @@ mod tests {
                     value: Some(1),
                 },
             ],
-            repr: "c_int".into(),
+            repr: "i32".into(),
             doc: None,
         })]);
         let src = emit_source(&proj);
-        assert!(src.contains("#[repr(c_int)]"));
+        assert!(src.contains("#[repr(i32)]"));
         assert!(src.contains("pub enum Color"));
         assert!(src.contains("RED = 0,"));
         assert!(src.contains("GREEN = 1,"));
@@ -738,7 +738,7 @@ mod tests {
         let proj = make_projection(vec![RustItem::Enum(RustEnum {
             name: "Color".into(),
             variants: vec![],
-            repr: "c_int".into(),
+            repr: "i32".into(),
             doc: Some("Color enum".into()),
         })]);
         let src = emit_source(&proj);
@@ -861,7 +861,7 @@ mod tests {
                         value: Some(1),
                     },
                 ],
-                repr: "c_int".into(),
+                repr: "i32".into(),
                 doc: None,
             }),
             RustItem::Record(RustRecord {

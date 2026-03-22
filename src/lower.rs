@@ -169,17 +169,17 @@ fn lower_enum(e: &EnumBinding) -> Result<RustItem, String> {
     // Choose repr based on representation evidence
     let repr = match &e.representation {
         Some(rep) => match (rep.underlying_size, rep.is_signed) {
-            (Some(4), Some(false)) => "c_uint".into(),
-            (Some(4), _) => "c_int".into(),
-            (Some(2), Some(false)) => "c_ushort".into(),
-            (Some(2), _) => "c_short".into(),
-            (Some(1), Some(false)) => "c_uchar".into(),
-            (Some(1), _) => "c_schar".into(),
-            (Some(8), Some(false)) => "c_ulonglong".into(),
-            (Some(8), _) => "c_longlong".into(),
-            _ => "c_int".into(),
+            (Some(4), Some(false)) => "u32".into(),
+            (Some(4), _) => "i32".into(),
+            (Some(2), Some(false)) => "u16".into(),
+            (Some(2), _) => "i16".into(),
+            (Some(1), Some(false)) => "u8".into(),
+            (Some(1), _) => "i8".into(),
+            (Some(8), Some(false)) => "u64".into(),
+            (Some(8), _) => "i64".into(),
+            _ => "i32".into(),
         },
-        None => "c_int".into(),
+        None => "i32".into(),
     };
 
     Ok(RustItem::Enum(RustEnum {
@@ -551,7 +551,7 @@ mod tests {
             RustItem::Enum(e) => {
                 assert_eq!(e.name, "color");
                 assert_eq!(e.variants.len(), 2);
-                assert_eq!(e.repr, "c_int");
+                assert_eq!(e.repr, "i32");
             }
             other => panic!("expected Enum, got {:?}", other),
         }

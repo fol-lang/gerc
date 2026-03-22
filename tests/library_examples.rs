@@ -3,6 +3,8 @@
 
 mod common;
 
+use std::path::{Path, PathBuf};
+
 #[path = "../test/stress/freetype.rs"]
 mod freetype;
 #[path = "../test/stress/openssl.rs"]
@@ -15,6 +17,7 @@ mod zlib;
 use gerc::config::GercConfig;
 use gerc::consumer::{build_sidecar, sidecar_to_json, GercConsumer, PassthroughConsumer};
 use gerc::contract::{generate, meta_to_json, output_meta, projection_to_json};
+use gerc::crategen::{emit_crate, OutputMode, OverwritePolicy};
 use gerc::emit::emit_source;
 use gerc::intake::GercInput;
 
@@ -53,6 +56,22 @@ struct PipelineResult {
     sidecar_json: String,
     consumer_findings: usize,
     link_libs: usize,
+}
+
+fn tempdir(name: &str) -> PathBuf {
+    let dir = std::env::temp_dir().join(format!("gerc_library_examples_{name}"));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    dir
+}
+
+fn cargo_check(crate_dir: &Path) -> std::process::Output {
+    std::process::Command::new("cargo")
+        .arg("check")
+        .arg("--quiet")
+        .current_dir(crate_dir)
+        .output()
+        .expect("spawn cargo check")
 }
 
 // ---- zlib ----
@@ -166,6 +185,21 @@ fn sqlite3_json_roundtrip() {
 }
 
 #[test]
+fn sqlite3_deterministic() {
+    let make = || {
+        let pkg = sqlite::sqlite3_package();
+        let output = generate(
+            &GercInput::from_source_package(common::from_binding_package(&pkg)),
+            &GercConfig::new("sqlite3_sys"),
+        )
+        .unwrap();
+        emit_source(&output.projection)
+    };
+
+    assert_eq!(make(), make());
+}
+
+#[test]
 fn sqlite3_sidecar_completeness() {
     let pkg = sqlite::sqlite3_package();
     let output = generate(
@@ -202,6 +236,32 @@ fn sqlite3_surface_preserves_typedef_handle_alloc_flow() {
     assert!(
         r.source.contains("pub fn sqlite3_free(ptr: *mut core::ffi::c_void);")
     );
+}
+
+#[test]
+fn sqlite3_emitted_crate_passes_cargo_check_and_keeps_link_args() {
+    let pkg = sqlite::sqlite3_package();
+    let cfg = GercConfig::new("sqlite3_sys");
+    let output = generate(
+        &GercInput::from_source_package(common::from_binding_package(&pkg)),
+        &cfg,
+    )
+    .unwrap();
+    let dir = tempdir("sqlite3_crate_check");
+    let emitted = emit_crate(
+        &output.projection,
+        &cfg,
+        &dir,
+        OutputMode::Crate,
+        OverwritePolicy::Overwrite,
+    )
+    .unwrap();
+
+    let rustc_args = std::fs::read_to_string(emitted.root.join("rustc-link-args.txt")).unwrap();
+    let check = cargo_check(&emitted.root);
+
+    assert!(rustc_args.contains("sqlite3"));
+    assert!(check.status.success());
 }
 
 // ---- openssl ----

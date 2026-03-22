@@ -318,7 +318,7 @@ mod tests {
                     value: Some(1),
                 },
             ],
-            repr: "c_int".into(),
+            repr: "i32".into(),
             doc: None,
         }));
         let json = serde_json::to_string(&proj).unwrap();

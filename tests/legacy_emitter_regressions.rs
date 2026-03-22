@@ -191,7 +191,7 @@ fn enums_emit_as_repr_enums_not_typedef_plus_const_blocks() {
     }));
 
     let source = generate_source(pkg);
-    assert!(source.contains("#[repr(c_int)]"));
+    assert!(source.contains("#[repr(i32)]"));
     assert!(source.contains("pub enum color"));
     assert!(source.contains("RED = 0,"));
     assert!(source.contains("GREEN = 1,"));
