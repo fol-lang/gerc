@@ -1,5 +1,16 @@
 # API Reference
 
+## First principle
+
+`gec` is the Rust lowering and emission layer of the toolchain.
+
+The safest downstream posture is:
+
+1. prefer crate-root APIs first
+2. provide `gec`'s own source/evidence inputs directly
+3. keep upstream artifact translation outside `gec/src/**`
+4. treat emitted Rust/build artifacts as the product boundary
+
 ## API tiers
 
 `gec` organizes its public API into two tiers:
@@ -30,6 +41,16 @@ For staged inspection, import the modules explicitly:
 
 - `gec::gate::gate_package(...)`
 - `gec::lower::lower_package(...)`
+
+## Preferred public surface
+
+These are the main consumer-facing entrypoints:
+
+- `generate()` and `generate_from_source()`
+- `GecInput`, `GecConfig`, and `GecOutput`
+- `emit_source()`, `emit_crate()`, `emit_build_rs()`, and `emit_rustc_args()`
+- JSON metadata/projection helpers
+- consumer-sidecar helpers
 
 ## Primary workflow
 
@@ -84,6 +105,15 @@ The emitted crate path now supports both:
 - direct `rustc` argument rendering via `rustc-link-args.txt` and
   `emit_rustc_args(...)`
 
+## Downstream posture
+
+If you are integrating `gec` into another tool, prefer:
+
+1. root-level generation APIs
+2. explicit `GecInput` construction when evidence is available
+3. emitted Rust/build outputs rather than internal lowering modules
+4. tests/examples/harnesses for any `parc` or `linc` artifact translation
+
 ## Integration coverage
 
 The current suite exercises realistic split-pipeline paths, not only
@@ -111,6 +141,15 @@ dependencies.
 | `emit_variables` | `true` | Emit static variable declarations |
 | `emit_constants` | `true` | Emit constant definitions |
 | `emit_build_script` | `true` | Emit `build.rs` with link metadata |
+
+## Explicit non-goals
+
+The current contract does not promise:
+
+- parsing or preprocessing C
+- binary inspection inside `gec`
+- automatic invention of missing ABI facts
+- library-level dependencies on upstream pipeline crates
 
 ## Error handling
 
