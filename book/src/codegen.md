@@ -15,11 +15,15 @@ Each item in the source-derived lowering package is evaluated against generation
 | Rule | Effect |
 |---|---|
 | Bitfield records | Rejected - no safe `repr(C)` representation |
-| Packed non-bitfield records | Allowed when representation evidence is explicit |
+| Packed non-bitfield records and unions | Allowed when representation evidence is explicit |
 | Anonymous records | Rejected - Rust requires named types |
 | Anonymous enums | Rejected - Rust requires named types |
 | Incomplete or opaque fields | Rejected - cannot determine layout |
 | `Unsupported` items | Rejected - explicitly unsupported upstream |
+
+Pointer-only references to anonymous or otherwise unnameable declarations are a
+special case: those degrade to opaque `*mut/*const core::ffi::c_void` instead
+of forcing the whole surface to fail.
 
 Rejected items produce diagnostics in the output but no Rust code.
 

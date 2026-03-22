@@ -1,6 +1,7 @@
 use gerc::c::{
-    LinkInput, LinkLibrary, LinkLibraryKind, LinkRequirementSource, LinkResolutionMode,
-    NativeSurfaceKind, ResolvedLinkPlan, ResolvedLinkRequirement, RequirementResolution,
+    LinkFramework, LinkInput, LinkLibrary, LinkLibraryKind, LinkRequirementSource,
+    LinkResolutionMode, NativeSurfaceKind, ResolvedLinkPlan, ResolvedLinkRequirement,
+    RequirementResolution,
 };
 use gerc::{
     emit_rustc_link_args, emit_source, generate, generate_from_source, GercConfig, GercInput,
@@ -85,6 +86,33 @@ fn support_tier_evidence_aware_link_plan_enriches_generation() {
 
     assert_eq!(output.projection.link_requirements.len(), 1);
     assert!(rustc_args.iter().any(|arg| arg == "-ldylib=ssl"));
+}
+
+#[test]
+fn support_tier_evidence_aware_framework_plan_is_supported() {
+    let declared = LinkInput::Framework(LinkFramework {
+        name: "Security".into(),
+        source: LinkRequirementSource::Declared,
+    });
+    let plan = ResolvedLinkPlan {
+        preferred_mode: LinkResolutionMode::PreferDynamic,
+        native_surface_kind: NativeSurfaceKind::LibraryNames,
+        inputs: vec![declared.clone()],
+        requirements: vec![ResolvedLinkRequirement {
+            declared,
+            source: LinkRequirementSource::Declared,
+            resolution: RequirementResolution::Resolved,
+            providers: vec![],
+        }],
+        ..ResolvedLinkPlan::default()
+    };
+
+    let input = GercInput::from_source_package(source_only_widget_api()).with_link_plan(plan);
+    let output = generate(&input, &GercConfig::new("widget_security_sys"))
+        .expect("framework-backed widget API should generate");
+    let rustc_args = emit_rustc_link_args(&output.projection.link_requirements);
+
+    assert!(rustc_args.iter().any(|arg| arg == "-lframework=Security"));
 }
 
 #[test]

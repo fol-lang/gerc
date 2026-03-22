@@ -129,7 +129,8 @@ The current hardening ladder is easiest to read in four buckets:
 - failure and conservative-lowering surfaces
   - anonymous-type fallback and rejection paths
   - incomplete-handle support for pointer-only opaque families
-  - packed non-bitfield acceptance versus bitfield rejection
+  - packed struct and packed union acceptance when representation evidence is explicit
+  - bitfield-bearing record rejection when representation would be unsound
   - keyword-safe placeholder emission for unresolved named types
   - unsupported layout and ABI-sensitive gating
   - source-only degradation when link evidence is absent
@@ -154,6 +155,8 @@ surface lowers equally well today.
 - emitted-crate output checks
 - raw `rustc` argument checks
 - incomplete-handle source-only support checks
+- framework-link evidence support checks
+- packed-union acceptance checks
 - keyword-safe placeholder emission checks
 - at least one OpenSSL-style host-dependent evidence target
 - at least one libcurl-style host-dependent API target
