@@ -1053,6 +1053,25 @@ fn combined_event_loop_e2e_sidecar() {
     assert_eq!(sidecar.items.len(), r.projection.len());
 }
 
+#[test]
+fn combined_event_loop_e2e_emits_expected_link_directives() {
+    let headers = [
+        "/usr/include/unistd.h",
+        "/usr/include/x86_64-linux-gnu/sys/socket.h",
+        "/usr/include/x86_64-linux-gnu/sys/epoll.h",
+        "/usr/include/signal.h",
+    ];
+    let Some(r) = bic_to_gerc_multi(&headers, INCLUDE, &["c"], &[], "event_loop_sys") else {
+        return;
+    };
+
+    let build_rs = gerc::emit_build_rs(&r.projection);
+    let rustc_args = gerc::emit_rustc_args(&r.projection);
+
+    assert!(build_rs.contains("cargo:rustc-link-lib=dylib=c"));
+    assert!(rustc_args.contains("-ldylib=c"));
+}
+
 // ═══════════════════════════════════════════════════════════
 //  COMBINED: networking stack
 //  (socket + netinet/in + netlink + pcap)
