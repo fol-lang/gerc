@@ -579,6 +579,43 @@ fn libxml2_e2e() {
     assert_balanced(&r.source, "libxml2");
 }
 
+#[test]
+fn libxml2_e2e_deterministic() {
+    assert_deterministic(
+        "/usr/include/libxml2/libxml/parser.h",
+        &[
+            "/usr/include",
+            "/usr/include/x86_64-linux-gnu",
+            "/usr/include/libxml2",
+        ],
+        &["xml2"],
+        "xml2_sys",
+    );
+}
+
+#[test]
+fn libxml2_e2e_emits_expected_link_directives() {
+    let Some(r) = bic_to_gerc(
+        "/usr/include/libxml2/libxml/parser.h",
+        &[
+            "/usr/include",
+            "/usr/include/x86_64-linux-gnu",
+            "/usr/include/libxml2",
+        ],
+        &["xml2"],
+        &[],
+        "xml2_sys",
+    ) else {
+        return;
+    };
+
+    let build_rs = gerc::emit_build_rs(&r.projection);
+    let rustc_args = gerc::emit_rustc_args(&r.projection);
+
+    assert!(build_rs.contains("cargo:rustc-link-lib=dylib=xml2"));
+    assert!(rustc_args.contains("-ldylib=xml2"));
+}
+
 // ═══════════════════════════════════════════════════════════
 //  LINUX KERNEL UAPI: input subsystem
 // ═══════════════════════════════════════════════════════════
