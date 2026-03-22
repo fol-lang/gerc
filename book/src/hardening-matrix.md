@@ -14,6 +14,8 @@ These should stay green everywhere:
 - source-only libpng lowering
 - deterministic emitted crate output on vendored fixtures
 - large internal corpus fixtures and root API tests
+- source-only incomplete-handle lowering
+- keyword-safe placeholder emission on unresolved named types
 
 These surfaces prove that GERC can:
 
@@ -39,6 +41,7 @@ These are good failures, not bad coverage:
 
 - anonymous-type lowering fallback and refusal when by-value naming is not
   honest
+- bitfield-by-value and representation-sensitive record rejection
 - unsupported layout or ABI-sensitive gating
 - source-only degradation when link evidence is absent
 - explicit rejection of declarations that would produce unsound Rust
@@ -56,5 +59,7 @@ The most important repeat-run anchors right now are:
 - source-only zlib projection
 - source-only libpng projection
 - emitted crate output on deterministic fixtures
+- incomplete-handle lowering
+- keyword-placeholder emission
 - OpenSSL link directives when available
 - combined Linux event-loop link directives when available

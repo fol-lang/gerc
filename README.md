@@ -127,6 +127,8 @@ The current hardening ladder is easiest to read in four buckets:
   - combined Linux event-loop link-directive generation
 - failure and conservative-lowering surfaces
   - anonymous-type fallback and rejection paths
+  - incomplete-handle support for pointer-only opaque families
+  - keyword-safe placeholder emission for unresolved named types
   - unsupported layout and ABI-sensitive gating
   - source-only degradation when link evidence is absent
   - explicit gate, lowering, and pipeline failure matrices
@@ -149,6 +151,8 @@ surface lowers equally well today.
 - evidence-aware suites
 - emitted-crate output checks
 - raw `rustc` argument checks
+- incomplete-handle source-only support checks
+- keyword-safe placeholder emission checks
 - at least one OpenSSL-style host-dependent evidence target
 - at least one combined Linux/system link-directive target
 
@@ -173,6 +177,8 @@ The current GERC production corpus is intentionally named:
   - source-only supported widget fixture
   - source-only rejected bitfield fixture
   - evidence-aware link-plan fixture
+  - pointer-only incomplete-handle fixture
+  - keyword-placeholder emission fixture
 - host-dependent raises
   - OpenSSL evidence-aware generation
   - combined Linux event-loop evidence-aware generation
