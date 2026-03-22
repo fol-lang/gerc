@@ -5,7 +5,10 @@ mod linc_common;
 
 use std::path::{Path, PathBuf};
 
-use gerc::{emit_source, generate, generate_from_source, GercConfig, GercInput};
+use gerc::{
+    emit_crate, emit_source, generate, generate_from_source, GercConfig, GercInput, OutputMode,
+    OverwritePolicy,
+};
 
 fn vendored_root(name: &str) -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -30,6 +33,13 @@ fn parse_vendored_source(entry: &Path, include_dirs: &[PathBuf]) -> Option<gerc:
     let extracted = parc::extract::extract_from_translation_unit(&parsed.unit, None);
     let binding = linc_common::from_parc_package(&extracted);
     Some(common::from_binding_package(&binding))
+}
+
+fn tempdir(name: &str) -> PathBuf {
+    let dir = std::env::temp_dir().join(format!("gerc_parc_pipeline_{name}"));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).expect("create temp dir");
+    dir
 }
 
 #[test]
@@ -68,6 +78,33 @@ fn vendored_zlib_parc_to_gerc_is_deterministic() {
     };
 
     assert_eq!(make(), make());
+}
+
+#[test]
+fn vendored_zlib_parc_to_gerc_emits_checkable_crate() {
+    let root = vendored_root("zlib");
+    let include_dir = root.join("include");
+    let entry = root.join("main.c");
+
+    let Some(source) = parse_vendored_source(&entry, &[include_dir]) else {
+        return;
+    };
+
+    let cfg = GercConfig::new("zlib_sys");
+    let output = generate_from_source(source, &cfg).unwrap();
+    let dir = tempdir("zlib_source_only");
+    let emitted = emit_crate(
+        &output.projection,
+        &cfg,
+        &dir,
+        OutputMode::Crate,
+        OverwritePolicy::Overwrite,
+    )
+    .unwrap();
+
+    assert!(emitted.root.join("Cargo.toml").exists());
+    assert!(emitted.root.join("src/lib.rs").exists());
+    assert!(std::fs::read_to_string(emitted.root.join("src/lib.rs")).is_ok());
 }
 
 #[test]
