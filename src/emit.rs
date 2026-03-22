@@ -266,7 +266,7 @@ fn emit_missing_named_type_placeholders(out: &mut String, proj: &RustProjection)
         }
         out.push_str("#[repr(C)]\n");
         out.push_str("pub struct ");
-        out.push_str(name);
+        out.push_str(&escape_ident(name));
         out.push_str(" { _opaque: [u8; 0] }\n\n");
     }
 }
@@ -413,7 +413,7 @@ pub fn emit_type(ty: &RustType) -> String {
             s.push('>');
             s
         }
-        RustType::Named(name) => name.clone(),
+        RustType::Named(name) => escape_ident(name),
         RustType::OpaquePtr { is_const } => {
             if *is_const {
                 "*const core::ffi::c_void".into()
@@ -520,6 +520,40 @@ mod tests {
         assert!(src.contains(placeholder));
         assert!(src.contains(alias));
         assert!(src.find(placeholder).unwrap() < src.find(alias).unwrap());
+    }
+
+    #[test]
+    fn emit_missing_named_type_placeholders_escape_rust_keywords() {
+        let proj = make_projection(vec![RustItem::Function(RustFunction {
+            name: "wire_handles".into(),
+            parameters: vec![
+                RustParameter {
+                    name: "type".into(),
+                    ty: RustType::Pointer {
+                        pointee: Box::new(RustType::Named("type".into())),
+                        is_const: false,
+                    },
+                },
+                RustParameter {
+                    name: "match".into(),
+                    ty: RustType::Pointer {
+                        pointee: Box::new(RustType::Named("match".into())),
+                        is_const: true,
+                    },
+                },
+            ],
+            return_type: RustType::Named("Self".into()),
+            variadic: false,
+            doc: None,
+        })]);
+
+        let src = emit_source(&proj);
+        assert!(src.contains("pub struct r#Self"));
+        assert!(src.contains("pub struct r#match"));
+        assert!(src.contains("pub struct r#type"));
+        assert!(src.contains("r#type: *mut r#type"));
+        assert!(src.contains("r#match: *const r#match"));
+        assert!(src.contains("-> r#Self"));
     }
 
     #[test]
