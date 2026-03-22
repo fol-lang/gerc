@@ -16,6 +16,12 @@ The target architecture is strict:
 complete Cargo-compatible Rust crate (or a loose source bundle), and it also
 emits plain `rustc` link arguments for non-Cargo toolchains.
 
+In the toolchain split:
+
+- `parc` owns source meaning
+- `linc` owns link and binary meaning
+- `gec` owns Rust lowering and emitted build output
+
 ## Audience
 
 This book is for developers who:
