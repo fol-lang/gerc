@@ -1,28 +1,28 @@
 # Code Generation
 
-`gerc` owns Rust FFI emission in the split `PARC -> LINC -> GERC` pipeline.
+`gerc` owns Rust FFI emission in the `PARC -> LINC -> GERC` toolchain.
 Useful older emitter behavior is rehomed here when it still belongs in `gerc`;
 obsolete output shapes are not kept alive just to preserve dead paths.
 
-## Pipeline stages
+## Pipeline Stages
 
 Code generation in `gerc` proceeds through several stages:
 
-### 1. Safety gating (`gate`)
+### 1. Safety Gating (`gate`)
 
 Each item in the source-derived lowering package is evaluated against generation rules:
 
 | Rule | Effect |
 |---|---|
-| Bitfield records | Rejected — no safe `repr(C)` representation |
-| Anonymous records | Rejected — Rust requires named types |
-| Anonymous enums | Rejected — Rust requires named types |
-| Incomplete/opaque fields | Rejected — cannot determine layout |
-| `Unsupported` items | Rejected — explicitly unsupported upstream |
+| Bitfield records | Rejected - no safe `repr(C)` representation |
+| Anonymous records | Rejected - Rust requires named types |
+| Anonymous enums | Rejected - Rust requires named types |
+| Incomplete or opaque fields | Rejected - cannot determine layout |
+| `Unsupported` items | Rejected - explicitly unsupported upstream |
 
 Rejected items produce diagnostics in the output but no Rust code.
 
-### 2. Type mapping (`typemap`)
+### 2. Type Mapping (`typemap`)
 
 C types are mapped to Rust FFI-safe equivalents:
 
@@ -44,32 +44,31 @@ C types are mapped to Rust FFI-safe equivalents:
 
 ### 3. Lowering (`lower`)
 
-Accepted items are lowered from `gerc`'s C-side model to `gerc`'s internal IR:
+Accepted items are lowered from `gerc`'s C-side model to the internal IR:
 
-- **Functions** → `RustFunction` (name, parameters, return type, variadic flag)
-- **Structs** → `RustRecord` with `RustRecordKind::Struct`
-- **Unions** → `RustRecord` with `RustRecordKind::Union`
-- **Opaque records** → `RustRecord` with `is_opaque: true`
-- **Enums** → `RustEnum` with variants and repr selection (`c_int` or `c_uint`)
-- **Type aliases** → `RustTypeAlias`
-- **Variables** → `RustStatic`
-- **Integer macros** → `RustConstant`
+- **Functions** -> `RustFunction`
+- **Structs** -> `RustRecord` with `RustRecordKind::Struct`
+- **Unions** -> `RustRecord` with `RustRecordKind::Union`
+- **Opaque records** -> `RustRecord` with `is_opaque: true`
+- **Enums** -> `RustEnum` with variants and repr selection
+- **Type aliases** -> `RustTypeAlias`
+- **Variables** -> `RustStatic`
+- **Integer macros** -> `RustConstant`
 
-### 4. Source emission (`emit`)
+### 4. Source Emission (`emit`)
 
 The IR is rendered into Rust source in a deterministic order:
 
-1. Constants (`pub const NAME: TYPE = VALUE;`)
-2. Type aliases (`pub type NAME = TARGET;`)
-3. Enums (`#[repr(REPR)] pub enum NAME { ... }`)
-4. Records — structs (`#[repr(C)] pub struct NAME { ... }`), unions, and
-   opaque structs (`pub struct NAME { _opaque: [u8; 0] }`)
-5. `extern "C"` block containing function declarations and statics
+1. Constants
+2. Type aliases
+3. Enums
+4. Records
+5. `extern "C"` declarations
 
-This ordering is stable and deterministic: the same input always produces
-the same output.
+This ordering is stable and deterministic: the same input always produces the
+same output.
 
-## Intentional canonicalizations
+## Intentional Canonicalizations
 
 Some emitted forms intentionally differ from older `linc` Rust output:
 
@@ -79,15 +78,16 @@ Some emitted forms intentionally differ from older `linc` Rust output:
 
 These are the supported `gerc` forms going forward.
 
-## Link metadata (`linkgen`)
+## Link Metadata (`linkgen`)
 
-Link evidence is lowered into Cargo-compatible `build.rs` directives:
+Link evidence is lowered into Cargo-compatible `build.rs` directives and plain
+`rustc` argument files:
 
-- `cargo:rustc-link-lib=NAME` — link a library
-- `cargo:rustc-link-lib=static=NAME` — link a static library
-- `cargo:rustc-link-lib=dylib=NAME` — link a dynamic library
-- `cargo:rustc-link-lib=framework=NAME` — link a macOS framework
-- `cargo:rustc-link-search=native=PATH` — add a library search path
+- `cargo:rustc-link-lib=NAME`
+- `cargo:rustc-link-lib=static=NAME`
+- `cargo:rustc-link-lib=dylib=NAME`
+- `cargo:rustc-link-lib=framework=NAME`
+- `cargo:rustc-link-search=native=PATH`
 
 Platform filtering is supported via `cfg!()` guards when platform constraints
 are specified.

@@ -2,8 +2,8 @@
 
 ## What GERC Owns
 
-`gerc` owns Rust lowering, projection, emission, and generated build output for
-this toolchain layer.
+`gerc` owns Rust lowering, projection, emission, and generated build output
+for this toolchain layer.
 
 It does not own:
 
@@ -11,61 +11,61 @@ It does not own:
 - binary inspection
 - upstream artifact translation inside `src/**`
 
-## Module layout
+## Module Layout
 
 | Module | Purpose |
 |---|---|
-| `intake` | Consumes GERC-owned source and evidence input models |
-| `typemap` | Maps GERC-owned C-like types to Rust FFI types (`RustType`) |
-| `gate` | Safety gating — accepts or rejects each declaration |
-| `lower` | Lowers accepted input items into Rust projection IR |
-| `ir` | Internal Rust projection IR: `RustProjection`, `RustItem`, `RustType` |
-| `emit` | Renders the IR into deterministic Rust source code |
-| `crategen` | Writes a full Cargo-compatible crate directory to disk |
-| `linkgen` | Lowers native link surfaces into `build.rs` and `rustc` directives |
-| `contract` | Top-level `generate()` entry point and JSON output contract |
+| `intake` | Crate-owned source and evidence input models |
+| `c` | Crate-owned C-side binding model and native evidence types |
+| `typemap` | Maps C-like types to Rust FFI types |
+| `gate` | Safety gating for each declaration |
+| `lower` | Lowers accepted items into `RustProjection` |
+| `ir` | Rust projection IR and supporting types |
+| `emit` | Renders the IR into deterministic Rust source |
+| `linkgen` | Lowers native link surfaces into Cargo and `rustc` directives |
+| `crategen` | Writes crate directories and source bundles to disk |
+| `contract` | Top-level generation entry point and JSON output contract |
 | `consumer` | Generic downstream-consumer contract and metadata sidecar |
 | `config` | Generation configuration (`GercConfig`) |
-| `output` | Generation output container (`GercOutput`, diagnostics) |
+| `output` | Generation output container (`GercOutput`) |
 | `error` | Crate error types (`GercError`, `GercResult`) |
 
 `gerc` is the only Rust emitter in this pipeline layer. If older Rust-emission
-logic still exists elsewhere, the intended end state is to move the useful
-behavior here and delete the duplicate path.
+logic still exists elsewhere, the end state is to move the useful behavior here
+and delete the duplicate path.
 
-At the crate root, `gerc` now exposes four top-level API families without
-module-qualified imports for routine use:
+At the crate root, `gerc` exposes four top-level API families:
 
 - generation and crate emission
 - staged intake and evidence attachment
 - JSON metadata and projection contracts
 - consumer inspection helpers and metadata sidecars
 
-## Data flow
+## Data Flow
 
 ```text
-GercInput (GERC-owned source + optional evidence)
+GercInput
     │
-    ├── gate::gate_package()  →  Vec<GateDecision> + diagnostics
+    ├── gate::gate_package()  -> Vec<GateDecision> + diagnostics
     │       │
-    │       └── filter: only Accept items pass through
+    │       └── filter: only accepted items pass through
     │
-    ├── lower::lower_package()  →  RustProjection + diagnostics
+    ├── lower::lower_package() -> RustProjection + diagnostics
     │
-    ├── lower_link_surface()  →  Vec<RustLinkRequirement>
+    ├── linkgen lowering       -> native link requirements
     │
     └── GercOutput { projection, diagnostics }
             │
-            ├── emit_source()  →  Rust source string
-            ├── emit_crate()   →  Cargo crate on disk
-            └── build_sidecar() → JSON metadata for consumers
+            ├── emit_source()   -> Rust source string
+            ├── emit_crate()    -> Cargo crate or source bundle on disk
+            └── build_sidecar() -> JSON metadata for consumers
 ```
 
-This is an internal `gerc` data flow. It is not permission for `gerc/src/**` to
-import upstream crate types. Upstream artifacts must be translated outside the
-library boundary and then handed to `gerc` in `gerc`'s own input model.
+This is an internal `gerc` data flow. It is not permission for `gerc/src/**`
+to import upstream crate types. Upstream artifacts must be translated outside
+the library boundary and then handed to `gerc` in `gerc`'s own input model.
 
-## Artifact boundary
+## Artifact Boundary
 
 `gerc` consumes its own source/evidence model and emits its own generation
 artifacts.
@@ -73,34 +73,36 @@ artifacts.
 The boundary rule is:
 
 - `gerc/src/**` must not depend on `parc` or `linc`
-- tests/examples/external harnesses may translate upstream artifacts into `gerc`
-  input
+- tests/examples/external harnesses may translate upstream artifacts into `gerc` input
 - generated Rust/build outputs are the downstream-facing product
 
-## Key types
+## Key Types
 
-GERC should not import `parc` or `linc` in library code.
+`gerc` should not import `parc` or `linc` in library code.
 If another package's artifact needs to be consumed, the translation belongs in
 tests/examples or an external harness.
 
+### `GercInput`
+
+The primary input container. It wraps:
+
+- a required `SourcePackage`
+- optional `EvidenceInputs`
+
+`EvidenceInputs` can carry `LinkAnalysisPackage`, `ValidationReport`, and
+`ResolvedLinkPlan` data.
+
 ### `RustProjection`
 
-The central IR type. Contains:
-- `items: Vec<RustItem>` — functions, records, enums, type aliases, constants,
+The central IR type. It contains:
+
+- `items: Vec<RustItem>` - functions, records, enums, type aliases, constants,
   statics, unsupported markers
-- `modules: Vec<RustModule>` — optional module organization
-- `link_requirements: Vec<RustLinkRequirement>` — native link metadata
-- `notes: Vec<ProjectionNote>` — provenance and diagnostic notes
-
-### `RustType`
-
-Enum covering all Rust FFI-safe types:
-- Primitives: `Void`, `Bool`, `CChar`, `CInt`, `CUInt`, `CLong`, etc.
-- Compound: `Pointer`, `Array`, `FnPointer`
-- References: `Named(String)` for typedefs/records/enums
-- Special: `OpaquePtr` for `void*`, `Unknown` for unmappable types
+- `modules: Vec<RustModule>` - optional module organization
+- `link_requirements: Vec<RustLinkRequirement>` - native link metadata
+- `notes: Vec<ProjectionNote>` - provenance and diagnostic notes
 
 ### `GateDecision`
 
-Either `Accept` or `Reject(reason)`. Items that are rejected produce
-diagnostics but no Rust code.
+Either `Accept` or `Reject(reason)`. Rejected items produce diagnostics but no
+Rust code.

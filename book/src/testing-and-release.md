@@ -7,22 +7,22 @@ The core questions are:
 
 - can `gerc` gate unsafe or unsupported input correctly
 - can it lower accepted input deterministically
-- can it emit stable Rust/build artifacts
+- can it emit stable Rust and build artifacts
 - can tests/examples prove upstream composition without turning upstream crates
   into library dependencies
 
-## Contract tests
+## Contract Tests
 
 The main contract tests should cover:
 
 - source-first intake through `GercInput` and `generate_from_source`
 - evidence-aware gating when validation and link evidence are attached
 - deterministic projection and emission
-- emitted crate/build output for the documented modes
+- emitted crate and source-bundle output for the documented modes
 
 Those tests are the practical statement of what downstream code may rely on.
 
-## Artifact-boundary integration proof
+## Artifact-Boundary Integration Proof
 
 `gerc/src/**` must not import `parc` or `linc`.
 
@@ -67,11 +67,11 @@ When `gerc` changes:
 3. keep upstream translation in tests/examples/harnesses only
 4. delete stale workflow language instead of preserving it for history
 
-## What "supported" means
+## What "Supported" Means
 
 For `gerc`, support means:
 
-- accepted declarations lower to deterministic Rust/build artifacts
+- accepted declarations lower to deterministic Rust and build artifacts
 - rejected declarations fail conservatively and diagnostically
 - documented output modes are covered by tests
 

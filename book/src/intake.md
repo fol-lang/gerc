@@ -1,6 +1,6 @@
 # Intake Contract
 
-## Primary input
+## Primary Input
 
 `gerc` is source-first, but the important ownership rule is:
 
@@ -10,7 +10,7 @@
 
 `GercInput` is therefore the crate-owned intake boundary.
 
-## Optional enrichment
+## Optional Enrichment
 
 Additional evidence forms can optionally be attached.
 
@@ -18,7 +18,7 @@ Additional evidence forms can optionally be attached.
 
 The preferred binary/link evidence contract derived from `linc`.
 
-When present, `gerc` reads:
+When present, `gerc` can read:
 
 - resolved link-plan data
 - declared link surface
@@ -44,19 +44,17 @@ that declaration instead of guessing.
 ### Resolved link-plan artifact
 
 Resolved native link requirements. When present, `gerc` uses the resolved
-plan (with concrete artifact paths and search directories) instead of source
-or analysis-declared raw link surfaces.
+plan, with concrete artifact paths and search directories, instead of the raw
+source-declared link surface.
 
 ## Building a `GercInput`
 
 ```rust
 use gerc::intake::{GercInput, SourcePackage};
 
-// Preferred source-package intake
 let input = GercInput::from_source_package(SourcePackage::default());
-
-// Optional explicit enrichment (builder pattern)
 let input = GercInput::from_source_package(SourcePackage::default())
+    .with_analysis(analysis)
     .with_validation(report)
     .with_link_plan(plan);
 
@@ -67,11 +65,11 @@ let input = GercInput::from_source_json(source_json).unwrap();
 
 `GercInput::normalize()` is called automatically during `generate()`. It:
 
-- Deduplicates function declarations by name
-- Aligns provenance markers
-- Is idempotent (safe to call multiple times)
+- deduplicates function declarations by name
+- aligns provenance markers
+- is idempotent
 
-## What gerc does NOT accept
+## What GERC Does Not Accept
 
 `gerc` does not accept raw C source code or header files directly. Source
 extraction belongs in `parc`, and link/binary evidence belongs in `linc`.

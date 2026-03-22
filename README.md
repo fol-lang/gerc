@@ -1,121 +1,54 @@
-# GERC (`gerc` today)
+# GERC (`gerc` crate)
 
-`gerc` is the current crate name for `GERC`, the Rust generation layer in the
-`PARC -> LINC -> GERC` pipeline.
+`gerc` is the Rust lowering and emission layer in the `PARC -> LINC -> GERC`
+toolchain.
 
-It consumes `gerc`'s own source/evidence intake contracts and produces
-deterministic Rust FFI output: a projected Rust IR, emitted Rust source, and
-optionally a Cargo-compatible crate bundle with `build.rs`.
+It consumes `gerc`-owned source and evidence inputs and produces deterministic
+Rust FFI output: projected Rust IR, emitted Rust source, Cargo crate
+scaffolding, `build.rs`, and plain `rustc` link arguments.
 
 Architecturally:
 
 - `gerc/src/**` must not depend on `parc` or `linc`
-- `gerc` owns its own intake model, projection model, and emitted artifacts
 - translation from PARC or LINC artifacts belongs only in tests, examples, or external harnesses
-- there is no shared ABI crate and no compatibility layer for discarded pipeline shapes
+- `gerc` owns its own intake model, projection model, and emitted artifacts
+- there is no shared ABI crate
+- there is no backward-compatibility burden for discarded pipeline shapes
 
-In the intended architecture:
+In the intended split:
 
 - `parc` owns source meaning
 - `linc` owns link and binary meaning
-- `gerc` owns Rust lowering and emitted build metadata
+- `gerc` owns Rust lowering, Rust emission, and emitted build metadata
 
 ## Responsibilities
 
-- source-first intake from `gerc::SourcePackage`
-- optional `gerc::LinkAnalysisPackage`, `ValidationReport`, and `ResolvedLinkPlan` evidence
+- intake of `gerc::SourcePackage` plus optional evidence inputs
 - conservative gating of unsupported or under-evidenced declarations
-- lowering into Rust projection IR
+- lowering into a `RustProjection`
 - deterministic Rust source emission
-- emitted crate and build-script generation
-- ownership of Rust FFI emission for this pipeline layer
+- Cargo crate and source-bundle emission
+- native link metadata emission for Cargo and direct `rustc`
 
 ## Non-responsibilities
 
-- parsing C source or preprocessing headers
+- parsing or preprocessing C source
 - inspecting native binaries directly
 - inventing ABI facts that should come from upstream contracts
-- downstream runtime policy or high-level wrapper generation
-
-## Pipeline
-
-```text
-PARC (source contracts)
-    -> LINC (link and evidence contracts)
-    -> GERC (`gerc` crate today)
-    -> generated Rust bindings crate
-```
-
-That diagram is a responsibility diagram, not a library-dependency diagram.
-`gerc` may be fed source and evidence that originated upstream, but the
-translation into `gerc`'s own intake types must stay outside `gerc/src/**`.
-
-## Status
-
-This implementation plan is now complete at the crate level. The remaining
-name mismatch is packaging: the crate is still published and imported as
-`gerc`, while the architecture and emitted artifacts now identify the role as
-`GERC`.
-
-## Preferred usage
-
-```rust
-use gerc::{emit_crate, emit_source, generate_from_source, GercConfig, OutputMode, OverwritePolicy};
-use gerc::{SourceDeclaration, SourceFunction, SourcePackage, SourceType};
-
-let mut source = SourcePackage::default();
-source.declarations.push(SourceDeclaration::Function(SourceFunction {
-    name: "init".into(),
-    parameters: vec![],
-    return_type: SourceType::Int,
-    variadic: false,
-    source_offset: None,
-}));
-
-let config = GercConfig::new("mylib_sys");
-let output = generate_from_source(source, &config).unwrap();
-let source = emit_source(&output.projection);
-let emitted = emit_crate(
-    &output.projection,
-    &config,
-    std::path::Path::new("/tmp/mylib_sys"),
-    OutputMode::Crate,
-    OverwritePolicy::Clean,
-).unwrap();
-
-assert!(source.contains("pub fn init"));
-assert!(emitted.root.join("Cargo.toml").exists());
-```
-
-The crate root now re-exports the main API families:
-
-- generation and emission: `generate`, `generate_from_source`, `emit_source`,
-  `emit_type`, `emit_crate`, `emit_build_rs`, `OutputMode`,
-  `OverwritePolicy`, `CrateManifest`, `EmittedCrate`
-- staged intake and evidence attachment: `GercInput`, `EvidenceInputs`,
-  `GateDecision`
-- JSON contracts: `output_meta`, `meta_to_json`, `meta_from_json`,
-  `projection_to_json`, `projection_from_json`, `GercOutputMeta`,
-  `SCHEMA_VERSION`
-- consumer inspection and sidecars: `GercConsumer`, `ConsumerReport`,
-  `ConsumerFinding`, `FindingKind`, `PassthroughConsumer`, `FolConsumer`,
-  `build_sidecar`, `sidecar_to_json`, `sidecar_from_json`,
-  `extern_function_names`, `record_names`, `type_alias_names`
-
-Generated crate manifests and `src/lib.rs` markers now use `GERC` naming for
-the emitter identity.
+- downstream runtime policy or loader strategy
+- library-level dependency on `parc` or `linc`
 
 ## Artifact Boundary
 
-`gerc` consumes its own input contracts and emits its own output artifacts.
-The practical split is:
+`gerc` consumes its own contracts and emits its own artifacts.
 
-- `parc` owns source artifacts
-- `linc` owns evidence artifacts
+- `parc` may serialize source artifacts
+- `linc` may serialize evidence artifacts
 - tests/examples/harnesses may translate those artifacts into `gerc` input
-- `gerc` emits Rust source, build files, sidecars, and rustc argument files
+- `gerc` library code stays on its own side of the boundary
 
-That keeps generation independent from upstream crate internals.
+That keeps generation independent from upstream crate internals and keeps the
+book honest about what belongs in `src/**`.
 
 ## Tested Scope
 
@@ -136,48 +69,18 @@ make build
 make test
 ```
 
-## Validation-gated generation
+## Book Structure
 
-When a `ValidationReport` is attached, `gerc` only projects declarations with
-usable validation evidence. Missing matches, ABI mismatches, duplicate
-providers, hidden providers, decoration mismatches, and wrong-kind matches are
-rejected instead of being projected speculatively.
+The book is arranged as a normal toolchain guide:
 
-`gerc` also treats partially-populated representation evidence conservatively.
-If a record or enum carries representation metadata but is missing critical
-fields like record size, record alignment, or enum underlying size, generation
-rejects that item instead of inventing layout facts.
+1. introduction
+2. overview
+3. architecture
+4. intake contract
+5. API contract
+6. code generation
+7. emitted crate
+8. testing and release
 
-Generated Rust source now includes source-comment notes for preserved
-provenance and other non-routine projection notes, so downstream readers can
-see where declarations came from and why items were only partially supported.
-
-## Intentional output differences
-
-`gerc` is the canonical Rust emitter in this pipeline now, so some differences
-from older `linc` Rust output are intentional:
-
-- opaque handles stay named Rust types (`pub struct NAME { _opaque: [u8; 0] }`)
-  instead of being erased into comments
-- enums emit as `#[repr(...)] pub enum` items instead of typedef-plus-const
-  blocks
-- function-pointer aliases emit as `Option<unsafe extern "C" fn(...)>` instead
-  of bare function-pointer aliases
-
-These are current `gerc` decisions, not compatibility regressions.
-
-## Split-pipeline coverage
-
-The integration suite now covers realistic vendored split-pipeline paths:
-
-- `parc -> gerc` source-only generation for zlib and libpng fixtures
-- `parc -> linc -> gerc` generation with declared link surfaces
-- `parc -> linc -> gerc` generation with resolved link-plan evidence
-
-Explicit staged inspection still exists, but it now lives under module paths:
-
-- `gerc::gate::gate_package(...)`
-- `gerc::lower::lower_package(...)`
-
-That keeps coverage anchored in upstream-produced fixtures instead of
-synthetic-only packages.
+Each chapter explains the same split from a different angle so the docs stay
+parallel to `parc` and `linc`.

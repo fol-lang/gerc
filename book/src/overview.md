@@ -1,54 +1,50 @@
 # Overview
 
-`GERC` currently ships as the `gerc` crate and sits between `parc`, `linc`, and downstream Rust tooling in the
-following pipeline:
+`gerc` sits between `parc`, `linc`, and downstream Rust tooling in the
+toolchain:
 
 ```text
-PARC         (source parsing and extraction)
-    → LINC   (link, validation, and ABI evidence)
-    → GERC   (Rust projection, code generation)
-    → generated Rust bindings crate
-    → fol-interloop-rust  (optional downstream consumer)
-    → fol-visible surface
+PARC  (source contracts)
+  -> LINC  (link and evidence contracts)
+  -> GERC  (Rust lowering and emission)
+  -> generated Rust bindings crate or source bundle
 ```
 
 Read this chapter as the workflow summary:
 
 1. `gerc` receives its own input model
 2. any upstream artifact translation happens outside `gerc/src/**`
-3. `gerc` gates, lowers, and emits deterministic Rust/build artifacts
+3. `gerc` gates, lowers, and emits deterministic Rust and build artifacts
 
-## What happens inside GERC
+## What Happens Inside GERC
 
-1. **Intake** — `gerc` receives its own source/evidence input model via
-   `GercInput`. Tests/examples or external harnesses may translate PARC and LINC
+1. **Intake** - `gerc` receives a `GercInput` wrapping source plus optional
+   evidence. Tests/examples or external harnesses may translate PARC and LINC
    artifacts into that model.
 
-2. **Safety gating** — Each declaration is checked against generation rules.
-   Items that cannot be safely represented in Rust (bitfields, anonymous
-   records, incomplete types) are rejected with diagnostics.
+2. **Safety gating** - Each declaration is checked against generation rules.
+   Items that cannot be safely represented in Rust are rejected with
+   diagnostics rather than guessed into existence.
 
-3. **Lowering** — Accepted declarations are lowered from GERC-owned source
-   types into `gerc`'s internal Rust projection IR (`RustProjection`).
+3. **Lowering** - Accepted declarations are lowered from the crate-owned C-side
+   model into `RustProjection`.
 
-4. **Type mapping** — C types (`int`, `void*`, pointers, arrays, function
-   pointers, etc.) are mapped to Rust FFI-safe equivalents.
+4. **Type mapping** - C types, pointers, arrays, function pointers, and
+   qualifiers are mapped to Rust FFI-safe equivalents.
 
-5. **Emission** — The IR is rendered into deterministic Rust source code.
+5. **Emission** - The projection is rendered into deterministic Rust source.
    Items are emitted in a stable order: constants, type aliases, enums,
-   records, then an `extern "C"` block for functions and statics.
+   records, then `extern "C"` declarations.
 
-6. **Crate generation** — Optionally, `gerc` writes a full Cargo-compatible
-   crate directory: `Cargo.toml`, `src/lib.rs`, and a `build.rs` with native
-   link metadata.
+6. **Crate generation** - Optionally, `gerc` writes a Cargo-compatible crate
+   directory or a source bundle plus `rustc` link arguments.
 
-## Design principles
+## Design Principles
 
-- **Deterministic** — The same input always produces the same output.
-- **Conservative** — Prefer refusing generation over emitting unsound code.
-- **Library-first** — `gerc` is a Rust library, not a CLI tool.
-- **Generic** — No `fol`-specific assumptions in the core crate.
-- **Artifact-boundary integration** — cross-package composition belongs outside
-  `gerc/src/**`.
-- **No crate-level back-compat burden** — dead pipeline shapes should be
-  deleted, not carried indefinitely.
+- **Deterministic** - the same input always produces the same output
+- **Conservative** - refuse generation rather than emit unsound code
+- **Library-first** - `gerc` is a Rust library, not a CLI tool
+- **Generic** - no `fol`-specific assumptions in the core crate
+- **Artifact-boundary integration** - cross-package composition belongs outside
+  `gerc/src/**`
+- **No back-compat burden** - discarded shapes are deleted, not preserved
