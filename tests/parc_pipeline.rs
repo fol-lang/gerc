@@ -196,6 +196,47 @@ fn vendored_zlib_parc_linc_gerc_resolved_link_plan() {
 }
 
 #[test]
+fn vendored_zlib_parc_linc_gerc_emits_link_aware_crate() {
+    let root = vendored_root("zlib");
+    let include_dir = root.join("include");
+    let entry = root.join("main.c");
+
+    let result = linc_common::process(
+        &linc::raw_headers::HeaderConfig::new()
+            .header(&entry)
+            .include_dir(&include_dir)
+            .link_lib("z")
+            .no_origin_filter(),
+    )
+    .unwrap();
+
+    let plan = linc::resolve_link_plan(&result.package);
+    let cfg = GercConfig::new("zlib_sys");
+    let output = generate(
+        &GercInput::from_source_package(common::from_binding_package(&result.package))
+            .with_link_plan(common::from_linc_link_plan(&plan)),
+        &cfg,
+    )
+    .unwrap();
+    let dir = tempdir("zlib_with_evidence");
+    let emitted = emit_crate(
+        &output.projection,
+        &cfg,
+        &dir,
+        OutputMode::Crate,
+        OverwritePolicy::Overwrite,
+    )
+    .unwrap();
+
+    let build_rs = std::fs::read_to_string(emitted.root.join("build.rs")).unwrap();
+    let rustc_args =
+        std::fs::read_to_string(emitted.root.join("rustc-link-args.txt")).unwrap();
+
+    assert!(build_rs.contains("cargo:rustc-link-lib=dylib=z"));
+    assert!(rustc_args.contains("-ldylib=z"));
+}
+
+#[test]
 fn vendored_libpng_parc_linc_gerc_link_surface() {
     let root = vendored_root("libpng");
     let include_dir = root.join("include");
