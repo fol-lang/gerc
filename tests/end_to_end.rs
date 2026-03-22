@@ -373,6 +373,19 @@ fn libpng_e2e_deterministic() {
     assert_deterministic("/usr/include/png.h", INCLUDE, &["png"], "png_sys");
 }
 
+#[test]
+fn libpng_e2e_emits_expected_link_directives() {
+    let Some(r) = bic_to_gerc("/usr/include/png.h", INCLUDE, &["png"], &[], "png_sys") else {
+        return;
+    };
+
+    let build_rs = gerc::emit_build_rs(&r.projection);
+    let rustc_args = gerc::emit_rustc_args(&r.projection);
+
+    assert!(build_rs.contains("cargo:rustc-link-lib=dylib=png"));
+    assert!(rustc_args.contains("-ldylib=png"));
+}
+
 // ═══════════════════════════════════════════════════════════
 //  GRAPHICS: X11/Xlib
 // ═══════════════════════════════════════════════════════════
