@@ -124,10 +124,12 @@ The current hardening ladder is easiest to read in four buckets:
   - emitted crate output on deterministic vendored surfaces
 - host-dependent evidence ladders
   - OpenSSL link-directive generation
+  - libcurl link-directive generation
   - combined Linux event-loop link-directive generation
 - failure and conservative-lowering surfaces
   - anonymous-type fallback and rejection paths
   - incomplete-handle support for pointer-only opaque families
+  - packed non-bitfield acceptance versus bitfield rejection
   - keyword-safe placeholder emission for unresolved named types
   - unsupported layout and ABI-sensitive gating
   - source-only degradation when link evidence is absent
@@ -154,6 +156,7 @@ surface lowers equally well today.
 - incomplete-handle source-only support checks
 - keyword-safe placeholder emission checks
 - at least one OpenSSL-style host-dependent evidence target
+- at least one libcurl-style host-dependent API target
 - at least one combined Linux/system link-directive target
 
 The current canonical generation surfaces are:
@@ -163,6 +166,7 @@ The current canonical generation surfaces are:
 - source-only support-tier widget fixture
 - emitted crate output from deterministic fixtures
 - OpenSSL link directives
+- libcurl link directives
 - combined Linux event-loop link directives
 
 ## Canonical Corpus

@@ -59,6 +59,7 @@ Before releasing `gerc`:
    - source-only libpng
    - emitted crate output on deterministic fixtures
    - OpenSSL link directives when available
+   - libcurl link directives when available
    - combined Linux event-loop link directives when available
 4. confirm the preferred public workflow in the README and book still matches
    the tested API
