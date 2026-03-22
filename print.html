@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-962fe17a.js";
+            window.path_to_searchindex_js = "searchindex-b0b4c08c.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-18d46400.js"></script>
@@ -681,10 +681,13 @@ are carrying confidence for lowering, emission, and build-output generation.</p>
 <h2 id="tier-1-hermetic-canonical-baselines"><a class="header" href="#tier-1-hermetic-canonical-baselines">Tier 1: Hermetic Canonical Baselines</a></h2>
 <p>These should stay green everywhere:</p>
 <ul>
+<li>source-only sqlite3 lowering</li>
 <li>source-only zlib lowering</li>
 <li>source-only libpng lowering</li>
 <li>deterministic emitted crate output on vendored fixtures</li>
 <li>large internal corpus fixtures and root API tests</li>
+<li>source-only incomplete-handle lowering</li>
+<li>keyword-safe placeholder emission on unresolved named types</li>
 </ul>
 <p>These surfaces prove that GERC can:</p>
 <ul>
@@ -697,6 +700,9 @@ are carrying confidence for lowering, emission, and build-output generation.</p>
 <p>These strengthen confidence on real native environments:</p>
 <ul>
 <li>OpenSSL link-directive generation</li>
+<li>libxml2 link-directive generation</li>
+<li>Apple framework link-directive generation</li>
+<li>Windows system-library link-directive generation</li>
 <li>combined Linux event-loop link-directive generation</li>
 <li>libc and system-library evidence-aware generation families</li>
 </ul>
@@ -707,6 +713,7 @@ evidence without taking a library dependency on upstream crates.</p>
 <ul>
 <li>anonymous-type lowering fallback and refusal when by-value naming is not
 honest</li>
+<li>bitfield-by-value and representation-sensitive record rejection</li>
 <li>unsupported layout or ABI-sensitive gating</li>
 <li>source-only degradation when link evidence is absent</li>
 <li>explicit rejection of declarations that would produce unsound Rust</li>
@@ -722,7 +729,13 @@ honest</li>
 <ul>
 <li>source-only zlib projection</li>
 <li>source-only libpng projection</li>
+<li>source-only sqlite3 projection</li>
 <li>emitted crate output on deterministic fixtures</li>
+<li>libxml2 link directives when available</li>
+<li>Apple framework link directives</li>
+<li>Windows system-library link directives</li>
+<li>incomplete-handle lowering</li>
+<li>keyword-placeholder emission</li>
 <li>OpenSSL link directives when available</li>
 <li>combined Linux event-loop link directives when available</li>
 </ul>
@@ -742,6 +755,7 @@ obsolete output shapes are not kept alive just to preserve dead paths.</p>
 </thead>
 <tbody>
 <tr><td>Bitfield records</td><td>Rejected - no safe <code>repr(C)</code> representation</td></tr>
+<tr><td>Packed non-bitfield records and unions</td><td>Allowed when representation evidence is explicit</td></tr>
 <tr><td>Anonymous records</td><td>Rejected - Rust requires named types</td></tr>
 <tr><td>Anonymous enums</td><td>Rejected - Rust requires named types</td></tr>
 <tr><td>Incomplete or opaque fields</td><td>Rejected - cannot determine layout</td></tr>
@@ -749,6 +763,9 @@ obsolete output shapes are not kept alive just to preserve dead paths.</p>
 </tbody>
 </table>
 </div>
+<p>Pointer-only references to anonymous or otherwise unnameable declarations are a
+special case: those degrade to opaque <code>*mut/*const core::ffi::c_void</code> instead
+of forcing the whole surface to fail.</p>
 <p>Rejected items produce diagnostics in the output but no Rust code.</p>
 <h3 id="2-type-mapping-typemap"><a class="header" href="#2-type-mapping-typemap">2. Type Mapping (<code>typemap</code>)</a></h3>
 <p>C types are mapped to Rust FFI-safe equivalents:</p>
@@ -905,6 +922,9 @@ general optimism.</p>
 <li>still dependent on host availability for the biggest OpenSSL and Linux-system
 evidence ladders</li>
 </ul>
+<p>For Level 1 production, that posture should be read as Linux/ELF-first and
+canonical-corpus-backed, with Apple and Windows serving as confidence-raising
+secondary targets.</p>
 <p>That is a good release posture for a young lowering crate, but it is not yet a
 claim that every ugly native surface will lower cleanly.</p>
 <h2 id="subsystem-scorecard"><a class="header" href="#subsystem-scorecard">Subsystem Scorecard</a></h2>
@@ -922,14 +942,23 @@ claim that every ugly native surface will lower cleanly.</p>
 <h2 id="canonical-readiness-anchors"><a class="header" href="#canonical-readiness-anchors">Canonical Readiness Anchors</a></h2>
 <p>The release posture should be judged against these anchors first:</p>
 <ul>
+<li>source-only sqlite3</li>
 <li>source-only zlib</li>
 <li>source-only libpng</li>
 <li>emitted crate output from deterministic fixtures</li>
+<li>source-only pointer-only opaque-handle lowering</li>
+<li>evidence-aware framework link rendering</li>
+<li>packed union acceptance with explicit representation evidence</li>
 <li>OpenSSL link directives</li>
+<li>libxml2 link directives</li>
+<li>Windows system-library link directives</li>
 <li>combined Linux event-loop link directives</li>
 </ul>
 <p>If those anchors drift, the scorecard should drop even if the smaller unit tests
 still look healthy.</p>
+<p>For the Level 1 production claim, the hermetic subset of those anchors is the
+minimum production floor. The host-dependent anchors are confidence raises, not
+the only basis for trust.</p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="testing-and-release"><a class="header" href="#testing-and-release">Testing And Release</a></h1>
 <p><code>gerc</code> is the lowering and emission crate in the toolchain, so its test and
@@ -979,10 +1008,15 @@ internal types, the change is architecturally wrong.</p>
 <li>run <code>make test</code></li>
 <li>confirm the canonical hardening anchors still pass
 <ul>
+<li>source-only sqlite3</li>
 <li>source-only zlib</li>
 <li>source-only libpng</li>
 <li>emitted crate output on deterministic fixtures</li>
 <li>OpenSSL link directives when available</li>
+<li>libxml2 link directives when available</li>
+<li>Apple framework link directives</li>
+<li>Windows system-library link directives</li>
+<li>libcurl link directives when available</li>
 <li>combined Linux event-loop link directives when available</li>
 </ul>
 </li>
@@ -992,6 +1026,29 @@ the tested API</li>
 output story</li>
 <li>confirm tests/examples still keep PARC/LINC translation outside <code>gerc/src/**</code></li>
 </ol>
+<p>For the Level 1 production claim, interpret that checklist in two layers:</p>
+<ul>
+<li>hermetic production floor
+<ul>
+<li>source-only sqlite3</li>
+<li>source-only zlib</li>
+<li>source-only libpng</li>
+<li>emitted crate output from deterministic fixtures</li>
+<li>source-only pointer-only opaque-handle lowering</li>
+<li>packed union acceptance with explicit representation evidence</li>
+</ul>
+</li>
+<li>host-dependent confidence raises
+<ul>
+<li>OpenSSL link directives when available</li>
+<li>libxml2 link directives when available</li>
+<li>libcurl link directives when available</li>
+<li>Apple framework link directives</li>
+<li>Windows system-library link directives</li>
+<li>combined Linux event-loop link directives when available</li>
+</ul>
+</li>
+</ul>
 <h2 id="hermeticity-split"><a class="header" href="#hermeticity-split">Hermeticity Split</a></h2>
 <p>Read the large test surfaces in three groups:</p>
 <ul>

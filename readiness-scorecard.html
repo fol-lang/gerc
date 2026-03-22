@@ -35,7 +35,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-962fe17a.js";
+            window.path_to_searchindex_js = "searchindex-b0b4c08c.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-18d46400.js"></script>
@@ -190,6 +190,9 @@ general optimism.</p>
 <li>still dependent on host availability for the biggest OpenSSL and Linux-system
 evidence ladders</li>
 </ul>
+<p>For Level 1 production, that posture should be read as Linux/ELF-first and
+canonical-corpus-backed, with Apple and Windows serving as confidence-raising
+secondary targets.</p>
 <p>That is a good release posture for a young lowering crate, but it is not yet a
 claim that every ugly native surface will lower cleanly.</p>
 <h2 id="subsystem-scorecard"><a class="header" href="#subsystem-scorecard">Subsystem Scorecard</a></h2>
@@ -207,14 +210,23 @@ claim that every ugly native surface will lower cleanly.</p>
 <h2 id="canonical-readiness-anchors"><a class="header" href="#canonical-readiness-anchors">Canonical Readiness Anchors</a></h2>
 <p>The release posture should be judged against these anchors first:</p>
 <ul>
+<li>source-only sqlite3</li>
 <li>source-only zlib</li>
 <li>source-only libpng</li>
 <li>emitted crate output from deterministic fixtures</li>
+<li>source-only pointer-only opaque-handle lowering</li>
+<li>evidence-aware framework link rendering</li>
+<li>packed union acceptance with explicit representation evidence</li>
 <li>OpenSSL link directives</li>
+<li>libxml2 link directives</li>
+<li>Windows system-library link directives</li>
 <li>combined Linux event-loop link directives</li>
 </ul>
 <p>If those anchors drift, the scorecard should drop even if the smaller unit tests
 still look healthy.</p>
+<p>For the Level 1 production claim, the hermetic subset of those anchors is the
+minimum production floor. The host-dependent anchors are confidence raises, not
+the only basis for trust.</p>
 
                     </main>
 

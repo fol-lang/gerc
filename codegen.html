@@ -35,7 +35,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-962fe17a.js";
+            window.path_to_searchindex_js = "searchindex-b0b4c08c.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-18d46400.js"></script>
@@ -192,6 +192,7 @@ obsolete output shapes are not kept alive just to preserve dead paths.</p>
 </thead>
 <tbody>
 <tr><td>Bitfield records</td><td>Rejected - no safe <code>repr(C)</code> representation</td></tr>
+<tr><td>Packed non-bitfield records and unions</td><td>Allowed when representation evidence is explicit</td></tr>
 <tr><td>Anonymous records</td><td>Rejected - Rust requires named types</td></tr>
 <tr><td>Anonymous enums</td><td>Rejected - Rust requires named types</td></tr>
 <tr><td>Incomplete or opaque fields</td><td>Rejected - cannot determine layout</td></tr>
@@ -199,6 +200,9 @@ obsolete output shapes are not kept alive just to preserve dead paths.</p>
 </tbody>
 </table>
 </div>
+<p>Pointer-only references to anonymous or otherwise unnameable declarations are a
+special case: those degrade to opaque <code>*mut/*const core::ffi::c_void</code> instead
+of forcing the whole surface to fail.</p>
 <p>Rejected items produce diagnostics in the output but no Rust code.</p>
 <h3 id="2-type-mapping-typemap"><a class="header" href="#2-type-mapping-typemap">2. Type Mapping (<code>typemap</code>)</a></h3>
 <p>C types are mapped to Rust FFI-safe equivalents:</p>

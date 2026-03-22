@@ -35,7 +35,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-962fe17a.js";
+            window.path_to_searchindex_js = "searchindex-b0b4c08c.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-18d46400.js"></script>
@@ -185,10 +185,13 @@ are carrying confidence for lowering, emission, and build-output generation.</p>
 <h2 id="tier-1-hermetic-canonical-baselines"><a class="header" href="#tier-1-hermetic-canonical-baselines">Tier 1: Hermetic Canonical Baselines</a></h2>
 <p>These should stay green everywhere:</p>
 <ul>
+<li>source-only sqlite3 lowering</li>
 <li>source-only zlib lowering</li>
 <li>source-only libpng lowering</li>
 <li>deterministic emitted crate output on vendored fixtures</li>
 <li>large internal corpus fixtures and root API tests</li>
+<li>source-only incomplete-handle lowering</li>
+<li>keyword-safe placeholder emission on unresolved named types</li>
 </ul>
 <p>These surfaces prove that GERC can:</p>
 <ul>
@@ -201,6 +204,9 @@ are carrying confidence for lowering, emission, and build-output generation.</p>
 <p>These strengthen confidence on real native environments:</p>
 <ul>
 <li>OpenSSL link-directive generation</li>
+<li>libxml2 link-directive generation</li>
+<li>Apple framework link-directive generation</li>
+<li>Windows system-library link-directive generation</li>
 <li>combined Linux event-loop link-directive generation</li>
 <li>libc and system-library evidence-aware generation families</li>
 </ul>
@@ -211,6 +217,7 @@ evidence without taking a library dependency on upstream crates.</p>
 <ul>
 <li>anonymous-type lowering fallback and refusal when by-value naming is not
 honest</li>
+<li>bitfield-by-value and representation-sensitive record rejection</li>
 <li>unsupported layout or ABI-sensitive gating</li>
 <li>source-only degradation when link evidence is absent</li>
 <li>explicit rejection of declarations that would produce unsound Rust</li>
@@ -226,7 +233,13 @@ honest</li>
 <ul>
 <li>source-only zlib projection</li>
 <li>source-only libpng projection</li>
+<li>source-only sqlite3 projection</li>
 <li>emitted crate output on deterministic fixtures</li>
+<li>libxml2 link directives when available</li>
+<li>Apple framework link directives</li>
+<li>Windows system-library link directives</li>
+<li>incomplete-handle lowering</li>
+<li>keyword-placeholder emission</li>
 <li>OpenSSL link directives when available</li>
 <li>combined Linux event-loop link directives when available</li>
 </ul>

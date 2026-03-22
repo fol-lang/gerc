@@ -35,7 +35,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-962fe17a.js";
+            window.path_to_searchindex_js = "searchindex-b0b4c08c.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-18d46400.js"></script>
@@ -225,10 +225,15 @@ internal types, the change is architecturally wrong.</p>
 <li>run <code>make test</code></li>
 <li>confirm the canonical hardening anchors still pass
 <ul>
+<li>source-only sqlite3</li>
 <li>source-only zlib</li>
 <li>source-only libpng</li>
 <li>emitted crate output on deterministic fixtures</li>
 <li>OpenSSL link directives when available</li>
+<li>libxml2 link directives when available</li>
+<li>Apple framework link directives</li>
+<li>Windows system-library link directives</li>
+<li>libcurl link directives when available</li>
 <li>combined Linux event-loop link directives when available</li>
 </ul>
 </li>
@@ -238,6 +243,29 @@ the tested API</li>
 output story</li>
 <li>confirm tests/examples still keep PARC/LINC translation outside <code>gerc/src/**</code></li>
 </ol>
+<p>For the Level 1 production claim, interpret that checklist in two layers:</p>
+<ul>
+<li>hermetic production floor
+<ul>
+<li>source-only sqlite3</li>
+<li>source-only zlib</li>
+<li>source-only libpng</li>
+<li>emitted crate output from deterministic fixtures</li>
+<li>source-only pointer-only opaque-handle lowering</li>
+<li>packed union acceptance with explicit representation evidence</li>
+</ul>
+</li>
+<li>host-dependent confidence raises
+<ul>
+<li>OpenSSL link directives when available</li>
+<li>libxml2 link directives when available</li>
+<li>libcurl link directives when available</li>
+<li>Apple framework link directives</li>
+<li>Windows system-library link directives</li>
+<li>combined Linux event-loop link directives when available</li>
+</ul>
+</li>
+</ul>
 <h2 id="hermeticity-split"><a class="header" href="#hermeticity-split">Hermeticity Split</a></h2>
 <p>Read the large test surfaces in three groups:</p>
 <ul>
