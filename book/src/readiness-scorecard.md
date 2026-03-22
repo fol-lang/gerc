@@ -33,6 +33,7 @@ claim that every ugly native surface will lower cleanly.
 
 The release posture should be judged against these anchors first:
 
+- source-only sqlite3
 - source-only zlib
 - source-only libpng
 - emitted crate output from deterministic fixtures
@@ -40,6 +41,8 @@ The release posture should be judged against these anchors first:
 - evidence-aware framework link rendering
 - packed union acceptance with explicit representation evidence
 - OpenSSL link directives
+- libxml2 link directives
+- Windows system-library link directives
 - combined Linux event-loop link directives
 
 If those anchors drift, the scorecard should drop even if the smaller unit tests

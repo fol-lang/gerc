@@ -125,6 +125,7 @@ The current hardening ladder is easiest to read in four buckets:
 - host-dependent evidence ladders
   - OpenSSL link-directive generation
   - libcurl link-directive generation
+  - libxml2 link-directive generation
   - combined Linux event-loop link-directive generation
 - failure and conservative-lowering surfaces
   - anonymous-type fallback and rejection paths
@@ -136,9 +137,13 @@ The current hardening ladder is easiest to read in four buckets:
   - source-only degradation when link evidence is absent
   - explicit gate, lowering, and pipeline failure matrices
 - determinism anchors
+  - source-only sqlite3 projection
   - source-only zlib projection
   - source-only libpng projection
+  - libxml2 link directives when available
   - OpenSSL link directives when available
+  - Apple framework link directives
+  - Windows system-library link directives
   - combined Linux event-loop link directives
 
 Read those as the current confidence anchors, not as a claim that every native
@@ -158,17 +163,25 @@ surface lowers equally well today.
 - framework-link evidence support checks
 - packed-union acceptance checks
 - keyword-safe placeholder emission checks
+- sqlite3 emitted-crate checks
 - at least one OpenSSL-style host-dependent evidence target
+- at least one libxml2-style host-dependent evidence target
 - at least one libcurl-style host-dependent API target
+- at least one Apple framework target
+- at least one Windows system-library target
 - at least one combined Linux/system link-directive target
 
 The current canonical generation surfaces are:
 
 - source-only zlib
 - source-only libpng
+- source-only sqlite3
 - source-only support-tier widget fixture
 - emitted crate output from deterministic fixtures
 - OpenSSL link directives
+- libxml2 link directives
+- Apple framework link directives
+- Windows system-library link directives
 - libcurl link directives
 - combined Linux event-loop link directives
 
@@ -179,6 +192,7 @@ The current GERC production corpus is intentionally named:
 - hermetic vendored
   - source-only zlib
   - source-only libpng
+  - source-only sqlite3
   - deterministic emitted-crate checks on vendored fixtures
 - hermetic support-tier anchors
   - source-only supported widget fixture
@@ -188,6 +202,9 @@ The current GERC production corpus is intentionally named:
   - keyword-placeholder emission fixture
 - host-dependent raises
   - OpenSSL evidence-aware generation
+  - libxml2 evidence-aware generation
+  - Apple framework evidence-aware generation
+  - Windows system-library evidence-aware generation
   - combined Linux event-loop evidence-aware generation
 - conservative-failure anchors
   - anonymous-type rejection ledger

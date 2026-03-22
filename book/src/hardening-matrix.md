@@ -10,6 +10,7 @@ are carrying confidence for lowering, emission, and build-output generation.
 
 These should stay green everywhere:
 
+- source-only sqlite3 lowering
 - source-only zlib lowering
 - source-only libpng lowering
 - deterministic emitted crate output on vendored fixtures
@@ -29,6 +30,9 @@ These surfaces prove that GERC can:
 These strengthen confidence on real native environments:
 
 - OpenSSL link-directive generation
+- libxml2 link-directive generation
+- Apple framework link-directive generation
+- Windows system-library link-directive generation
 - combined Linux event-loop link-directive generation
 - libc and system-library evidence-aware generation families
 
@@ -58,7 +62,11 @@ The most important repeat-run anchors right now are:
 
 - source-only zlib projection
 - source-only libpng projection
+- source-only sqlite3 projection
 - emitted crate output on deterministic fixtures
+- libxml2 link directives when available
+- Apple framework link directives
+- Windows system-library link directives
 - incomplete-handle lowering
 - keyword-placeholder emission
 - OpenSSL link directives when available

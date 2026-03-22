@@ -55,10 +55,14 @@ Before releasing `gerc`:
 1. run `make build`
 2. run `make test`
 3. confirm the canonical hardening anchors still pass
+   - source-only sqlite3
    - source-only zlib
    - source-only libpng
    - emitted crate output on deterministic fixtures
    - OpenSSL link directives when available
+   - libxml2 link directives when available
+   - Apple framework link directives
+   - Windows system-library link directives
    - libcurl link directives when available
    - combined Linux event-loop link directives when available
 4. confirm the preferred public workflow in the README and book still matches
