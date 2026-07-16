@@ -5,11 +5,12 @@ edition = "2021"
 rust-version = "1.89"
 authors = ["Trim Bresilla"]
 description = "Rust lowering and emission layer in the PARC/LINC/GERC pipeline — generates Rust FFI bindings from C analysis"
-license = "MIT/Apache-2.0"
+license = "MIT OR Apache-2.0"
 repository = "https://github.com/follang/gerc"
 homepage = "https://github.com/follang/gerc"
-documentation = "https://docs.rs/follang-gerc"
+documentation = "https://follang.github.io/gerc/"
 readme = "README.md"
+publish = false
 keywords = ["c", "ffi", "bindings", "codegen"]
 categories = ["development-tools::ffi", "code-generation"]
 include = [
@@ -20,6 +21,7 @@ include = [
     "/Cargo.toml",
     "/LICENSE-*",
     "/README.md",
+    "/RELEASE.md",
 ]
 
 [lib]
@@ -27,8 +29,8 @@ name = "gerc"
 
 [dependencies]
 blake3 = "1"
-linc = { package = "follang-linc", version = "0.1.0", path = "../linc", default-features = false, features = ["contracts"] }
-parc = { package = "follang-parc", version = "0.16.0", path = "../parc" }
+linc = { package = "follang-linc", version = "=0.1.0", path = "../linc", default-features = false, features = ["contracts"] }
+parc = { package = "follang-parc", version = "=0.16.0", path = "../parc" }
 syn = { version = "2", default-features = false, features = ["full", "parsing"] }
 thiserror = "2"
 

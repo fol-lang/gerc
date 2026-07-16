@@ -27,10 +27,14 @@ Rust consumer against that exact object as one process argument, runs it, and
 checks record and enum values across the ABI boundary. `GERC_H4_GCC` may name
 an explicit GCC executable; ambient `CC` is deliberately ignored.
 
-Package validation extracts PARC, then LINC, then GERC and builds a scratch
-consumer using only `[patch.crates-io]` entries for the extracted packages. The
-consumer runs a nonzero typed generation test and checks the generated file and
-ordered link plan.
+Package validation requires the recorded clean PARC and LINC revisions,
+extracts PARC, then LINC, then GERC, and rejects path dependencies in the
+normalized archive manifests. It builds a scratch consumer using only
+`[patch.crates-io]` entries for the extracted packages. The consumer selects
+each package by exact version, runs a nonzero typed generation test, and checks
+the generated file and ordered link plan. On Linux the package gate also runs
+the full pipeline from the extracted archive, including explicit GCC and the
+optional explicit Clang differential when Clang is installed.
 
 `make verify-pipeline` first requires the pinned PARC and LINC Git revisions to
 be clean, validates both siblings through their Makefiles, and then runs the H5
@@ -39,3 +43,8 @@ certification, exact ordered static/shared/object providers, generated `no_std`
 Rust compilation, a linked value roundtrip, and owning-layer negative cases.
 `GERC_H5_CLANG` optionally names an explicit certifiable Clang binary for the
 full differential lane; it is never inferred from ambient `CC`.
+
+The pinned release inputs are PARC revision
+`ba603cdccc9375473eca0c42e5462cf90b6da249` and LINC revision
+`37c8fb16171114b39e2283ff4b9e351fa2d5975b`. See the release-policy chapter for
+the package, SemVer, generation-domain, algorithm, MSRV, and tag rules.

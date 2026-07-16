@@ -14,7 +14,7 @@ $(info Project: $(PROJECT_NAME))
 $(info Version: $(CURRENT_VERSION))
 $(info ------------------------------------------)
 
-.PHONY: build b compile c fmt fmt-check lint check-features test t test-contract test-generated test-package test-system test-pipeline verify-pipeline docs-check verify help h clean docs release
+.PHONY: build b compile c fmt fmt-check lint check-features test t test-contract test-generated test-package test-system test-pipeline verify-pipeline docs-check verify release-check help h clean docs
 
 SHELL := /bin/bash
 
@@ -61,13 +61,15 @@ test-generated:
 		GERC_H4_GCC="$$(command -v "$$gcc")" bash tools/run-filtered-test.sh cargo test --test h4_native -- --nocapture --test-threads=1
 
 test-package:
-	@tools/test-package.sh follang-gerc gerc
+	@GERC_PARC_RELEASE_REVISION=$(PARC_RELEASE_REVISION) \
+		GERC_LINC_RELEASE_REVISION=$(LINC_RELEASE_REVISION) \
+		tools/test-package.sh follang-gerc gerc
 
 test-system:
 	@bash tools/run-filtered-test.sh cargo test --test preservation_corpus -- --nocapture --test-threads=1
 
-H5_PARC_REV := ba603cdccc9375473eca0c42e5462cf90b6da249
-H5_LINC_REV := 4a2e0fba3aa528b7ba55626fd1ea9c75d153f7b1
+PARC_RELEASE_REVISION := ba603cdccc9375473eca0c42e5462cf90b6da249
+LINC_RELEASE_REVISION := 37c8fb16171114b39e2283ff4b9e351fa2d5975b
 
 test-pipeline:
 	@test "$$(uname -s)" = Linux || { echo "H5 pipeline certification requires Linux"; exit 1; }
@@ -87,8 +89,8 @@ verify-pipeline:
 			test -d "../$$sibling/.git" || { echo "../$$sibling must be an audited Git checkout"; exit 1; }; \
 			test -z "$$(git -C "../$$sibling" status --porcelain=v1 --untracked-files=all)" || { echo "../$$sibling must be clean"; exit 1; }; \
 		done; \
-		test "$$(git -C ../parc rev-parse HEAD)" = "$(H5_PARC_REV)" || { echo "../parc is not at certified H5 revision $(H5_PARC_REV)"; exit 1; }; \
-		test "$$(git -C ../linc rev-parse HEAD)" = "$(H5_LINC_REV)" || { echo "../linc is not at certified H5 revision $(H5_LINC_REV)"; exit 1; }; \
+		test "$$(git -C ../parc rev-parse HEAD)" = "$(PARC_RELEASE_REVISION)" || { echo "../parc is not at required revision $(PARC_RELEASE_REVISION)"; exit 1; }; \
+		test "$$(git -C ../linc rev-parse HEAD)" = "$(LINC_RELEASE_REVISION)" || { echo "../linc is not at required revision $(LINC_RELEASE_REVISION)"; exit 1; }; \
 		$(MAKE) -C ../parc build; \
 		$(MAKE) -C ../linc check-features
 	@$(MAKE) test-pipeline
@@ -145,7 +147,7 @@ help:
 	@echo "  docs-check     Build Rust and mdBook documentation"
 	@echo "  verify         Run the complete non-mutating gate"
 	@echo "  docs         Build documentation (TYPE=mdbook|doxygen)"
-	@echo "  release      Create a new release (TYPE=patch|minor|major)"
+	@echo "  release-check  Verify clean, synchronized release eligibility"
 	@echo
 
 h : help
@@ -164,16 +166,71 @@ else
 	$(error Invalid documentation type. Use 'make docs TYPE=mdbook' or 'make docs TYPE=doxygen')
 endif
 
-TYPE ?= patch
-HAS_REL := $(shell command -v git-rel 2>/dev/null)
-
-release:
-	@if [ -z "$(HAS_REL)" ]; then \
-		echo "git-rel is not installed. Please install it first."; \
-		exit 1; \
-	fi
-	@if [ -z "$(TYPE)" ]; then \
-		echo "Release type not specified. Use 'make release TYPE=[patch|minor|major|m.m.p]'"; \
-		exit 1; \
-	fi
-	@git rel $(TYPE)
+release-check:
+	@set -eu; \
+		branch="$$(git symbolic-ref --quiet --short HEAD)" || { \
+			echo "release check requires a branch checkout, not detached HEAD"; \
+			exit 1; \
+		}; \
+		upstream="$$(git rev-parse --abbrev-ref --symbolic-full-name '@{upstream}' 2>/dev/null)" || { \
+			echo "release check requires an upstream for $$branch"; \
+			exit 1; \
+		}; \
+		test -z "$$(git status --porcelain=v1 --untracked-files=all)" || { \
+			echo "release check requires a clean GERC worktree"; \
+			exit 1; \
+		}; \
+		head="$$(git rev-parse HEAD)"; \
+		upstream_head="$$(git rev-parse "$$upstream")"; \
+		test "$$head" = "$$upstream_head" || { \
+			echo "release check requires HEAD to equal $$upstream"; \
+			echo "HEAD:     $$head"; \
+			echo "upstream: $$upstream_head"; \
+			exit 1; \
+		}; \
+		tag="follang-gerc-v$(CURRENT_VERSION)"; \
+		! git rev-parse --quiet --verify "refs/tags/$$tag" >/dev/null || { \
+			echo "release tag already exists: $$tag"; \
+			exit 1; \
+		}; \
+		grep -Fqx 'publish = false' Cargo.toml || { \
+			echo "registry publication must remain disabled"; \
+			exit 1; \
+		}; \
+		for sibling in parc linc; do \
+			case "$$sibling" in \
+				parc) expected="$(PARC_RELEASE_REVISION)" ;; \
+				linc) expected="$(LINC_RELEASE_REVISION)" ;; \
+			esac; \
+			sibling_path="$$(cd "../$$sibling" && pwd -P)"; \
+			test -z "$$(git -C "$$sibling_path" status --porcelain=v1 --untracked-files=all)" || { \
+				echo "release check requires a clean $$sibling worktree"; \
+				exit 1; \
+			}; \
+			sibling_head="$$(git -C "$$sibling_path" rev-parse HEAD)"; \
+			test "$$sibling_head" = "$$expected" || { \
+				echo "release check requires $$sibling $$expected"; \
+				echo "$$sibling: $$sibling_head"; \
+				exit 1; \
+			}; \
+			sibling_branch="$$(git -C "$$sibling_path" symbolic-ref --quiet --short HEAD)" || { \
+				echo "release check requires a $$sibling branch checkout"; \
+				exit 1; \
+			}; \
+			sibling_upstream="$$(git -C "$$sibling_path" rev-parse --abbrev-ref --symbolic-full-name '@{upstream}' 2>/dev/null)" || { \
+				echo "release check requires an upstream for $$sibling $$sibling_branch"; \
+				exit 1; \
+			}; \
+			sibling_upstream_head="$$(git -C "$$sibling_path" rev-parse "$$sibling_upstream")"; \
+			test "$$sibling_head" = "$$sibling_upstream_head" || { \
+				echo "release check requires $$sibling HEAD to equal $$sibling_upstream"; \
+				echo "$$sibling HEAD:     $$sibling_head"; \
+				echo "$$sibling upstream: $$sibling_upstream_head"; \
+				exit 1; \
+			}; \
+		done; \
+		$(MAKE) verify; \
+		echo "release candidate is eligible: $$tag at $$head"; \
+		echo "required PARC revision: $(PARC_RELEASE_REVISION)"; \
+		echo "required LINC revision: $(LINC_RELEASE_REVISION)"; \
+		echo "release-check is non-mutating; follow RELEASE.md to create an archive/tag"

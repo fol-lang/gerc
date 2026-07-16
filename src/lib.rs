@@ -2,7 +2,7 @@
 //!
 //! GERC has one production intake path: [`GenerationRequest`]. It borrows a
 //! complete PARC closure and a checked LINC analysis. Output domain values are
-//! immutable and have no serde implementation. GERC H4 keeps generation as a
+//! immutable and have no serde implementation. GERC keeps generation as a
 //! checked in-memory boundary with no unchecked JSON decode or filesystem
 //! materialization path.
 

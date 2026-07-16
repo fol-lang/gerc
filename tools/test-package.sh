@@ -3,11 +3,35 @@ set -euo pipefail
 
 package_name=${1:?package name is required}
 crate_name=${2:?crate name is required}
+expected_parc_revision=${GERC_PARC_RELEASE_REVISION:?PARC release revision is required}
+expected_linc_revision=${GERC_LINC_RELEASE_REVISION:?LINC release revision is required}
 root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)
 parc_checkout=$(cd "$root/../parc" && pwd -P)
 linc_checkout=$(cd "$root/../linc" && pwd -P)
 scratch=$(mktemp -d "${TMPDIR:-/tmp}/${crate_name}-package.XXXXXX")
 trap 'rm -rf "$scratch"' EXIT
+
+for sibling in parc linc; do
+    case "$sibling" in
+        parc)
+            checkout=$parc_checkout
+            expected=$expected_parc_revision
+            ;;
+        linc)
+            checkout=$linc_checkout
+            expected=$expected_linc_revision
+            ;;
+    esac
+    revision=$(git -C "$checkout" rev-parse HEAD)
+    if test "$revision" != "$expected"; then
+        echo "$sibling revision mismatch: expected $expected, found $revision" >&2
+        exit 1
+    fi
+    if test -n "$(git -C "$checkout" status --porcelain=v1 --untracked-files=all)"; then
+        echo "$sibling package input must be a clean worktree" >&2
+        exit 1
+    fi
+done
 
 copy_source() {
     local source_root=$1
@@ -47,19 +71,62 @@ package_and_extract() {
     printf '%s' "$scratch/packages/${distribution}-${version}"
 }
 
+reject_dependency_paths() {
+    local manifest=$1
+
+    if awk '
+        /^\[(target\..*\.)?(dependencies|dev-dependencies|build-dependencies)(\.|])/{ dependency = 1; next }
+        /^\[/{ dependency = 0 }
+        dependency && /^[[:space:]]*path[[:space:]]*=/{ found = 1 }
+        END { exit found ? 0 : 1 }
+    ' "$manifest"; then
+        echo "normalized packaged manifest contains a path dependency: $manifest" >&2
+        exit 1
+    fi
+}
+
 parc_package=$(package_and_extract "$parc_root" follang-parc)
-cat >"$scratch/package-patches.toml" <<EOF
+cat >"$scratch/source-patches.toml" <<EOF
 [patch.crates-io]
-follang-parc = { path = "$parc_package" }
+follang-parc = { path = "$parc_root" }
 EOF
-linc_package=$(package_and_extract "$linc_root" follang-linc "$scratch/package-patches.toml")
-cat >>"$scratch/package-patches.toml" <<EOF
-follang-linc = { path = "$linc_package" }
+linc_package=$(package_and_extract "$linc_root" follang-linc "$scratch/source-patches.toml")
+cat >>"$scratch/source-patches.toml" <<EOF
+follang-linc = { path = "$linc_root" }
 EOF
-gerc_package=$(package_and_extract "$root" "$package_name" "$scratch/package-patches.toml")
+gerc_package=$(package_and_extract "$root" "$package_name" "$scratch/source-patches.toml")
 gerc_version=$(sed -n 's/^version = "\([^"]*\)"/\1/p' "$root/Cargo.toml" | head -n 1)
 parc_version=$(sed -n 's/^version = "\([^"]*\)"/\1/p' "$parc_package/Cargo.toml" | head -n 1)
 linc_version=$(sed -n 's/^version = "\([^"]*\)"/\1/p' "$linc_package/Cargo.toml" | head -n 1)
+
+for package_dir in "$parc_package" "$linc_package" "$gerc_package"; do
+    for file in README.md RELEASE.md LICENSE-MIT LICENSE-APACHE; do
+        test -f "$package_dir/$file"
+    done
+    reject_dependency_paths "$package_dir/Cargo.toml"
+    grep -Fqx 'publish = false' "$package_dir/Cargo.toml.orig"
+    grep -Fqx 'license = "MIT OR Apache-2.0"' "$package_dir/Cargo.toml.orig"
+    grep -Fqx 'rust-version = "1.89"' "$package_dir/Cargo.toml.orig"
+done
+
+grep -Fqx 'name = "follang-parc"' "$parc_package/Cargo.toml.orig"
+grep -Fqx 'version = "0.16.0"' "$parc_package/Cargo.toml.orig"
+grep -Fqx 'name = "follang-linc"' "$linc_package/Cargo.toml.orig"
+grep -Fqx 'version = "0.1.0"' "$linc_package/Cargo.toml.orig"
+grep -Fqx 'name = "follang-gerc"' "$gerc_package/Cargo.toml.orig"
+grep -Fqx 'version = "0.1.0"' "$gerc_package/Cargo.toml.orig"
+grep -Fqx 'name = "gerc"' "$gerc_package/Cargo.toml.orig"
+for omitted in .github book flake.nix flake.lock Makefile tools; do
+    test ! -e "$gerc_package/$omitted"
+done
+grep -Fq 'linc = { package = "follang-linc", version = "=0.1.0", path = "../linc", default-features = false, features = ["contracts"] }' \
+    "$gerc_package/Cargo.toml.orig"
+grep -Fq 'parc = { package = "follang-parc", version = "=0.16.0", path = "../parc" }' \
+    "$gerc_package/Cargo.toml.orig"
+grep -Fqx 'version = "=0.1.0"' "$gerc_package/Cargo.toml"
+grep -Fqx 'package = "follang-linc"' "$gerc_package/Cargo.toml"
+grep -Fqx 'version = "=0.16.0"' "$gerc_package/Cargo.toml"
+grep -Fqx 'package = "follang-parc"' "$gerc_package/Cargo.toml"
 
 mkdir -p "$scratch/consumer/src"
 cat >"$scratch/Cargo.toml" <<EOF
@@ -156,4 +223,17 @@ EOF
 
 cargo generate-lockfile --manifest-path "$scratch/Cargo.toml" --offline
 cargo test --manifest-path "$scratch/Cargo.toml" --workspace --offline --locked -- --test-threads=1
+if test "$(uname -s)" = Linux; then
+    command -v gcc >/dev/null 2>&1 || { echo "packaged pipeline requires gcc"; exit 1; }
+    command -v ar >/dev/null 2>&1 || { echo "packaged pipeline requires ar"; exit 1; }
+    command -v rustc >/dev/null 2>&1 || { echo "packaged pipeline requires rustc"; exit 1; }
+    GERC_H5_RUN=1 \
+        GERC_H5_GCC="$(command -v gcc)" \
+        GERC_H5_AR="$(command -v ar)" \
+        GERC_H5_CLANG="$(command -v clang 2>/dev/null || true)" \
+        RUSTC="$(command -v rustc)" \
+        cargo test --manifest-path "$scratch/Cargo.toml" -p "$package_name" \
+            --features pipeline-native --test h5_pipeline --offline --locked -- \
+            --nocapture --test-threads=1
+fi
 echo "packaged PARC/LINC/GERC archive workspace and typed consumer passed"

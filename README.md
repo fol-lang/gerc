@@ -3,6 +3,20 @@
 GERC is the Rust FFI projection stage in the typed
 `PARC -> LINC -> GERC` pipeline.
 
+For a repository development checkout, spell every package and library
+identity explicitly:
+
+```toml
+[dependencies]
+parc = { package = "follang-parc", path = "../parc" }
+linc = { package = "follang-linc", path = "../linc", default-features = false, features = ["contracts"] }
+gerc = { package = "follang-gerc", path = "../gerc" }
+```
+
+Registry publication is disabled. Released consumers must use the exact tested
+Git tags/archives described by the release policy rather than inventing
+registry versions or following unpinned branches.
+
 ```rust,no_run
 use gerc::{generate, GenerationRequest, ItemSelection};
 
@@ -74,7 +88,8 @@ the exact type states in `tests/pipeline_support/matrix.rs`:
 | x86_64-pc-windows-msvc and MinGW | explicitly-rejected | H5 gate: not certified |
 
 The domain values deliberately have no JSON decoder. PARC and LINC own their
-respective strict transport schemas; GERC H1 owns an in-memory projection.
+respective strict transport schemas; GERC owns an immutable in-memory
+projection.
 
 ## Verification
 
@@ -92,3 +107,21 @@ consumer test, the preservation corpus, and `make verify-pipeline`.
 their Makefile validation targets, then certifies, generates, links, and runs
 the H5 value corpus. Set `GERC_H5_CLANG` to an explicit certifiable Clang binary
 to add the optional full differential lane; ambient `CC` is ignored.
+
+## Distribution and compatibility
+
+The package identity is `follang-gerc` 0.1.0 and the Rust import name is
+`gerc`. Registry publication is disabled (`publish = false`), so no crates.io
+name ownership or availability is claimed. Candidate archives and the full
+pipeline are tested against exact `follang-parc` 0.16.0 revision
+`ba603cdccc9375473eca0c42e5462cf90b6da249` and exact `follang-linc` 0.1.0
+revision `37c8fb16171114b39e2283ff4b9e351fa2d5975b`.
+
+`make release-check` is a non-mutating eligibility check. It never changes a
+version, commits, tags, pushes, uploads, or publishes. SemVer, generation
+domain/algorithm, MSRV, certified-surface, exact-upstream, and tag/archive
+rules are recorded in [`RELEASE.md`](RELEASE.md).
+
+## License
+
+Dual-licensed under Apache 2.0 or MIT.
