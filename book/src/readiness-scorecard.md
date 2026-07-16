@@ -1,41 +1,30 @@
-# Readiness Scorecard
+# Hardening Evidence Scorecard
 
 This chapter ties GERC readiness to the current hardening ladder instead of
 general optimism.
 
 ## Overall Posture
 
-GERC should currently be read as:
-
-- strong on source-only lowering fundamentals
-- strong on deterministic emission and emitted-crate generation
-- strong on conservative rejection of unsupported shapes
-- useful and increasingly hardened on evidence-aware large surfaces
-- still dependent on host availability for the biggest OpenSSL and Linux-system
-  evidence ladders
-
-For Level 1 production, that posture should be read as Linux/ELF-first and
-canonical-corpus-backed, with Apple and Windows serving as confidence-raising
-secondary targets.
-
-That is a good release posture for a young lowering crate, but it is not yet a
-claim that every ugly native surface will lower cleanly.
+GERC is in H0 hardening and is not production-certified. Current tests provide
+useful lowering and deterministic-output regression evidence, but do not
+certify packed layout, providers, identifiers, ABI correctness, or a
+publication-ready generated crate. Apple and Windows coverage is synthetic and
+has no native CI gate.
 
 ## Subsystem Scorecard
 
-- source-first intake: high
-- gate and refusal diagnostics: high
-- lowering and typemapping: high
-- deterministic source emission: high
-- emitted crate output: high
-- raw `rustc` argument rendering: high
-- source-only large-surface confidence: high
-- evidence-aware large-surface confidence: medium-high
-- conservative rejection on difficult layouts: high
+- source-first intake: version-1 fixture-backed behavior
+- gate and refusal diagnostics: regression evidence
+- lowering and typemapping: fixture-backed, pre-H4 behavior
+- deterministic source emission: controlled-input evidence
+- emitted crate output: build-skeleton evidence, not publication readiness
+- raw `rustc` argument rendering: string-rendering evidence, not link proof
+- provider/validation intake: trusted translated data, not independent proof
+- Apple/Windows: synthetic evidence only
 
 ## Canonical Readiness Anchors
 
-The release posture should be judged against these anchors first:
+The regression baseline should be checked against these anchors first:
 
 - source-only sqlite3
 - source-only zlib
@@ -43,15 +32,12 @@ The release posture should be judged against these anchors first:
 - emitted crate output from deterministic fixtures
 - source-only pointer-only opaque-handle lowering
 - evidence-aware framework link rendering
-- packed union acceptance with explicit representation evidence
+- narrow packed non-bitfield union fixture behavior
 - OpenSSL link directives
 - libxml2 link directives
-- Windows system-library link directives
+- synthetic Windows system-library link directives
 - combined Linux event-loop link directives
 
-If those anchors drift, the scorecard should drop even if the smaller unit tests
-still look healthy.
-
-For the Level 1 production claim, the hermetic subset of those anchors is the
-minimum production floor. The host-dependent anchors are confidence raises, not
-the only basis for trust.
+If those anchors drift, confidence in the current baseline should drop even if
+the smaller unit tests still look healthy. Green anchors do not complete H1-H5
+or establish a production floor.

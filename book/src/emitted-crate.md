@@ -6,7 +6,7 @@
 
 ### Crate Mode
 
-Writes a complete Cargo-compatible crate directory:
+Writes a Cargo build skeleton:
 
 ```text
 output_dir/
@@ -32,6 +32,11 @@ output_dir/
 
 The generated `Cargo.toml` includes the crate name, version, edition, and a
 short generated-artifact description.
+
+It does not yet include the complete legal metadata, notices, provenance,
+reproducibility material, or publication policy required for a publishable
+crate. Registry publication and generated-crate release hygiene are deferred to
+H6.
 
 ## build.rs
 
@@ -61,6 +66,10 @@ custom build orchestration.
 - replaces non-alphanumeric characters (except `_`) with `_`
 - rejects empty names
 - rejects names starting with a digit
+
+This helper only normalizes the generated package name. It is not a general
+identifier sanitizer and does not prove collision-free Rust identifiers for
+emitted C declarations.
 
 ## Usage
 

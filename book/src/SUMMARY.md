@@ -5,6 +5,7 @@
 # User Guide
 
 - [Overview](./overview.md)
+- [Hardening Status](./hardening-status.md)
 - [Architecture](./architecture.md)
 
 # Reference

@@ -1,4 +1,4 @@
-# Testing And Release
+# Testing And Future Release
 
 `gerc` is the lowering and emission crate in the toolchain, so its test and
 release posture is different from `parc` and `linc`.
@@ -48,44 +48,50 @@ That means tests should prefer:
 - stable Rust source snapshots where formatting is part of the contract
 - semantic assertions when exact text is intentionally flexible
 
-## Release Checklist
+## H0 Verification And Future Release
 
-Before releasing `gerc`:
+Registry publication and version changes are deferred to H6. The current H0
+gate is:
 
 1. run `make build`
-2. run `make test`
-3. confirm the canonical hardening anchors still pass
+2. run `make fmt-check`, `make lint`, and `make check-features`
+3. run `make test`, `make test-contract`, and `make test-package`
+4. run required `make test-system` with all compiler/header/library
+   prerequisites installed
+5. run `make docs-check` and `make verify` from a clean worktree
+6. confirm the current regression anchors still pass
    - source-only sqlite3
    - source-only zlib
    - source-only libpng
    - emitted crate output on deterministic fixtures
    - OpenSSL link directives when available
    - libxml2 link directives when available
-   - Apple framework link directives
-   - Windows system-library link directives
+   - synthetic Apple framework link directives
+   - synthetic Windows system-library link directives
    - libcurl link directives when available
    - combined Linux event-loop link directives when available
-4. confirm the preferred public workflow in the README and book still matches
+7. confirm the preferred public workflow in the README and book still matches
    the tested API
-5. confirm emitted Cargo and raw `rustc` paths still match the documented
+8. confirm emitted Cargo and raw `rustc` paths still match the documented
    output story
-6. confirm tests/examples still keep PARC/LINC translation outside `gerc/src/**`
+9. confirm tests/examples still keep PARC/LINC translation outside `gerc/src/**`
 
-For the Level 1 production claim, interpret that checklist in two layers:
+Passing this gate establishes the H0 feedback baseline, not release readiness
+or H1-H5 completion. For test triage, interpret the anchors in two layers:
 
-- hermetic production floor
+- hermetic regression floor
   - source-only sqlite3
   - source-only zlib
   - source-only libpng
   - emitted crate output from deterministic fixtures
   - source-only pointer-only opaque-handle lowering
-  - packed union acceptance with explicit representation evidence
+  - narrow packed non-bitfield union fixture behavior
 - host-dependent confidence raises
   - OpenSSL link directives when available
   - libxml2 link directives when available
   - libcurl link directives when available
-  - Apple framework link directives
-  - Windows system-library link directives
+  - synthetic Apple framework link directives
+  - synthetic Windows system-library link directives
   - combined Linux event-loop link directives when available
 
 ## Hermeticity Split
@@ -118,11 +124,14 @@ When `gerc` changes:
 
 ## What "Supported" Means
 
-For `gerc`, support means:
+For `gerc`, current fixture-backed behavior means:
 
 - accepted declarations lower to deterministic Rust and build artifacts
 - rejected declarations fail conservatively and diagnostically
 - documented output modes are covered by tests
+
+It is not a packed-layout, provider, identifier, ABI, generated-crate
+publication, or platform certification claim.
 
 It does not mean:
 

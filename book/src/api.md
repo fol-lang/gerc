@@ -9,7 +9,8 @@ The safest downstream posture is:
 1. prefer crate-root APIs first
 2. provide `gerc`'s own source/evidence inputs directly
 3. keep upstream artifact translation outside `gerc/src/**`
-4. treat emitted Rust and build artifacts as the product boundary
+4. treat emitted Rust and build outputs as the current handoff boundary, not as
+   ABI-certified or publication-ready artifacts
 
 ## API Tiers
 
@@ -126,8 +127,8 @@ hand-constructed packages:
 - `parc -> linc -> gerc` generation with declared link surfaces
 - `parc -> linc -> gerc` generation with resolved link-plan evidence
 
-Those paths are proved in tests and examples. They are not library-level crate
-dependencies.
+Those paths are exercised in tests and examples. They are not H5 certification
+and are not library-level crate dependencies.
 
 ## Configuration
 

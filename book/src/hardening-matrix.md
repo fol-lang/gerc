@@ -6,7 +6,7 @@ hardening ladder.
 The point is not to count tests. The point is to make it obvious which surfaces
 are carrying confidence for lowering, emission, and build-output generation.
 
-## Tier 1: Hermetic Canonical Baselines
+## Hermetic Regression Baselines
 
 These should stay green everywhere:
 
@@ -16,28 +16,29 @@ These should stay green everywhere:
 - deterministic emitted crate output on vendored fixtures
 - large internal corpus fixtures and root API tests
 - source-only incomplete-handle lowering
-- keyword-safe placeholder emission on unresolved named types
+- selected Rust-keyword placeholder regression fixtures
 
 These surfaces prove that GERC can:
 
 - ingest its own source model
 - gate declarations conservatively
 - lower accepted declarations deterministically
-- emit stable Rust and build artifacts
+- emit deterministic Rust and build outputs for controlled fixtures
 
-## Tier 2: Host-Dependent High-Value Ladders
+## Host-Dependent And Synthetic Ladders
 
 These strengthen confidence on real native environments:
 
 - OpenSSL link-directive generation
 - libxml2 link-directive generation
-- Apple framework link-directive generation
-- Windows system-library link-directive generation
+- synthetic Apple framework link-directive generation
+- synthetic Windows system-library link-directive generation
 - combined Linux event-loop link-directive generation
 - libc and system-library evidence-aware generation families
 
-These surfaces matter because they prove that GERC can use real upstream
-evidence without taking a library dependency on upstream crates.
+Linux host-dependent surfaces add real-host evidence. Apple and Windows rows
+are synthetic/configuration fixtures only because H0 has no native CI for those
+platforms. None of these fixtures prove provider identity or a certified ABI.
 
 ## Tier 3: Conservative-Rejection Surfaces
 
@@ -65,9 +66,13 @@ The most important repeat-run anchors right now are:
 - source-only sqlite3 projection
 - emitted crate output on deterministic fixtures
 - libxml2 link directives when available
-- Apple framework link directives
-- Windows system-library link directives
+- synthetic Apple framework link directives
+- synthetic Windows system-library link directives
 - incomplete-handle lowering
 - keyword-placeholder emission
 - OpenSSL link directives when available
 - combined Linux event-loop link directives when available
+
+This matrix records regression evidence. It does not complete H1-H5 or certify
+packed layouts, identifier policy, provider state, emitted-crate publication,
+or any platform.

@@ -1,4 +1,4 @@
-# GERC (`gerc` crate)
+# GERC
 
 `gerc` is the Rust lowering and emission layer in the `parc -> linc -> gerc`
 toolchain.
@@ -11,32 +11,27 @@ It produces Rust-facing output from translated C-side inputs:
 - raw `rustc` link arguments
 - metadata sidecars for downstream consumers
 
-## Scoped Production Statement
+## Hardening Status
 
-The current Level 1 production claim for the whole pipeline is:
+GERC is being hardened as the raw Rust projection and emission owner for the
+sibling PARC/LINC/GERC pipeline. It is not yet certified for FOL V4.
 
-- Linux/ELF-first
-- canonical-corpus-backed
-- conservative rejection of unsupported layouts and declarations
+The distribution package is `follang-gerc`; the Rust library name remains
+`gerc`. Registry publication is deferred until the H6 distribution gate, and
+the crate version remains unchanged during baseline hardening. The declared
+minimum supported Rust version (MSRV) is Rust 1.89.
 
-For GERC specifically, that means:
+## Current Support Boundary
 
-- production-ready for the documented source-only and evidence-aware canonical
-  corpus
-- not a claim that every native surface lowers cleanly
-- not a claim that every rejected declaration family is a bug
-
-## Level 1 Support Matrix
-
-| Area | Level 1 status | Notes |
+| Area | Current evidence | Boundary |
 |---|---|---|
-| source-only lowering on canonical corpus | primary production scope | zlib, libpng, sqlite3, and support-tier anchors are the core floor. |
-| evidence-aware Linux/ELF lowering | primary production scope | This is the intended first production path. |
-| Apple framework lowering | secondary confidence scope | Good proof surface, not the primary production claim. |
-| Windows system-library lowering | secondary confidence scope | Good proof surface, not the primary production claim. |
-| bitfield-bearing records | rejected | Explicit rejection is part of the contract. |
-| incomplete but pointer-safe opaque families | supported | Supported as opaque-pointer-compatible lowering. |
-| incomplete embedded layout-sensitive families | rejected | Honest layout is required. |
+| Source lowering and emission | Repository fixtures exercise current mappings | This is pre-certification behavior; accepted output is not proof of a correct ABI for arbitrary declarations. |
+| Emitted crate mode | Tests cover the generated `Cargo.toml`, `src/lib.rs`, and optional link files | This is a build skeleton, not a publication-ready crate. Legal metadata, notices, provenance, and reproducible publication work are deferred to H6. |
+| Packed records/unions | Narrow regression fixtures exercise current non-bitfield output | GERC has not certified packed-layout equivalence; do not treat fixture acceptance as a general packed-layout guarantee. |
+| Provider evidence | GERC gates on translated report/plan values | It does not inspect binaries or independently prove provider identity, linkability, or runtime availability. |
+| Identifier handling | Tests cover selected Rust keywords and placeholder names | There is no certified, collision-free C-to-Rust identifier policy yet. |
+| Apple and Windows link directives | Synthetic/configuration fixtures exist | Neither platform is certified; H0 has no native Apple or Windows CI gate. |
+| Metadata/sidecar schemas | Schema version 1 roundtrips are exercised | These are current artifact shapes, not the frozen H1 contract. |
 
 ## What GERC Actually Exposes Today
 
@@ -60,7 +55,7 @@ perfectly clean layer.
 - conservative gating of declarations
 - lowering into `RustProjection`
 - deterministic Rust source emission
-- crate/build output generation
+- crate/build-skeleton output generation
 - Cargo and raw `rustc` link metadata rendering
 
 ## Non-responsibilities
@@ -141,18 +136,21 @@ The suite covers:
 
 The tests are the best statement of what GERC actually supports.
 
-## Level 1 Contract
+## Current Contract
 
-For the Level 1 production claim, GERC's contract is:
+For the current hardening baseline, GERC's contract is:
 
 - supported families lower deterministically on the named canonical corpus
 - evidence-aware lowering may expand support beyond source-only mode
 - explicitly rejected families remain rejected until an honest representation
   strategy exists
-- conservative rejection is part of the production contract, not a temporary
-  defect marker
+- conservative rejection is current behavior, not proof that the H4 soundness
+  boundary has been completed
 
-## Hardening Matrix
+This is a pre-certification contract. H1 through H5 of the hardening plan
+remain future milestones.
+
+## Current Test Evidence
 
 The current hardening ladder is easiest to read in four buckets:
 
@@ -168,9 +166,9 @@ The current hardening ladder is easiest to read in four buckets:
 - failure and conservative-lowering surfaces
   - anonymous-type fallback and rejection paths
   - incomplete-handle support for pointer-only opaque families
-  - packed struct and packed union acceptance when representation evidence is explicit
+  - narrow packed non-bitfield record/union regression fixtures
   - bitfield-bearing record rejection when representation would be unsound
-  - keyword-safe placeholder emission for unresolved named types
+  - selected Rust-keyword placeholder regression fixtures
   - unsupported layout and ABI-sensitive gating
   - source-only degradation when link evidence is absent
   - explicit gate, lowering, and pipeline failure matrices
@@ -180,52 +178,20 @@ The current hardening ladder is easiest to read in four buckets:
   - source-only libpng projection
   - libxml2 link directives when available
   - OpenSSL link directives when available
-  - Apple framework link directives
-  - Windows system-library link directives
+  - synthetic Apple framework link-directive fixtures
+  - synthetic Windows system-library link-directive fixtures
   - combined Linux event-loop link directives
 
 Read those as the current confidence anchors, not as a claim that every native
 surface lowers equally well today.
 
-## Release Gates
-
-`gerc` should only be treated as release-ready when all of these remain green:
-
-- `make build`
-- `make test`
-- source-only suites
-- evidence-aware suites
-- emitted-crate output checks
-- raw `rustc` argument checks
-- incomplete-handle source-only support checks
-- framework-link evidence support checks
-- packed-union acceptance checks
-- keyword-safe placeholder emission checks
-- sqlite3 emitted-crate checks
-- at least one OpenSSL-style host-dependent evidence target
-- at least one libxml2-style host-dependent evidence target
-- at least one libcurl-style host-dependent API target
-- at least one Apple framework target
-- at least one Windows system-library target
-- at least one combined Linux/system link-directive target
-
-The Level 1 production floor is the hermetic subset of those gates:
-
-- source-only zlib
-- source-only libpng
-- source-only sqlite3
-- emitted crate output from deterministic fixtures
-- source-only pointer-only opaque-handle lowering
-- packed-union acceptance checks
-- keyword-safe placeholder emission checks
-
-The host-dependent confidence-raise layer is:
+Host-dependent evidence includes:
 
 - OpenSSL link directives
 - libxml2 link directives
 - libcurl link directives
-- Apple framework link directives
-- Windows system-library link directives
+- synthetic Apple framework link-directive fixtures
+- synthetic Windows system-library link-directive fixtures
 - combined Linux event-loop link directives
 
 The current canonical generation surfaces are:
@@ -237,14 +203,12 @@ The current canonical generation surfaces are:
 - emitted crate output from deterministic fixtures
 - OpenSSL link directives
 - libxml2 link directives
-- Apple framework link directives
-- Windows system-library link directives
+- synthetic Apple framework link-directive fixtures
+- synthetic Windows system-library link-directive fixtures
 - libcurl link directives
 - combined Linux event-loop link directives
 
-## Canonical Corpus
-
-The current GERC production corpus is intentionally named:
+The current GERC test corpus is intentionally named:
 
 - hermetic vendored
   - source-only zlib
@@ -260,18 +224,38 @@ The current GERC production corpus is intentionally named:
 - host-dependent raises
   - OpenSSL evidence-aware generation
   - libxml2 evidence-aware generation
-  - Apple framework evidence-aware generation
-  - Windows system-library evidence-aware generation
+  - synthetic Apple framework evidence translation
+  - synthetic Windows system-library evidence translation
   - combined Linux event-loop evidence-aware generation
 - conservative-failure anchors
   - anonymous-type rejection ledger
   - explicit gate/lower/pipeline failure matrices
 
-Those are the generation surfaces GERC should be judged against first.
+Those are test anchors, not packed-layout, provider, identifier, ABI, or
+platform certification.
 
-## Build And Test
+## Verification
 
 ```sh
 make build
+make fmt-check
+make lint
+make check-features
 make test
+make test-contract
+make test-package
+make test-system
+make docs-check
+make verify
 ```
+
+`make test` is the hermetic required lane. `make test-system` sets
+`GERC_SYSTEM_TEST_MODE=required` and runs the prerequisite-dependent pipeline
+tests; a missing compiler or required development header/library is `FAIL`, not
+`SKIP`. Required CI installs those prerequisites. `make docs-check` requires
+`mdbook` and builds both the book and Rust API documentation without staging or
+committing output.
+
+`make verify` expects a clean worktree, runs the common gates above, and proves
+that validation did not change Git state. During local review of an already
+dirty tree, `VERIFY_ALLOW_DIRTY=1 make verify` retains the before/after check.

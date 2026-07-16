@@ -3,6 +3,11 @@
 `gerc` is the Rust lowering and emission layer in the `PARC -> LINC -> GERC`
 toolchain.
 
+GERC is in H0 hardening and is not production-certified. Current packed,
+provider, identifier, emitted-crate, and platform behaviors are regression
+evidence only. See [Hardening Status](./hardening-status.md) for the exact
+boundary before relying on them.
+
 It is the crate you use when you already have a normalized source contract and,
 optionally, evidence about native symbols or link plans. `gerc` then turns that
 input into Rust FFI output.
@@ -15,9 +20,10 @@ The target architecture is strict:
 - translation from PARC or LINC artifacts belongs only in tests, examples, or external harnesses
 - there is no shared ABI crate and no backward-compatibility burden for discarded pipeline shapes
 
-`gerc` generates Rust FFI bindings from C declarations. The output can be a
-standalone Rust source bundle or a Cargo-compatible crate directory, and it
-also emits plain `rustc` link arguments for non-Cargo toolchains.
+`gerc` generates Rust FFI projections from its current input model. The output
+can be a standalone Rust source bundle or a Cargo build skeleton, and it also
+emits plain `rustc` link arguments for non-Cargo orchestration. These outputs
+are not yet a certified ABI binding or publication-ready crate.
 
 One correction matters up front: the current public crate surface is broader
 than just `generate()` and `generate_from_source()`. The crate also exposes:
@@ -75,4 +81,6 @@ println!("{emitted}");
 
 If validation evidence is present, `gerc` treats it as a gating input for
 functions and variables. Declarations without usable evidence are filtered out
-and reported through diagnostics instead of being emitted.
+and reported through diagnostics instead of being emitted. GERC consumes that
+translated report; it does not independently inspect or authenticate the
+provider behind it.

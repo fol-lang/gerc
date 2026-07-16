@@ -5,4 +5,4 @@ language = "en"
 src = "src"
 
 [output.html]
-git-repository-url = "https://github.com/bresilla/gerc"
+git-repository-url = "https://github.com/follang/gerc"

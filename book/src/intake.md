@@ -37,6 +37,10 @@ without forcing source declarations to flow through `linc` as the only path.
 Declaration-vs-artifact validation evidence. When present, `gerc` uses
 validation findings to drive safety gating decisions.
 
+GERC trusts the translated report shape supplied by the caller. It does not
+inspect the referenced binary, verify provider identity, or upgrade a
+name-based match into ABI proof.
+
 Attached validation evidence is not advisory. `gerc` rejects functions and
 variables that are missing validation matches or that only have unusable
 matches such as ABI mismatches, duplicate providers, hidden providers,
@@ -49,9 +53,10 @@ that declaration instead of guessing.
 
 ### Resolved link-plan artifact
 
-Resolved native link requirements. When present, `gerc` uses the resolved
-plan, with concrete artifact paths and search directories, instead of the raw
-source-declared link surface.
+Normalized native link requirements. When present, `gerc` uses the supplied
+plan's candidate artifact paths and search directories instead of the raw
+source-declared link surface. The plan is not filesystem resolution, and GERC
+does not check that candidate paths exist, link, or load on the current host.
 
 ## Building a `GercInput`
 

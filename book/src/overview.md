@@ -7,14 +7,15 @@ toolchain:
 PARC  (source contracts)
   -> LINC  (link and evidence contracts)
   -> GERC  (Rust lowering and emission)
-  -> generated Rust bindings crate or source bundle
+  -> generated Rust build skeleton or source bundle
 ```
 
 Read this chapter as the workflow summary:
 
 1. `gerc` receives its own input model
 2. any upstream artifact translation happens outside `gerc/src/**`
-3. `gerc` gates, lowers, and emits deterministic Rust and build artifacts
+3. `gerc` gates, lowers, and emits deterministic Rust and build outputs for the
+   tested input model
 
 ## What Happens Inside GERC
 
@@ -36,8 +37,9 @@ Read this chapter as the workflow summary:
    Items are emitted in a stable order: constants, type aliases, enums,
    records, then `extern "C"` declarations.
 
-6. **Crate generation** - Optionally, `gerc` writes a Cargo-compatible crate
-   directory or a source bundle plus `rustc` link arguments.
+6. **Crate generation** - Optionally, `gerc` writes a Cargo build skeleton or a
+   source bundle plus `rustc` link arguments. Publication metadata and legal/
+   provenance material are deferred to H6.
 
 ## Design Principles
 

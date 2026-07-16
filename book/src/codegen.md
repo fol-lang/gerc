@@ -15,7 +15,7 @@ Each item in the source-derived lowering package is evaluated against generation
 | Rule | Effect |
 |---|---|
 | Bitfield records | Rejected - no safe `repr(C)` representation |
-| Packed non-bitfield records and unions | Allowed when representation evidence is explicit |
+| Packed non-bitfield records and unions | Narrow regression fixtures currently emit them; packed-layout equivalence is not certified |
 | Anonymous records | Rejected - Rust requires named types |
 | Anonymous enums | Rejected - Rust requires named types |
 | Incomplete or opaque fields | Rejected - cannot determine layout |
@@ -26,6 +26,10 @@ special case: those degrade to opaque `*mut/*const core::ffi::c_void` instead
 of forcing the whole surface to fail.
 
 Rejected items produce diagnostics in the output but no Rust code.
+
+The table records current fixture behavior, not completion of the H4 soundness
+gate. In particular, a packed item that emits is not proof that Rust and C
+layout agree for an arbitrary compiler/target.
 
 ### 2. Type Mapping (`typemap`)
 
@@ -72,6 +76,11 @@ The IR is rendered into Rust source in a deterministic order:
 
 This ordering is stable and deterministic: the same input always produces the
 same output.
+
+Current identifier handling covers selected Rust keywords and placeholder
+names. It is not yet a complete, collision-free C-to-Rust naming policy; callers
+must not infer that every accepted C identifier produces a valid unique Rust
+item.
 
 ## Intentional Canonicalizations
 
