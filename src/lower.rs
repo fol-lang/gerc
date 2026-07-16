@@ -4,9 +4,9 @@
 //! values, using the type mapping from `typemap`.
 
 use crate::c::{
-    BindingItem, BindingPackage, DeclarationProvenance, EnumBinding, FunctionBinding, MacroBinding,
-    MacroCategory, MacroValue, RecordBinding, RecordKind, TypeAliasBinding, UnsupportedItem,
-    VariableBinding, BindingType,
+    BindingItem, BindingPackage, BindingType, DeclarationProvenance, EnumBinding, FunctionBinding,
+    MacroBinding, MacroCategory, MacroValue, RecordBinding, RecordKind, TypeAliasBinding,
+    UnsupportedItem, VariableBinding,
 };
 
 use crate::ir::*;

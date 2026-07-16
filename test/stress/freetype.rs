@@ -1,5 +1,12 @@
 use linc::ir::*;
 
+type FunctionSpec = (
+    &'static str,
+    Vec<(&'static str, BindingType)>,
+    BindingType,
+    bool,
+);
+
 /// Build a BindingPackage that mirrors the FreeType2 public surface.
 /// FreeType is notable for: heavy typedef layering, fixed-point arithmetic
 /// types, deeply nested struct hierarchies, and a large stable API.
@@ -374,7 +381,7 @@ pub fn freetype_package() -> BindingPackage {
     let face_ptr = BindingType::ptr(BindingType::RecordRef("FT_FaceRec".into()));
     let face_ptr_ptr = BindingType::ptr(face_ptr.clone());
 
-    let functions: Vec<(&str, Vec<(&str, BindingType)>, BindingType, bool)> = vec![
+    let functions: Vec<FunctionSpec> = vec![
         (
             "FT_Init_FreeType",
             vec![("alibrary", lib_ptr_ptr.clone())],

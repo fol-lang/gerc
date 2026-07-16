@@ -1,5 +1,12 @@
 use linc::ir::*;
 
+type FunctionSpec = (
+    &'static str,
+    Vec<(&'static str, BindingType)>,
+    BindingType,
+    bool,
+);
+
 /// Build a BindingPackage that mirrors a significant slice of FFmpeg's
 /// libavcodec + libavformat + libavutil public surface.
 ///
@@ -346,7 +353,7 @@ pub fn ffmpeg_package() -> BindingPackage {
         qualifiers: TypeQualifiers::default(),
     };
 
-    let functions: Vec<(&str, Vec<(&str, BindingType)>, BindingType, bool)> = vec![
+    let functions: Vec<FunctionSpec> = vec![
         // avformat
         (
             "avformat_open_input",

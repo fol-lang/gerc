@@ -49,10 +49,12 @@ fn parc_and_linc_artifact_roundtrips_can_drive_gerc_evidence_aware_generation() 
 
     let binding = linc_common::from_parc_package(&parc_pkg);
     let mut linc_source = linc::intake::adapters::from_binding_package(&binding);
-    linc_source.link_requirements.push(linc::SourceLinkRequirement {
-        name: "demo".into(),
-        kind: linc::SourceLinkKind::DynamicLibrary,
-    });
+    linc_source
+        .link_requirements
+        .push(linc::SourceLinkRequirement {
+            name: "demo".into(),
+            kind: linc::SourceLinkKind::DynamicLibrary,
+        });
 
     let analysis = linc::analyze_source_package(&linc_source);
     let analysis_json = serde_json::to_string_pretty(&analysis).expect("analysis artifact json");

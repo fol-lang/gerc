@@ -6,12 +6,12 @@ use gerc::config::GercConfig;
 use gerc::contract::generate;
 use gerc::intake::GercInput;
 use gerc::ir::RustItem;
+use linc::ir::{
+    BindingItem, BindingPackage, BindingType, CallingConvention, FunctionBinding, VariableBinding,
+};
 use linc::{
     EvidenceKind, ItemKind, MatchConfidence, MatchStatus, SymbolMatch, SymbolVisibility,
     ValidationReport, ValidationSummary,
-};
-use linc::ir::{
-    BindingItem, BindingPackage, BindingType, CallingConvention, FunctionBinding, VariableBinding,
 };
 
 fn input_from_binding(pkg: BindingPackage) -> GercInput {

@@ -2,8 +2,8 @@ mod evidence;
 mod source;
 
 use crate::c::{
-    BindingItem, BindingPackage, DeclarationProvenance, LinkAnalysisPackage,
-    ResolvedLinkPlan, ValidationReport,
+    BindingItem, BindingPackage, DeclarationProvenance, LinkAnalysisPackage, ResolvedLinkPlan,
+    ValidationReport,
 };
 
 pub use evidence::EvidenceInputs;
@@ -202,8 +202,10 @@ mod tests {
     }
 
     fn fixture_source_package() -> SourcePackage {
-        let mut source = SourcePackage::default();
-        source.source_path = Some("fixtures/demo.h".into());
+        let mut source = SourcePackage {
+            source_path: Some("fixtures/demo.h".into()),
+            ..SourcePackage::default()
+        };
         source
             .declarations
             .push(SourceDeclaration::Function(SourceFunction {
@@ -302,16 +304,18 @@ mod tests {
 
     #[test]
     fn with_evidence_sets_both_optional_inputs() {
-        let input = GercInput::from_source_package(SourcePackage::default()).with_evidence(EvidenceInputs {
-            analysis: Some(LinkAnalysisPackage::default()),
-            validation: Some(ValidationReport {
-                phases: Vec::new(),
-                entries: Vec::new(),
-                summary: ValidationSummary::default(),
-                matches: Vec::new(),
-            }),
-            link_plan: Some(ResolvedLinkPlan::default()),
-        });
+        let input = GercInput::from_source_package(SourcePackage::default()).with_evidence(
+            EvidenceInputs {
+                analysis: Some(LinkAnalysisPackage::default()),
+                validation: Some(ValidationReport {
+                    phases: Vec::new(),
+                    entries: Vec::new(),
+                    summary: ValidationSummary::default(),
+                    matches: Vec::new(),
+                }),
+                link_plan: Some(ResolvedLinkPlan::default()),
+            },
+        );
 
         assert!(input.has_analysis());
         assert!(input.has_validation());

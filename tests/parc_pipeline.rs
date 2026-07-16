@@ -1,3 +1,5 @@
+#![cfg(feature = "system-tests")]
+
 mod common;
 
 #[path = "../../linc/tests/common/mod.rs"]
@@ -17,22 +19,40 @@ fn vendored_root(name: &str) -> PathBuf {
         .join("header")
 }
 
-fn parse_vendored_source(entry: &Path, include_dirs: &[PathBuf]) -> Option<gerc::SourcePackage> {
+fn parse_vendored_source(
+    entry: &Path,
+    include_dirs: &[PathBuf],
+) -> Result<gerc::SourcePackage, String> {
     let mut cpp_options = vec!["-E".to_string()];
     for dir in include_dirs {
         cpp_options.push(format!("-I{}", dir.display()));
     }
 
+    let cpp_command = std::env::var("CC").unwrap_or_else(|_| "gcc".into());
+    let compiler_name = Path::new(&cpp_command)
+        .file_name()
+        .and_then(|name| name.to_str())
+        .unwrap_or(&cpp_command);
+    let flavor = if compiler_name.contains("clang") {
+        parc::driver::Flavor::ClangC11
+    } else {
+        parc::driver::Flavor::GnuC11
+    };
     let config = parc::driver::Config {
-        cpp_command: std::env::var("CC").unwrap_or_else(|_| "gcc".into()),
+        cpp_command,
         cpp_options,
-        flavor: parc::driver::Flavor::GnuC11,
+        flavor,
     };
 
-    let parsed = parc::driver::parse(&config, entry).ok()?;
+    let parsed = parc::driver::parse(&config, entry).map_err(|error| {
+        format!(
+            "failed to parse vendored fixture '{}': {error:?}",
+            entry.display()
+        )
+    })?;
     let extracted = parc::extract::extract_from_translation_unit(&parsed.unit, None);
     let binding = linc_common::from_parc_package(&extracted);
-    Some(common::from_binding_package(&binding))
+    Ok(common::from_binding_package(&binding))
 }
 
 fn tempdir(name: &str) -> PathBuf {
@@ -57,9 +77,8 @@ fn vendored_zlib_parc_to_gerc_source_only() {
     let include_dir = root.join("include");
     let entry = root.join("main.c");
 
-    let Some(source) = parse_vendored_source(&entry, &[include_dir]) else {
-        return;
-    };
+    let source =
+        parse_vendored_source(&entry, &[include_dir]).expect("vendored zlib source must parse");
 
     let output = generate_from_source(source, &GercConfig::new("zlib_sys")).unwrap();
     let emitted = emit_source(&output.projection);
@@ -95,9 +114,8 @@ fn vendored_zlib_parc_to_gerc_emits_checkable_crate() {
     let include_dir = root.join("include");
     let entry = root.join("main.c");
 
-    let Some(source) = parse_vendored_source(&entry, &[include_dir]) else {
-        return;
-    };
+    let source =
+        parse_vendored_source(&entry, &[include_dir]).expect("vendored zlib source must parse");
 
     let cfg = GercConfig::new("zlib_sys");
     let output = generate_from_source(source, &cfg).unwrap();
@@ -122,9 +140,8 @@ fn vendored_libpng_parc_to_gerc_source_only() {
     let include_dir = root.join("include");
     let entry = root.join("main.c");
 
-    let Some(source) = parse_vendored_source(&entry, &[include_dir]) else {
-        return;
-    };
+    let source =
+        parse_vendored_source(&entry, &[include_dir]).expect("vendored libpng source must parse");
 
     let output = generate_from_source(source, &GercConfig::new("png_sys")).unwrap();
     let emitted = emit_source(&output.projection);
@@ -148,9 +165,8 @@ fn vendored_libpng_parc_to_gerc_emits_checkable_crate() {
     let include_dir = root.join("include");
     let entry = root.join("main.c");
 
-    let Some(source) = parse_vendored_source(&entry, &[include_dir]) else {
-        return;
-    };
+    let source =
+        parse_vendored_source(&entry, &[include_dir]).expect("vendored libpng source must parse");
 
     let cfg = GercConfig::new("png_sys");
     let output = generate_from_source(source, &cfg).unwrap();
@@ -176,9 +192,8 @@ fn vendored_source_only_crates_now_pass_cargo_check() {
     let libpng_include_dir = libpng_root.join("include");
     let libpng_entry = libpng_root.join("main.c");
 
-    let Some(libpng_source) = parse_vendored_source(&libpng_entry, &[libpng_include_dir]) else {
-        return;
-    };
+    let libpng_source = parse_vendored_source(&libpng_entry, &[libpng_include_dir])
+        .expect("vendored libpng source must parse");
 
     let libpng_cfg = GercConfig::new("png_sys");
     let libpng_output = generate_from_source(libpng_source, &libpng_cfg).unwrap();
@@ -199,9 +214,8 @@ fn vendored_source_only_crates_now_pass_cargo_check() {
     let zlib_include_dir = zlib_root.join("include");
     let zlib_entry = zlib_root.join("main.c");
 
-    let Some(zlib_source) = parse_vendored_source(&zlib_entry, &[zlib_include_dir]) else {
-        return;
-    };
+    let zlib_source = parse_vendored_source(&zlib_entry, &[zlib_include_dir])
+        .expect("vendored zlib source must parse");
 
     let zlib_cfg = GercConfig::new("zlib_sys");
     let zlib_output = generate_from_source(zlib_source, &zlib_cfg).unwrap();
@@ -315,8 +329,7 @@ fn vendored_zlib_parc_linc_gerc_emits_link_aware_crate() {
     .unwrap();
 
     let build_rs = std::fs::read_to_string(emitted.root.join("build.rs")).unwrap();
-    let rustc_args =
-        std::fs::read_to_string(emitted.root.join("rustc-link-args.txt")).unwrap();
+    let rustc_args = std::fs::read_to_string(emitted.root.join("rustc-link-args.txt")).unwrap();
 
     assert!(build_rs.contains("cargo:rustc-link-lib=dylib=z"));
     assert!(rustc_args.contains("-ldylib=z"));
@@ -384,8 +397,7 @@ fn vendored_libpng_parc_linc_gerc_emits_link_aware_crate() {
     .unwrap();
 
     let build_rs = std::fs::read_to_string(emitted.root.join("build.rs")).unwrap();
-    let rustc_args =
-        std::fs::read_to_string(emitted.root.join("rustc-link-args.txt")).unwrap();
+    let rustc_args = std::fs::read_to_string(emitted.root.join("rustc-link-args.txt")).unwrap();
 
     assert!(build_rs.contains("cargo:rustc-link-lib=dylib=png"));
     assert!(rustc_args.contains("-ldylib=png"));

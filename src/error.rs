@@ -90,7 +90,7 @@ mod tests {
 
     #[test]
     fn error_source_io() {
-        let io = std::io::Error::new(std::io::ErrorKind::Other, "inner");
+        let io = std::io::Error::other("inner");
         let e = GercError::Io(io);
         assert!(std::error::Error::source(&e).is_some());
     }

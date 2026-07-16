@@ -385,15 +385,13 @@ fn declaration_to_binding(declaration: &SourceDeclaration) -> ir::BindingItem {
             abi_confidence: None,
             source_offset: enumeration.source_offset,
         }),
-        SourceDeclaration::TypeAlias(alias) => {
-            ir::BindingItem::TypeAlias(ir::TypeAliasBinding {
-                name: alias.name.clone(),
-                target: source_type_to_binding(&alias.target),
-                canonical_resolution: None,
-                abi_confidence: None,
-                source_offset: alias.source_offset,
-            })
-        }
+        SourceDeclaration::TypeAlias(alias) => ir::BindingItem::TypeAlias(ir::TypeAliasBinding {
+            name: alias.name.clone(),
+            target: source_type_to_binding(&alias.target),
+            canonical_resolution: None,
+            abi_confidence: None,
+            source_offset: alias.source_offset,
+        }),
         SourceDeclaration::Variable(variable) => ir::BindingItem::Variable(ir::VariableBinding {
             name: variable.name.clone(),
             ty: source_type_to_binding(&variable.ty),
@@ -404,22 +402,20 @@ fn declaration_to_binding(declaration: &SourceDeclaration) -> ir::BindingItem {
 
 fn binding_to_declaration(item: &ir::BindingItem) -> Option<SourceDeclaration> {
     match item {
-        ir::BindingItem::Function(function) => {
-            Some(SourceDeclaration::Function(SourceFunction {
-                name: function.name.clone(),
-                parameters: function
-                    .parameters
-                    .iter()
-                    .map(|parameter| SourceParameter {
-                        name: parameter.name.clone(),
-                        ty: binding_type_to_source(&parameter.ty),
-                    })
-                    .collect(),
-                return_type: binding_type_to_source(&function.return_type),
-                variadic: function.variadic,
-                source_offset: function.source_offset,
-            }))
-        }
+        ir::BindingItem::Function(function) => Some(SourceDeclaration::Function(SourceFunction {
+            name: function.name.clone(),
+            parameters: function
+                .parameters
+                .iter()
+                .map(|parameter| SourceParameter {
+                    name: parameter.name.clone(),
+                    ty: binding_type_to_source(&parameter.ty),
+                })
+                .collect(),
+            return_type: binding_type_to_source(&function.return_type),
+            variadic: function.variadic,
+            source_offset: function.source_offset,
+        })),
         ir::BindingItem::Record(record) => Some(SourceDeclaration::Record(SourceRecord {
             name: record.name.clone(),
             is_union: record.kind == RecordKind::Union,

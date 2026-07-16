@@ -98,7 +98,9 @@ fn packed_policy_bitfield_record_remains_rejected() {
         &decisions[0],
         GateDecision::Reject(reason) if reason.contains("bitfields")
     ));
-    assert!(diagnostics.iter().any(|diag| diag.message.contains("bitfields")));
+    assert!(diagnostics
+        .iter()
+        .any(|diag| diag.message.contains("bitfields")));
 }
 
 #[test]

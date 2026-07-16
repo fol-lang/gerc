@@ -1,7 +1,7 @@
 use gerc::c::{
     LinkFramework, LinkInput, LinkLibrary, LinkLibraryKind, LinkRequirementSource,
-    LinkResolutionMode, NativeSurfaceKind, ResolvedLinkPlan, ResolvedLinkRequirement,
-    RequirementResolution,
+    LinkResolutionMode, NativeSurfaceKind, RequirementResolution, ResolvedLinkPlan,
+    ResolvedLinkRequirement,
 };
 use gerc::{
     emit_build_rs, emit_rustc_args, generate, GercConfig, GercInput, SourceDeclaration,

@@ -1,7 +1,7 @@
 use gerc::c::{
     LinkFramework, LinkInput, LinkLibrary, LinkLibraryKind, LinkRequirementSource,
-    LinkResolutionMode, NativeSurfaceKind, ResolvedLinkPlan, ResolvedLinkRequirement,
-    RequirementResolution,
+    LinkResolutionMode, NativeSurfaceKind, RequirementResolution, ResolvedLinkPlan,
+    ResolvedLinkRequirement,
 };
 use gerc::{
     emit_rustc_link_args, emit_source, generate, generate_from_source, GercConfig, GercInput,
@@ -142,7 +142,10 @@ fn support_tier_bitfield_records_must_reject_in_source_only_mode() {
         generate_from_source(source, &GercConfig::new("flags_sys")).expect("generation runs");
     let source = emit_source(&output.projection);
 
-    assert!(output.diagnostics.iter().any(|diag| diag.message.contains("bitfields")));
+    assert!(output
+        .diagnostics
+        .iter()
+        .any(|diag| diag.message.contains("bitfields")));
     assert!(!source.contains("pub struct flags"));
 }
 
@@ -178,7 +181,8 @@ fn support_tier_evidence_aware_link_args_are_deterministic() {
     };
 
     let make = || {
-        let input = GercInput::from_source_package(source_only_widget_api()).with_link_plan(plan.clone());
+        let input =
+            GercInput::from_source_package(source_only_widget_api()).with_link_plan(plan.clone());
         let output = generate(&input, &GercConfig::new("widget_ssl_sys"))
             .expect("evidence-aware widget API should generate");
         emit_rustc_link_args(&output.projection.link_requirements)

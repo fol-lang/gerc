@@ -1,8 +1,11 @@
+#![cfg(feature = "system-tests")]
+
 //! True end-to-end tests: real C headers -> linc -> gerc -> Rust source.
 //!
-//! These tests require system headers to be installed. Each test gates
-//! on header existence and returns early if missing — they never fail
-//! on a machine that simply lacks the headers.
+//! These tests require system headers to be installed. In `optional` mode,
+//! missing prerequisites print an explicit `SKIP` and return. In `required`
+//! mode, every missing prerequisite is a test failure. Set the mode with
+//! `GERC_SYSTEM_TEST_MODE=optional|required`.
 //!
 //! Categories covered:
 //!   - Compression: zlib
@@ -21,36 +24,202 @@ mod common;
 #[path = "../../linc/tests/common/mod.rs"]
 mod linc_common;
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use gerc::config::GercConfig;
-use gerc::consumer::{build_sidecar, sidecar_from_json, sidecar_to_json, FolConsumer, GercConsumer};
+use gerc::consumer::{
+    build_sidecar, sidecar_from_json, sidecar_to_json, FolConsumer, GercConsumer,
+};
 use gerc::contract::{generate, projection_from_json, projection_to_json};
 use gerc::emit::emit_source;
 use gerc::intake::GercInput;
 
 const INCLUDE: &[&str] = &["/usr/include", "/usr/include/x86_64-linux-gnu"];
+const CONVENTIONAL_INCLUDE_ROOTS: &[&str] = &["/usr/include/x86_64-linux-gnu", "/usr/include"];
+
+#[derive(Clone, Copy)]
+enum SystemTestMode {
+    Optional,
+    Required,
+}
+
+fn system_test_mode() -> SystemTestMode {
+    match std::env::var("GERC_SYSTEM_TEST_MODE").as_deref() {
+        Ok("required") => SystemTestMode::Required,
+        Ok("optional") | Err(_) => SystemTestMode::Optional,
+        Ok(mode) => {
+            panic!("invalid GERC_SYSTEM_TEST_MODE '{mode}'; expected 'optional' or 'required'")
+        }
+    }
+}
+
+fn handle_missing_prerequisite(reason: impl AsRef<str>) {
+    let reason = reason.as_ref();
+    match system_test_mode() {
+        SystemTestMode::Required => panic!("FAIL system fixture: {reason}"),
+        SystemTestMode::Optional => eprintln!("SKIP system fixture: {reason}"),
+    }
+}
+
+fn push_unique_existing_dir(paths: &mut Vec<PathBuf>, path: PathBuf) {
+    if path.is_dir() && !paths.contains(&path) {
+        paths.push(path);
+    }
+}
+
+fn relative_to_conventional_root(path: &Path) -> Option<&Path> {
+    CONVENTIONAL_INCLUDE_ROOTS
+        .iter()
+        .find_map(|root| path.strip_prefix(root).ok())
+}
+
+fn include_search_paths(requested: &[&str]) -> Vec<PathBuf> {
+    let mut roots = Vec::new();
+
+    for variable in ["CPATH", "C_INCLUDE_PATH"] {
+        if let Some(value) = std::env::var_os(variable) {
+            for path in std::env::split_paths(&value) {
+                push_unique_existing_dir(&mut roots, path);
+            }
+        }
+    }
+    for root in CONVENTIONAL_INCLUDE_ROOTS {
+        push_unique_existing_dir(&mut roots, PathBuf::from(root));
+    }
+
+    let base_roots = roots.clone();
+    for requested_dir in requested {
+        let requested_dir = Path::new(requested_dir);
+        push_unique_existing_dir(&mut roots, requested_dir.to_path_buf());
+
+        if let Some(relative) = relative_to_conventional_root(requested_dir) {
+            for root in &base_roots {
+                push_unique_existing_dir(&mut roots, root.join(relative));
+            }
+        }
+    }
+
+    roots
+}
+
+fn resolve_header(
+    header: &Path,
+    requested_include_dirs: &[&str],
+    include_dirs: &[PathBuf],
+) -> Option<PathBuf> {
+    if header.is_file() {
+        return Some(header.to_path_buf());
+    }
+
+    let mut relative_candidates = Vec::new();
+    if header.is_relative() {
+        relative_candidates.push(header.to_path_buf());
+    }
+    for root in CONVENTIONAL_INCLUDE_ROOTS {
+        if let Ok(relative) = header.strip_prefix(root) {
+            let relative = relative.to_path_buf();
+            if !relative_candidates.contains(&relative) {
+                relative_candidates.push(relative);
+            }
+        }
+    }
+    for requested_dir in requested_include_dirs {
+        if let Ok(relative) = header.strip_prefix(requested_dir) {
+            let relative = relative.to_path_buf();
+            if !relative_candidates.contains(&relative) {
+                relative_candidates.push(relative);
+            }
+        }
+    }
+
+    include_dirs.iter().find_map(|include_dir| {
+        relative_candidates.iter().find_map(|relative| {
+            let candidate = include_dir.join(relative);
+            candidate.is_file().then_some(candidate)
+        })
+    })
+}
+
+fn discover_header(
+    candidates: &[&str],
+    include_dirs: &[&str],
+    missing_description: &str,
+) -> Option<PathBuf> {
+    let search_paths = include_search_paths(include_dirs);
+    for candidate in candidates {
+        if let Some(header) = resolve_header(Path::new(candidate), include_dirs, &search_paths) {
+            return Some(header);
+        }
+    }
+
+    handle_missing_prerequisite(missing_description);
+    None
+}
+
+fn prerequisites_available(include_dirs: &[PathBuf]) -> bool {
+    let _ = system_test_mode();
+
+    let compiler = std::env::var_os("CC").unwrap_or_else(|| "cc".into());
+    match std::process::Command::new(&compiler)
+        .arg("--version")
+        .output()
+    {
+        Ok(output) if output.status.success() => {}
+        Ok(output) => {
+            handle_missing_prerequisite(format!(
+                "C compiler '{:?}' returned status {}",
+                compiler, output.status
+            ));
+            return false;
+        }
+        Err(error) => {
+            handle_missing_prerequisite(format!(
+                "C compiler '{:?}' is unavailable: {error}",
+                compiler
+            ));
+            return false;
+        }
+    }
+
+    if include_dirs.is_empty() {
+        handle_missing_prerequisite(
+            "no include search directory exists in CPATH, C_INCLUDE_PATH, or conventional roots",
+        );
+        return false;
+    }
+
+    true
+}
 
 /// Parse a real C header through linc, then run the result through gerc.
 fn bic_to_gerc(
-    header: &str,
+    header: impl AsRef<Path>,
     include_dirs: &[&str],
     link_libs: &[&str],
     probe_types: &[&str],
     crate_name: &str,
 ) -> Option<E2EResult> {
-    if !Path::new(header).exists() {
+    let include_search_paths = include_search_paths(include_dirs);
+    if !prerequisites_available(&include_search_paths) {
         return None;
     }
+    let requested_header = header.as_ref();
+    let Some(header) = resolve_header(requested_header, include_dirs, &include_search_paths) else {
+        handle_missing_prerequisite(format!(
+            "required header is absent from configured include paths: {}",
+            requested_header.display()
+        ));
+        return None;
+    };
+
+    eprintln!("RUN system fixture: {}", header.display());
 
     let mut cfg = linc::raw_headers::HeaderConfig::new()
-        .entry_header(header)
+        .entry_header(&header)
         .no_origin_filter();
 
-    for dir in include_dirs {
-        if Path::new(dir).exists() {
-            cfg = cfg.include_dir(*dir);
-        }
+    for dir in &include_search_paths {
+        cfg = cfg.include_dir(dir);
     }
     for lib in link_libs {
         cfg = cfg.link_lib(*lib);
@@ -59,10 +228,26 @@ fn bic_to_gerc(
         cfg = cfg.probe_type_layout(*ty);
     }
 
-    let linc_result = linc_common::process(&cfg).ok()?;
+    let linc_result = linc_common::process(&cfg).unwrap_or_else(|error| {
+        panic!(
+            "LINC failed for system header '{}': {error:?}",
+            header.display()
+        )
+    });
+    assert!(
+        !linc_result.package.items.is_empty(),
+        "LINC produced no declarations for system header '{}'; diagnostics: {:#?}",
+        header.display(),
+        linc_result.package.diagnostics
+    );
     let input = GercInput::from_source_package(common::from_binding_package(&linc_result.package));
     let gerc_cfg = GercConfig::new(crate_name);
-    let output = generate(&input, &gerc_cfg).ok()?;
+    let output = generate(&input, &gerc_cfg).unwrap_or_else(|error| {
+        panic!(
+            "GERC failed for system header '{}': {error}",
+            header.display()
+        )
+    });
     let source = emit_source(&output.projection);
 
     Some(E2EResult {
@@ -75,28 +260,47 @@ fn bic_to_gerc(
 }
 
 /// Same as linc_to_gerc but takes multiple headers.
-fn bic_to_gerc_multi(
-    headers: &[&str],
+fn bic_to_gerc_multi<P: AsRef<Path>>(
+    headers: &[P],
     include_dirs: &[&str],
     link_libs: &[&str],
     probe_types: &[&str],
     crate_name: &str,
 ) -> Option<E2EResult> {
-    for h in headers {
-        if !Path::new(h).exists() {
-            return None;
-        }
+    let include_search_paths = include_search_paths(include_dirs);
+    if !prerequisites_available(&include_search_paths) {
+        return None;
     }
+    let headers = headers
+        .iter()
+        .map(|header| {
+            let requested_header = header.as_ref();
+            resolve_header(requested_header, include_dirs, &include_search_paths).or_else(|| {
+                handle_missing_prerequisite(format!(
+                    "required header is absent from configured include paths: {}",
+                    requested_header.display()
+                ));
+                None
+            })
+        })
+        .collect::<Option<Vec<_>>>()?;
+
+    eprintln!(
+        "RUN system fixture: {}",
+        headers
+            .iter()
+            .map(|header| header.display().to_string())
+            .collect::<Vec<_>>()
+            .join(", ")
+    );
 
     let mut cfg = linc::raw_headers::HeaderConfig::new().no_origin_filter();
 
-    for h in headers {
-        cfg = cfg.entry_header(*h);
+    for header in &headers {
+        cfg = cfg.entry_header(header);
     }
-    for dir in include_dirs {
-        if Path::new(dir).exists() {
-            cfg = cfg.include_dir(*dir);
-        }
+    for dir in &include_search_paths {
+        cfg = cfg.include_dir(dir);
     }
     for lib in link_libs {
         cfg = cfg.link_lib(*lib);
@@ -105,10 +309,38 @@ fn bic_to_gerc_multi(
         cfg = cfg.probe_type_layout(*ty);
     }
 
-    let linc_result = linc_common::process(&cfg).ok()?;
+    let linc_result = linc_common::process(&cfg).unwrap_or_else(|error| {
+        panic!(
+            "LINC failed for system headers '{}': {error:?}",
+            headers
+                .iter()
+                .map(|header| header.display().to_string())
+                .collect::<Vec<_>>()
+                .join(", ")
+        )
+    });
+    assert!(
+        !linc_result.package.items.is_empty(),
+        "LINC produced no declarations for system headers '{}'; diagnostics: {:#?}",
+        headers
+            .iter()
+            .map(|header| header.display().to_string())
+            .collect::<Vec<_>>()
+            .join(", "),
+        linc_result.package.diagnostics
+    );
     let input = GercInput::from_source_package(common::from_binding_package(&linc_result.package));
     let gerc_cfg = GercConfig::new(crate_name);
-    let output = generate(&input, &gerc_cfg).ok()?;
+    let output = generate(&input, &gerc_cfg).unwrap_or_else(|error| {
+        panic!(
+            "GERC failed for system headers '{}': {error}",
+            headers
+                .iter()
+                .map(|header| header.display().to_string())
+                .collect::<Vec<_>>()
+                .join(", ")
+        )
+    });
     let source = emit_source(&output.projection);
 
     Some(E2EResult {
@@ -126,18 +358,20 @@ fn assert_balanced(source: &str, label: &str) {
     assert_eq!(opens, closes, "unbalanced braces in {label} output");
 }
 
-fn assert_deterministic(header: &str, include_dirs: &[&str], link_libs: &[&str], crate_name: &str) {
-    if !Path::new(header).exists() {
+fn assert_deterministic(
+    header: impl AsRef<Path> + Copy,
+    include_dirs: &[&str],
+    link_libs: &[&str],
+    crate_name: &str,
+) {
+    let Some(first) = bic_to_gerc(header, include_dirs, link_libs, &[], crate_name) else {
         return;
-    }
-    let make = || {
-        bic_to_gerc(header, include_dirs, link_libs, &[], crate_name)
-            .unwrap()
-            .source
+    };
+    let Some(second) = bic_to_gerc(header, include_dirs, link_libs, &[], crate_name) else {
+        return;
     };
     assert_eq!(
-        make(),
-        make(),
+        first.source, second.source,
         "non-deterministic e2e output for {crate_name}"
     );
 }
@@ -307,15 +541,15 @@ fn openssl_e2e_emits_expected_link_directives() {
 
 #[test]
 fn pcap_e2e() {
-    let header = if Path::new("/usr/include/pcap/pcap.h").exists() {
-        "/usr/include/pcap/pcap.h"
-    } else if Path::new("/usr/include/pcap.h").exists() {
-        "/usr/include/pcap.h"
-    } else {
+    let Some(header) = discover_header(
+        &["/usr/include/pcap/pcap.h", "/usr/include/pcap.h"],
+        INCLUDE,
+        "required libpcap header is absent from configured include paths",
+    ) else {
         return;
     };
 
-    let Some(r) = bic_to_gerc(header, INCLUDE, &["pcap"], &[], "pcap_sys") else {
+    let Some(r) = bic_to_gerc(&header, INCLUDE, &["pcap"], &[], "pcap_sys") else {
         return;
     };
 
@@ -335,28 +569,36 @@ fn pcap_e2e() {
 
 #[test]
 fn pcap_e2e_deterministic() {
-    let header = if Path::new("/usr/include/pcap/pcap.h").exists() {
-        "/usr/include/pcap/pcap.h"
-    } else if Path::new("/usr/include/pcap.h").exists() {
-        "/usr/include/pcap.h"
-    } else {
+    let Some(header) = discover_header(
+        &["/usr/include/pcap/pcap.h", "/usr/include/pcap.h"],
+        INCLUDE,
+        "required libpcap header is absent from configured include paths",
+    ) else {
         return;
     };
-    assert_deterministic(header, INCLUDE, &["pcap"], "pcap_sys");
+    assert_deterministic(&header, INCLUDE, &["pcap"], "pcap_sys");
 }
 
 #[test]
 fn libcurl_e2e() {
-    let header = if Path::new("/usr/include/curl/curl.h").exists() {
-        "/usr/include/curl/curl.h"
-    } else if Path::new("/usr/include/x86_64-linux-gnu/curl/curl.h").exists() {
-        "/usr/include/x86_64-linux-gnu/curl/curl.h"
-    } else {
+    let Some(header) = discover_header(
+        &[
+            "/usr/include/curl/curl.h",
+            "/usr/include/x86_64-linux-gnu/curl/curl.h",
+        ],
+        INCLUDE,
+        "required libcurl header is absent from configured include paths",
+    ) else {
         return;
     };
 
-    let Some(r) = bic_to_gerc(header, INCLUDE, &["curl"], &["struct curl_blob"], "curl_sys")
-    else {
+    let Some(r) = bic_to_gerc(
+        &header,
+        INCLUDE,
+        &["curl"],
+        &["struct curl_blob"],
+        "curl_sys",
+    ) else {
         return;
     };
 
@@ -372,29 +614,40 @@ fn libcurl_e2e() {
 
 #[test]
 fn libcurl_e2e_deterministic() {
-    let header = if Path::new("/usr/include/curl/curl.h").exists() {
-        "/usr/include/curl/curl.h"
-    } else if Path::new("/usr/include/x86_64-linux-gnu/curl/curl.h").exists() {
-        "/usr/include/x86_64-linux-gnu/curl/curl.h"
-    } else {
+    let Some(header) = discover_header(
+        &[
+            "/usr/include/curl/curl.h",
+            "/usr/include/x86_64-linux-gnu/curl/curl.h",
+        ],
+        INCLUDE,
+        "required libcurl header is absent from configured include paths",
+    ) else {
         return;
     };
 
-    assert_deterministic(header, INCLUDE, &["curl"], "curl_sys");
+    assert_deterministic(&header, INCLUDE, &["curl"], "curl_sys");
 }
 
 #[test]
 fn libcurl_e2e_emits_expected_link_directives() {
-    let header = if Path::new("/usr/include/curl/curl.h").exists() {
-        "/usr/include/curl/curl.h"
-    } else if Path::new("/usr/include/x86_64-linux-gnu/curl/curl.h").exists() {
-        "/usr/include/x86_64-linux-gnu/curl/curl.h"
-    } else {
+    let Some(header) = discover_header(
+        &[
+            "/usr/include/curl/curl.h",
+            "/usr/include/x86_64-linux-gnu/curl/curl.h",
+        ],
+        INCLUDE,
+        "required libcurl header is absent from configured include paths",
+    ) else {
         return;
     };
 
-    let Some(r) = bic_to_gerc(header, INCLUDE, &["curl"], &["struct curl_blob"], "curl_sys")
-    else {
+    let Some(r) = bic_to_gerc(
+        &header,
+        INCLUDE,
+        &["curl"],
+        &["struct curl_blob"],
+        "curl_sys",
+    ) else {
         return;
     };
 
@@ -1104,18 +1357,16 @@ fn combined_event_loop_e2e_deterministic() {
         "/usr/include/x86_64-linux-gnu/sys/epoll.h",
         "/usr/include/signal.h",
     ];
-    for h in &headers {
-        if !Path::new(h).exists() {
-            return;
-        }
-    }
-
-    let make = || {
-        bic_to_gerc_multi(&headers, INCLUDE, &["c"], &[], "event_loop_sys")
-            .unwrap()
-            .source
+    let Some(first) = bic_to_gerc_multi(&headers, INCLUDE, &["c"], &[], "event_loop_sys") else {
+        return;
     };
-    assert_eq!(make(), make(), "non-deterministic combined e2e output");
+    let Some(second) = bic_to_gerc_multi(&headers, INCLUDE, &["c"], &[], "event_loop_sys") else {
+        return;
+    };
+    assert_eq!(
+        first.source, second.source,
+        "non-deterministic combined e2e output"
+    );
 }
 
 #[test]
@@ -1177,17 +1428,21 @@ fn combined_event_loop_e2e_emits_expected_link_directives() {
 #[test]
 fn combined_networking_e2e() {
     let mut headers = vec![
-        "/usr/include/x86_64-linux-gnu/sys/socket.h",
-        "/usr/include/netinet/in.h",
-        "/usr/include/linux/netlink.h",
+        PathBuf::from("/usr/include/x86_64-linux-gnu/sys/socket.h"),
+        PathBuf::from("/usr/include/netinet/in.h"),
+        PathBuf::from("/usr/include/linux/netlink.h"),
     ];
-    if Path::new("/usr/include/pcap/pcap.h").exists() {
-        headers.push("/usr/include/pcap/pcap.h");
-    } else if Path::new("/usr/include/pcap.h").exists() {
-        headers.push("/usr/include/pcap.h");
-    }
+    let Some(pcap_header) = discover_header(
+        &["/usr/include/pcap/pcap.h", "/usr/include/pcap.h"],
+        INCLUDE,
+        "required libpcap header is absent from configured include paths",
+    ) else {
+        return;
+    };
+    headers.push(pcap_header);
 
-    let Some(r) = bic_to_gerc_multi(&headers, INCLUDE, &["c", "pcap"], &[], "networking_sys") else {
+    let Some(r) = bic_to_gerc_multi(&headers, INCLUDE, &["c", "pcap"], &[], "networking_sys")
+    else {
         return;
     };
 
@@ -1242,18 +1497,19 @@ fn combined_full_libc_e2e_deterministic() {
         "/usr/include/unistd.h",
         "/usr/include/pthread.h",
     ];
-    for h in &headers {
-        if !Path::new(h).exists() {
-            return;
-        }
-    }
-
-    let make = || {
-        bic_to_gerc_multi(&headers, INCLUDE, &["c", "pthread"], &[], "libc_full_sys")
-            .unwrap()
-            .source
+    let Some(first) = bic_to_gerc_multi(&headers, INCLUDE, &["c", "pthread"], &[], "libc_full_sys")
+    else {
+        return;
     };
-    assert_eq!(make(), make(), "non-deterministic full libc e2e output");
+    let Some(second) =
+        bic_to_gerc_multi(&headers, INCLUDE, &["c", "pthread"], &[], "libc_full_sys")
+    else {
+        return;
+    };
+    assert_eq!(
+        first.source, second.source,
+        "non-deterministic full libc e2e output"
+    );
 }
 
 #[test]

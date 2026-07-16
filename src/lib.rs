@@ -46,8 +46,8 @@
 //!
 //! All public types live in the crate root or in clearly named submodules.
 
-pub mod config;
 pub mod c;
+pub mod config;
 pub mod consumer;
 pub mod contract;
 #[cfg(test)]
@@ -68,7 +68,6 @@ pub use contract::{
     projection_from_json, projection_to_json, GercOutputMeta, SCHEMA_VERSION,
 };
 
-pub use config::GercConfig;
 pub use c::{
     BindingItem, BindingLinkSurface, BindingPackage, BindingType, EvidenceKind, ItemKind,
     LinkAnalysisPackage, LinkArtifact, LinkArtifactKind, LinkFramework, LinkInput, LinkLibrary,
@@ -76,14 +75,15 @@ pub use c::{
     NativeSurfaceKind, ResolvedLinkPlan, SymbolMatch, SymbolVisibility, ValidationReport,
     ValidationSummary,
 };
+pub use config::GercConfig;
 pub use consumer::{
     build_sidecar, extern_function_names, record_names, sidecar_from_json, sidecar_to_json,
     type_alias_names, ConsumerFinding, ConsumerReport, FindingKind, FolConsumer, GercConsumer,
     MetadataSidecar, PassthroughConsumer, SidecarItem, SidecarItemKind,
 };
 pub use crategen::{
-    emit_build_rs, emit_crate, emit_rustc_args, normalize_crate_name, CrateManifest,
-    EmittedCrate, OutputMode, OverwritePolicy,
+    emit_build_rs, emit_crate, emit_rustc_args, normalize_crate_name, CrateManifest, EmittedCrate,
+    OutputMode, OverwritePolicy,
 };
 pub use emit::{emit_source, emit_type};
 pub use error::{GercError, GercResult};

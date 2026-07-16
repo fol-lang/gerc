@@ -1,8 +1,8 @@
 mod common;
 
+use gerc::c::{CallingConvention, FunctionBinding};
 use gerc::ir::{RustFunction, RustItem, RustProjection, RustType};
 use gerc::GercConsumer;
-use gerc::c::{CallingConvention, FunctionBinding};
 use gerc::{
     BindingItem, BindingPackage, BindingType, SourceDeclaration, SourceFunction, SourcePackage,
     SourceType,
@@ -45,7 +45,10 @@ fn root_reexports_rustc_link_arg_renderer() {
         },
     ]);
 
-    assert_eq!(args, vec!["-Lnative=/usr/lib", "-ldylib=z", "-lframework=Security"]);
+    assert_eq!(
+        args,
+        vec!["-Lnative=/usr/lib", "-ldylib=z", "-lframework=Security"]
+    );
 }
 
 #[test]

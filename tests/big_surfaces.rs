@@ -15,7 +15,9 @@ mod linux_kernel;
 mod torture;
 
 use gerc::config::GercConfig;
-use gerc::consumer::{build_sidecar, sidecar_from_json, sidecar_to_json, FolConsumer, GercConsumer};
+use gerc::consumer::{
+    build_sidecar, sidecar_from_json, sidecar_to_json, FolConsumer, GercConsumer,
+};
 use gerc::contract::{
     generate, meta_from_json, meta_to_json, output_meta, projection_from_json, projection_to_json,
 };
@@ -219,7 +221,6 @@ fn linux_kernel_full_pipeline() {
     assert!(source.contains("pub fn epoll_create1"));
     assert!(source.contains("pub fn fork"));
     assert!(source.contains("pub fn kill"));
-
 }
 
 #[test]
@@ -262,11 +263,7 @@ fn linux_kernel_deterministic() {
             .unwrap()
             .projection,
     );
-    let s2 = emit_source(
-        &generate(&input_from_binding(pkg), &cfg)
-            .unwrap()
-            .projection,
-    );
+    let s2 = emit_source(&generate(&input_from_binding(pkg), &cfg).unwrap().projection);
     assert_eq!(s1, s2);
 }
 

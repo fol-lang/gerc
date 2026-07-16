@@ -292,7 +292,9 @@ mod tests {
 
     #[test]
     fn map_pointer_to_pointer_to_anonymous_record_preserves_outer_pointer() {
-        let ty = BindingType::ptr(BindingType::ptr(BindingType::RecordRef("<anonymous>".into())));
+        let ty = BindingType::ptr(BindingType::ptr(BindingType::RecordRef(
+            "<anonymous>".into(),
+        )));
         match map_type(&ty) {
             RustType::Pointer { pointee, is_const } => {
                 assert!(!is_const);

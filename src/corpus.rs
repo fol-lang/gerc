@@ -4,11 +4,11 @@
 
 #[cfg(test)]
 mod tests {
+    use crate::c::*;
     use crate::emit::emit_source;
     use crate::gate::{gate_package, GateDecision};
     use crate::linkgen::lower_link_surface;
     use crate::lower::lower_package;
-    use crate::c::*;
 
     /// Helper: run the full pipeline on a BindingPackage.
     fn full_pipeline(pkg: &BindingPackage) -> (String, usize, usize) {

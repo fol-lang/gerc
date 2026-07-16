@@ -3,16 +3,15 @@ mod common;
 use gerc::emit::emit_source;
 use gerc::{
     generate, generate_from_source, GercConfig, GercInput, SourceDeclaration, SourceFunction,
-    SourceLinkKind, SourceLinkRequirement, SourcePackage, SourceRecord, SourceType,
-    SourceVariable,
-};
-use linc::{
-    EvidenceKind, ItemKind, LinkAnalysisPackage, MatchConfidence, MatchStatus, ResolvedLinkPlan,
-    SymbolMatch, SymbolVisibility, ValidationReport, ValidationSummary,
+    SourceLinkKind, SourceLinkRequirement, SourcePackage, SourceRecord, SourceType, SourceVariable,
 };
 use linc::ir::{
     LinkInput, LinkLibrary, LinkLibraryKind, LinkRequirementSource, LinkResolutionMode,
     NativeSurfaceKind,
+};
+use linc::{
+    EvidenceKind, ItemKind, LinkAnalysisPackage, MatchConfidence, MatchStatus, ResolvedLinkPlan,
+    SymbolMatch, SymbolVisibility, ValidationReport, ValidationSummary,
 };
 
 fn source_fixture() -> SourcePackage {
@@ -181,7 +180,8 @@ fn generate_prefers_parallel_linc_analysis_evidence() {
     };
 
     let output = generate(
-        &GercInput::from_source_package(source).with_analysis(common::from_linc_analysis(&analysis)),
+        &GercInput::from_source_package(source)
+            .with_analysis(common::from_linc_analysis(&analysis)),
         &GercConfig::new("demo_sys"),
     )
     .unwrap();

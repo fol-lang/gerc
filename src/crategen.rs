@@ -426,7 +426,12 @@ mod tests {
             .collect();
         assert_eq!(
             ordered,
-            vec!["Cargo.toml", "build.rs", "rustc-link-args.txt", "src/lib.rs"]
+            vec![
+                "Cargo.toml",
+                "build.rs",
+                "rustc-link-args.txt",
+                "src/lib.rs"
+            ]
         );
     }
 
@@ -611,6 +616,10 @@ mod tests {
             .current_dir(dir)
             .status()
             .unwrap();
-        assert!(status.success(), "cargo {subcommand} failed in {}", dir.display());
+        assert!(
+            status.success(),
+            "cargo {subcommand} failed in {}",
+            dir.display()
+        );
     }
 }

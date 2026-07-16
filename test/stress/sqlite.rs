@@ -1,5 +1,12 @@
 use linc::ir::*;
 
+type FunctionSpec = (
+    &'static str,
+    Vec<(&'static str, BindingType)>,
+    BindingType,
+    bool,
+);
+
 /// Build a BindingPackage that mirrors the SQLite3 public surface.
 /// SQLite has a famously large single-file API (~200 functions, many typedefs).
 pub fn sqlite3_package() -> BindingPackage {
@@ -86,7 +93,7 @@ pub fn sqlite3_package() -> BindingPackage {
     let char_ptr = BindingType::ptr(BindingType::Char);
     let void_ptr = BindingType::ptr(BindingType::Void);
 
-    let functions: Vec<(&str, Vec<(&str, BindingType)>, BindingType, bool)> = vec![
+    let functions: Vec<FunctionSpec> = vec![
         (
             "sqlite3_open",
             vec![

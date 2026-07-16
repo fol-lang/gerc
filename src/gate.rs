@@ -4,8 +4,8 @@
 //! code because the attached evidence is insufficient for safe FFI.
 
 use crate::c::{
-    BindingItem, BindingPackage, BindingType, EnumBinding, FieldBinding, FunctionBinding,
-    ItemKind, MatchStatus, SymbolMatch, ValidationReport, VariableBinding, RecordBinding,
+    BindingItem, BindingPackage, BindingType, EnumBinding, FieldBinding, FunctionBinding, ItemKind,
+    MatchStatus, RecordBinding, SymbolMatch, ValidationReport, VariableBinding,
 };
 
 use crate::output::{GercDiagnostic, GercSeverity};

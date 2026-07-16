@@ -1,5 +1,12 @@
 use linc::ir::*;
 
+type FunctionSpec = (
+    &'static str,
+    Vec<(&'static str, BindingType)>,
+    BindingType,
+    bool,
+);
+
 /// Build a BindingPackage that mirrors the OpenSSL public surface.
 /// OpenSSL is notable for: almost everything opaque, heavy typedef layering,
 /// deprecated callback patterns, and two link libraries (ssl + crypto).
@@ -138,7 +145,7 @@ pub fn openssl_package() -> BindingPackage {
     let evp_cipher_ctx_ptr = BindingType::ptr(BindingType::RecordRef("EVP_CIPHER_CTX".into()));
     let bn_ptr = BindingType::ptr(BindingType::RecordRef("BIGNUM".into()));
 
-    let functions: Vec<(&str, Vec<(&str, BindingType)>, BindingType, bool)> = vec![
+    let functions: Vec<FunctionSpec> = vec![
         // SSL lifecycle
         (
             "SSL_CTX_new",

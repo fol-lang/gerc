@@ -48,8 +48,17 @@ fn failure_matrix_lower_anonymous_and_unsupported_items_stay_explicit() {
 
     assert_eq!(projection.items.len(), 3);
     assert_eq!(diagnostics.len(), 3);
-    assert!(projection.items.iter().all(|item| matches!(item, RustItem::Unsupported(_))));
-    assert!(diagnostics.iter().any(|d| d.message.contains("anonymous record")));
-    assert!(diagnostics.iter().any(|d| d.message.contains("anonymous enum")));
-    assert!(diagnostics.iter().any(|d| d.message.contains("unsupported")));
+    assert!(projection
+        .items
+        .iter()
+        .all(|item| matches!(item, RustItem::Unsupported(_))));
+    assert!(diagnostics
+        .iter()
+        .any(|d| d.message.contains("anonymous record")));
+    assert!(diagnostics
+        .iter()
+        .any(|d| d.message.contains("anonymous enum")));
+    assert!(diagnostics
+        .iter()
+        .any(|d| d.message.contains("unsupported")));
 }

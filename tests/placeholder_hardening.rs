@@ -4,7 +4,9 @@ use gerc::config::GercConfig;
 use gerc::contract::generate;
 use gerc::emit::emit_source;
 use gerc::intake::GercInput;
-use linc::ir::{BindingItem, BindingPackage, BindingType, CallingConvention, FunctionBinding, ParameterBinding};
+use linc::ir::{
+    BindingItem, BindingPackage, BindingType, CallingConvention, FunctionBinding, ParameterBinding,
+};
 
 fn input_from_binding(pkg: BindingPackage) -> GercInput {
     GercInput::from_source_package(common::from_binding_package(&pkg))
@@ -25,6 +27,10 @@ fn placeholder_hardening_escapes_keyword_named_placeholders_everywhere() {
                 name: Some("match".into()),
                 ty: BindingType::const_ptr(BindingType::Opaque("match".into())),
             },
+            ParameterBinding {
+                name: Some("typeof".into()),
+                ty: BindingType::ptr(BindingType::Opaque("typeof".into())),
+            },
         ],
         return_type: BindingType::Opaque("Self".into()),
         variadic: false,
@@ -36,8 +42,10 @@ fn placeholder_hardening_escapes_keyword_named_placeholders_everywhere() {
 
     assert!(source.contains("pub struct r#type { _opaque: [u8; 0] }"));
     assert!(source.contains("pub struct r#match { _opaque: [u8; 0] }"));
+    assert!(source.contains("pub struct r#typeof { _opaque: [u8; 0] }"));
     assert!(source.contains("pub struct r#Self { _opaque: [u8; 0] }"));
     assert!(source.contains("r#type: *mut r#type"));
     assert!(source.contains("r#match: *const r#match"));
+    assert!(source.contains("r#typeof: *mut r#typeof"));
     assert!(source.contains("-> r#Self"));
 }

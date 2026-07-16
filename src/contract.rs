@@ -46,17 +46,13 @@ pub fn generate(input: &GercInput, _config: &GercConfig) -> GercResult<GercOutpu
         return Err(GercError::EmptyInput);
     }
 
-    let validation = input_clone
-        .evidence
-        .validation
-        .as_ref()
-        .or_else(|| {
-            input_clone
-                .evidence
-                .analysis
-                .as_ref()
-                .and_then(|analysis| analysis.validation.as_ref())
-        });
+    let validation = input_clone.evidence.validation.as_ref().or_else(|| {
+        input_clone
+            .evidence
+            .analysis
+            .as_ref()
+            .and_then(|analysis| analysis.validation.as_ref())
+    });
 
     let (decisions, gate_diags) = gate_package(&package, validation);
 
@@ -108,10 +104,7 @@ pub fn generate(input: &GercInput, _config: &GercConfig) -> GercResult<GercOutpu
 }
 
 /// Generate directly from a `gerc` source package.
-pub fn generate_from_source(
-    source: SourcePackage,
-    config: &GercConfig,
-) -> GercResult<GercOutput> {
+pub fn generate_from_source(source: SourcePackage, config: &GercConfig) -> GercResult<GercOutput> {
     let input = GercInput::from_source_package(source);
     generate(&input, config)
 }
@@ -170,13 +163,11 @@ mod tests {
         generate, generate_from_source, meta_from_json, meta_to_json, output_meta,
         projection_from_json, projection_to_json, SCHEMA_VERSION,
     };
+    use crate::c::*;
     use crate::config::GercConfig;
     use crate::error::GercError;
-    use crate::intake::{
-        GercInput, SourceDeclaration, SourceFunction, SourcePackage, SourceType,
-    };
+    use crate::intake::{GercInput, SourceDeclaration, SourceFunction, SourcePackage, SourceType};
     use crate::ir::RustItem;
-    use crate::c::*;
 
     fn sample_input() -> GercInput {
         let mut pkg = BindingPackage::new();
@@ -274,18 +265,20 @@ mod tests {
             source: LinkRequirementSource::Declared,
         });
 
-        let input = GercInput::from_source_package(crate::intake::source_package_from_binding(&pkg)).with_link_plan(ResolvedLinkPlan {
-            preferred_mode: LinkResolutionMode::Default,
-            native_surface_kind: NativeSurfaceKind::LibraryNames,
-            platform_constraints: Vec::new(),
-            inputs: vec![LinkInput::Library(LinkLibrary {
-                name: "resolvedlib".into(),
-                kind: LinkLibraryKind::Default,
-                source: LinkRequirementSource::Declared,
-            })],
-            requirements: Vec::new(),
-            transitive_dependencies: Vec::new(),
-        });
+        let input =
+            GercInput::from_source_package(crate::intake::source_package_from_binding(&pkg))
+                .with_link_plan(ResolvedLinkPlan {
+                    preferred_mode: LinkResolutionMode::Default,
+                    native_surface_kind: NativeSurfaceKind::LibraryNames,
+                    platform_constraints: Vec::new(),
+                    inputs: vec![LinkInput::Library(LinkLibrary {
+                        name: "resolvedlib".into(),
+                        kind: LinkLibraryKind::Default,
+                        source: LinkRequirementSource::Declared,
+                    })],
+                    requirements: Vec::new(),
+                    transitive_dependencies: Vec::new(),
+                });
 
         let cfg = GercConfig::default();
         let output = generate(&input, &cfg).unwrap();
@@ -312,24 +305,26 @@ mod tests {
             source_offset: None,
         }));
 
-        let input = GercInput::from_source_package(crate::intake::source_package_from_binding(&pkg)).with_link_plan(ResolvedLinkPlan {
-            preferred_mode: LinkResolutionMode::PreferStatic,
-            native_surface_kind: NativeSurfaceKind::Mixed,
-            platform_constraints: Vec::new(),
-            inputs: vec![
-                LinkInput::Library(LinkLibrary {
-                    name: "staticish".into(),
-                    kind: LinkLibraryKind::Default,
-                    source: LinkRequirementSource::Declared,
-                }),
-                LinkInput::Framework(LinkFramework {
-                    name: "CoreFoundation".into(),
-                    source: LinkRequirementSource::Declared,
-                }),
-            ],
-            requirements: Vec::new(),
-            transitive_dependencies: Vec::new(),
-        });
+        let input =
+            GercInput::from_source_package(crate::intake::source_package_from_binding(&pkg))
+                .with_link_plan(ResolvedLinkPlan {
+                    preferred_mode: LinkResolutionMode::PreferStatic,
+                    native_surface_kind: NativeSurfaceKind::Mixed,
+                    platform_constraints: Vec::new(),
+                    inputs: vec![
+                        LinkInput::Library(LinkLibrary {
+                            name: "staticish".into(),
+                            kind: LinkLibraryKind::Default,
+                            source: LinkRequirementSource::Declared,
+                        }),
+                        LinkInput::Framework(LinkFramework {
+                            name: "CoreFoundation".into(),
+                            source: LinkRequirementSource::Declared,
+                        }),
+                    ],
+                    requirements: Vec::new(),
+                    transitive_dependencies: Vec::new(),
+                });
 
         let cfg = GercConfig::default();
         let output = generate(&input, &cfg).unwrap();
@@ -348,7 +343,7 @@ mod tests {
     fn error_types_exhaustive() {
         let _ = GercError::EmptyInput;
         let _ = GercError::InvalidConfig { reason: "x".into() };
-        let _ = GercError::Io(std::io::Error::new(std::io::ErrorKind::Other, "x"));
+        let _ = GercError::Io(std::io::Error::other("x"));
         let _ = GercError::Serialization("x".into());
     }
 
@@ -434,7 +429,8 @@ mod tests {
             source_offset: None,
         }));
 
-        let input = GercInput::from_source_package(crate::intake::source_package_from_binding(&pkg));
+        let input =
+            GercInput::from_source_package(crate::intake::source_package_from_binding(&pkg));
         let output = generate(&input, &GercConfig::default()).unwrap();
         // Only the function should be in the projection (bitfield filtered out)
         assert_eq!(output.item_count(), 1);
@@ -487,7 +483,9 @@ mod tests {
             ],
         };
 
-        let input = GercInput::from_source_package(crate::intake::source_package_from_binding(&pkg)).with_validation(report);
+        let input =
+            GercInput::from_source_package(crate::intake::source_package_from_binding(&pkg))
+                .with_validation(report);
         let output = generate(&input, &GercConfig::default()).unwrap();
 
         assert_eq!(output.item_count(), 1);
@@ -543,7 +541,9 @@ mod tests {
             ],
         };
 
-        let input = GercInput::from_source_package(crate::intake::source_package_from_binding(&pkg)).with_validation(report);
+        let input =
+            GercInput::from_source_package(crate::intake::source_package_from_binding(&pkg))
+                .with_validation(report);
         let output = generate(&input, &GercConfig::default()).unwrap();
 
         assert_eq!(output.item_count(), 1);
@@ -604,7 +604,8 @@ mod tests {
             source: LinkRequirementSource::Declared,
         });
 
-        let input = GercInput::from_source_package(crate::intake::source_package_from_binding(&pkg));
+        let input =
+            GercInput::from_source_package(crate::intake::source_package_from_binding(&pkg));
         let cfg = GercConfig::new("mylib_sys");
         let output = generate(&input, &cfg).unwrap();
 
@@ -619,7 +620,7 @@ mod tests {
 
         // Projection
         assert!(!output.is_empty());
-        assert!(output.projection.link_requirements.len() >= 1);
+        assert!(!output.projection.link_requirements.is_empty());
 
         // Source emission
         let source = crate::emit::emit_source(&output.projection);

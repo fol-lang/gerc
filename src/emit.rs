@@ -347,8 +347,10 @@ fn escape_ident(name: &str) -> String {
     const KEYWORDS: &[&str] = &[
         "as", "break", "const", "continue", "crate", "else", "enum", "extern", "false", "fn",
         "for", "if", "impl", "in", "let", "loop", "match", "mod", "move", "mut", "pub", "ref",
-        "return", "self", "Self", "static", "struct", "super", "trait", "true", "type",
-        "unsafe", "use", "where", "while", "async", "await", "dyn",
+        "return", "self", "Self", "static", "struct", "super", "trait", "true", "type", "unsafe",
+        "use", "where", "while", "async", "await", "dyn", "abstract", "become", "box", "do",
+        "final", "gen", "macro", "override", "priv", "try", "typeof", "unsized", "virtual",
+        "yield",
     ];
 
     if KEYWORDS.contains(&name) {
@@ -541,6 +543,13 @@ mod tests {
                         is_const: true,
                     },
                 },
+                RustParameter {
+                    name: "typeof".into(),
+                    ty: RustType::Pointer {
+                        pointee: Box::new(RustType::Named("typeof".into())),
+                        is_const: false,
+                    },
+                },
             ],
             return_type: RustType::Named("Self".into()),
             variadic: false,
@@ -551,8 +560,10 @@ mod tests {
         assert!(src.contains("pub struct r#Self"));
         assert!(src.contains("pub struct r#match"));
         assert!(src.contains("pub struct r#type"));
+        assert!(src.contains("pub struct r#typeof"));
         assert!(src.contains("r#type: *mut r#type"));
         assert!(src.contains("r#match: *const r#match"));
+        assert!(src.contains("r#typeof: *mut r#typeof"));
         assert!(src.contains("-> r#Self"));
     }
 

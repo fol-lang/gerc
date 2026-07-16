@@ -41,7 +41,9 @@ fn incomplete_support_pointer_only_handle_patterns_lower_source_only() {
             },
             ParameterBinding {
                 name: Some("db".into()),
-                ty: BindingType::ptr(BindingType::ptr(BindingType::TypedefRef("sqlite3_t".into()))),
+                ty: BindingType::ptr(BindingType::ptr(BindingType::TypedefRef(
+                    "sqlite3_t".into(),
+                ))),
             },
         ],
         return_type: BindingType::Int,

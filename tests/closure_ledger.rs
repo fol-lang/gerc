@@ -70,7 +70,9 @@ fn closure_ledger_safety_rejections_stay_explicit() {
     assert!(matches!(&decisions[0], GateDecision::Reject(reason) if reason.contains("bitfields")));
     assert!(matches!(&decisions[1], GateDecision::Reject(reason) if reason.contains("anonymous")));
     assert!(matches!(&decisions[2], GateDecision::Reject(reason) if reason.contains("anonymous")));
-    assert!(matches!(&decisions[3], GateDecision::Reject(reason) if reason.contains("unsupported declaration")));
+    assert!(
+        matches!(&decisions[3], GateDecision::Reject(reason) if reason.contains("unsupported declaration"))
+    );
     assert_eq!(diagnostics.len(), 4);
 }
 
@@ -78,12 +80,23 @@ fn closure_ledger_safety_rejections_stay_explicit() {
 fn closure_ledger_rejection_messages_remain_actionable() {
     let pkg = representative_rejection_package();
     let (_decisions, diagnostics) = gate_package(&pkg, None);
-    let messages: Vec<_> = diagnostics.iter().map(|diag| diag.message.as_str()).collect();
+    let messages: Vec<_> = diagnostics
+        .iter()
+        .map(|diag| diag.message.as_str())
+        .collect();
 
-    assert!(messages.iter().any(|msg| msg.contains("record 'flags' contains bitfields")));
-    assert!(messages.iter().any(|msg| msg.contains("anonymous record cannot be projected")));
-    assert!(messages.iter().any(|msg| msg.contains("anonymous enum cannot be projected")));
-    assert!(messages.iter().any(|msg| msg.contains("unsupported declaration: vendor extension")));
+    assert!(messages
+        .iter()
+        .any(|msg| msg.contains("record 'flags' contains bitfields")));
+    assert!(messages
+        .iter()
+        .any(|msg| msg.contains("anonymous record cannot be projected")));
+    assert!(messages
+        .iter()
+        .any(|msg| msg.contains("anonymous enum cannot be projected")));
+    assert!(messages
+        .iter()
+        .any(|msg| msg.contains("unsupported declaration: vendor extension")));
 }
 
 #[test]
@@ -142,12 +155,23 @@ fn closure_ledger_incomplete_fields_and_missing_representation_evidence_stay_exp
     }));
 
     let (decisions, diagnostics) = gate_package(&pkg, None);
-    let messages: Vec<_> = diagnostics.iter().map(|diag| diag.message.as_str()).collect();
+    let messages: Vec<_> = diagnostics
+        .iter()
+        .map(|diag| diag.message.as_str())
+        .collect();
 
-    assert!(matches!(&decisions[0], GateDecision::Reject(reason) if reason.contains("incomplete field types")));
-    assert!(matches!(&decisions[1], GateDecision::Reject(reason) if reason.contains("lacks representation size evidence")));
-    assert!(matches!(&decisions[2], GateDecision::Reject(reason) if reason.contains("lacks representation alignment evidence")));
-    assert!(messages.iter().any(|msg| msg.contains("opaque_field_holder")));
+    assert!(
+        matches!(&decisions[0], GateDecision::Reject(reason) if reason.contains("incomplete field types"))
+    );
+    assert!(
+        matches!(&decisions[1], GateDecision::Reject(reason) if reason.contains("lacks representation size evidence"))
+    );
+    assert!(
+        matches!(&decisions[2], GateDecision::Reject(reason) if reason.contains("lacks representation alignment evidence"))
+    );
+    assert!(messages
+        .iter()
+        .any(|msg| msg.contains("opaque_field_holder")));
     assert!(messages.iter().any(|msg| msg.contains("size_unknown")));
     assert!(messages.iter().any(|msg| msg.contains("align_unknown")));
 }

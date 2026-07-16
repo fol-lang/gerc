@@ -79,8 +79,12 @@ fn failure_matrix_gate_groups_validation_refusals() {
 
     assert_eq!(decisions.len(), 3);
     assert!(matches!(decisions[0], GateDecision::Accept));
-    assert!(matches!(&decisions[1], GateDecision::Reject(reason) if reason.contains("duplicate provider")));
+    assert!(
+        matches!(&decisions[1], GateDecision::Reject(reason) if reason.contains("duplicate provider"))
+    );
     assert!(matches!(&decisions[2], GateDecision::Reject(reason) if reason.contains("Hidden")));
     assert!(diagnostics.iter().any(|d| d.message.contains("dup_fn")));
-    assert!(diagnostics.iter().any(|d| d.message.contains("hidden_data")));
+    assert!(diagnostics
+        .iter()
+        .any(|d| d.message.contains("hidden_data")));
 }

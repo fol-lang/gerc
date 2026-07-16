@@ -106,16 +106,16 @@ fn zlib_deterministic() {
             &GercInput::from_source_package(common::from_binding_package(&pkg.clone())),
             &GercConfig::new("z"),
         )
-            .unwrap()
-            .projection,
+        .unwrap()
+        .projection,
     );
     let s2 = emit_source(
         &generate(
             &GercInput::from_source_package(common::from_binding_package(&pkg)),
             &GercConfig::new("z"),
         )
-            .unwrap()
-            .projection,
+        .unwrap()
+        .projection,
     );
     assert_eq!(s1, s2);
 }
@@ -220,7 +220,9 @@ fn sqlite3_surface_preserves_typedef_handle_alloc_flow() {
         "pub type sqlite3_destructor_type = Option<unsafe extern \"C\" fn(*mut core::ffi::c_void)>;"
     ));
     assert!(r.source.contains("pub struct sqlite3 { _opaque: [u8; 0] }"));
-    assert!(r.source.contains("pub struct sqlite3_stmt { _opaque: [u8; 0] }"));
+    assert!(r
+        .source
+        .contains("pub struct sqlite3_stmt { _opaque: [u8; 0] }"));
     assert!(
         r.source.contains(
             "pub fn sqlite3_open(filename: *const core::ffi::c_char, ppDb: *mut *mut sqlite3) -> core::ffi::c_int;"
@@ -229,13 +231,12 @@ fn sqlite3_surface_preserves_typedef_handle_alloc_flow() {
     assert!(r.source.contains(
         "pub fn sqlite3_prepare_v2(db: *mut sqlite3, sql: *const core::ffi::c_char, nByte: core::ffi::c_int, ppStmt: *mut *mut sqlite3_stmt, pzTail: *mut *const core::ffi::c_char) -> core::ffi::c_int;"
     ));
-    assert!(
-        r.source
-            .contains("pub fn sqlite3_malloc(n: core::ffi::c_int) -> *mut core::ffi::c_void;")
-    );
-    assert!(
-        r.source.contains("pub fn sqlite3_free(ptr: *mut core::ffi::c_void);")
-    );
+    assert!(r
+        .source
+        .contains("pub fn sqlite3_malloc(n: core::ffi::c_int) -> *mut core::ffi::c_void;"));
+    assert!(r
+        .source
+        .contains("pub fn sqlite3_free(ptr: *mut core::ffi::c_void);"));
 }
 
 #[test]

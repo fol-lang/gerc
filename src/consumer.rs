@@ -443,10 +443,10 @@ mod tests {
     #[test]
     fn full_consumer_pipeline() {
         // Build a package, run full generate, then consumer inspect
+        use crate::c::*;
         use crate::config::GercConfig;
         use crate::contract::generate;
         use crate::intake::GercInput;
-        use crate::c::*;
 
         let mut pkg = BindingPackage::new();
         pkg.items.push(BindingItem::Function(FunctionBinding {

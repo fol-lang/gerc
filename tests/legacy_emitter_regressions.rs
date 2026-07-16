@@ -215,8 +215,8 @@ fn function_pointer_aliases_emit_option_wrapped_signatures() {
     }));
 
     let source = generate_source(pkg);
-    assert!(source.contains(
-        "pub type handler_t = Option<unsafe extern \"C\" fn(core::ffi::c_int)>;"
-    ));
+    assert!(
+        source.contains("pub type handler_t = Option<unsafe extern \"C\" fn(core::ffi::c_int)>;")
+    );
     assert!(!source.contains("pub type handler_t = unsafe extern \"C\" fn("));
 }

@@ -1,5 +1,12 @@
 use linc::ir::*;
 
+type FunctionSpec = (
+    &'static str,
+    Vec<(&'static str, BindingType)>,
+    BindingType,
+    bool,
+);
+
 /// Build a BindingPackage that mirrors a significant slice of Linux kernel
 /// UAPI headers: ioctl, socket, netlink, input event, perf, etc.
 ///
@@ -512,7 +519,7 @@ pub fn linux_kernel_package() -> BindingPackage {
     }));
 
     // --- syscall-level functions ---
-    let functions: Vec<(&str, Vec<(&str, BindingType)>, BindingType, bool)> = vec![
+    let functions: Vec<FunctionSpec> = vec![
         // file ops
         (
             "open",
