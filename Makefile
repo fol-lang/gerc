@@ -61,7 +61,11 @@ test-generated:
 		GERC_H4_GCC="$$(command -v "$$gcc")" bash tools/run-filtered-test.sh cargo test --test h4_native -- --nocapture --test-threads=1
 
 test-package:
-	@GERC_PARC_RELEASE_REVISION=$(PARC_RELEASE_REVISION) \
+	@set -eu; \
+		rustc="$$(if command -v rustup >/dev/null 2>&1; then rustup which rustc; else command -v rustc; fi)"; \
+		test -x "$$rustc" || { echo "rustc is required for the package pipeline"; exit 1; }; \
+		PATH="$$(dirname "$$rustc"):$$PATH" RUSTC="$$rustc" \
+		GERC_PARC_RELEASE_REVISION=$(PARC_RELEASE_REVISION) \
 		GERC_LINC_RELEASE_REVISION=$(LINC_RELEASE_REVISION) \
 		tools/test-package.sh follang-gerc gerc
 
@@ -75,12 +79,13 @@ test-pipeline:
 	@test "$$(uname -s)" = Linux || { echo "H5 pipeline certification requires Linux"; exit 1; }
 	@command -v gcc >/dev/null 2>&1 || { echo "gcc is required for H5 pipeline certification"; exit 1; }
 	@command -v ar >/dev/null 2>&1 || { echo "ar is required for H5 pipeline certification"; exit 1; }
-	@command -v rustc >/dev/null 2>&1 || { echo "rustc is required for H5 pipeline certification"; exit 1; }
 	@set -eu; \
 		gcc="$${GERC_H5_GCC:-$$(command -v gcc)}"; \
 		ar="$${GERC_H5_AR:-$$(command -v ar)}"; \
 		clang="$${GERC_H5_CLANG:-}"; \
-		GERC_H5_RUN=1 GERC_H5_GCC="$$gcc" GERC_H5_AR="$$ar" GERC_H5_CLANG="$$clang" RUSTC="$$(command -v rustc)" \
+		rustc="$$(if command -v rustup >/dev/null 2>&1; then rustup which rustc; else command -v rustc; fi)"; \
+		test -x "$$rustc" || { echo "rustc is required for H5 pipeline certification"; exit 1; }; \
+		GERC_H5_RUN=1 GERC_H5_GCC="$$gcc" GERC_H5_AR="$$ar" GERC_H5_CLANG="$$clang" RUSTC="$$rustc" \
 			bash tools/run-filtered-test.sh cargo test --features pipeline-native --test h5_pipeline -- --nocapture --test-threads=1
 
 verify-pipeline:
