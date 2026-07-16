@@ -31,14 +31,14 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           repository: fol-lang/parc
-          ref: 11ca2be6d3dcda7227c0d9eb6c90259838f289fc
+          ref: 0f52aeeeeec47a082c0d8a515130ee853aa1101d
           path: parc
 
       - name: Check out LINC
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           repository: fol-lang/linc
-          ref: 96ae7c108a34063d8463f7ddbd4bd1d4d6fd57e2
+          ref: c874d5b0332249524422d9d08c35b3d4edd7e3fa
           path: linc
 
       - name: Install Rust toolchain

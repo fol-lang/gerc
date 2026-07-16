@@ -18,9 +18,9 @@ included in every Cargo archive.
 | Certified implementation surface | H5 typed Linux ELF pipeline |
 | H5 implementation baseline | `26f04db4e1b3d0b0d24789f20ced3a0db7875c4c` |
 | Required PARC package | `follang-parc` exactly 0.16.0 |
-| Required PARC revision | `11ca2be6d3dcda7227c0d9eb6c90259838f289fc` |
+| Required PARC revision | `0f52aeeeeec47a082c0d8a515130ee853aa1101d` |
 | Required LINC package | `follang-linc` exactly 0.1.0 |
-| Required LINC revision | `96ae7c108a34063d8463f7ddbd4bd1d4d6fd57e2` |
+| Required LINC revision | `c874d5b0332249524422d9d08c35b3d4edd7e3fa` |
 
 The Rust constants `GENERATION_SCHEMA_ID`, `GENERATION_SCHEMA_VERSION`,
 `GENERATION_ALGORITHM_ID`, and `GENERATOR_IDENTITY` are the authority for

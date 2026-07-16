@@ -72,8 +72,8 @@ test-package:
 test-system:
 	@bash tools/run-filtered-test.sh cargo test --test preservation_corpus -- --nocapture --test-threads=1
 
-PARC_RELEASE_REVISION := 11ca2be6d3dcda7227c0d9eb6c90259838f289fc
-LINC_RELEASE_REVISION := 96ae7c108a34063d8463f7ddbd4bd1d4d6fd57e2
+PARC_RELEASE_REVISION := 0f52aeeeeec47a082c0d8a515130ee853aa1101d
+LINC_RELEASE_REVISION := c874d5b0332249524422d9d08c35b3d4edd7e3fa
 
 test-pipeline:
 	@test "$$(uname -s)" = Linux || { echo "H5 pipeline certification requires Linux"; exit 1; }

@@ -14,9 +14,9 @@ The current identities are:
 - H5 implementation baseline
   `26f04db4e1b3d0b0d24789f20ced3a0db7875c4c`;
 - exact upstream `follang-parc` 0.16.0 revision
-  `11ca2be6d3dcda7227c0d9eb6c90259838f289fc`; and
+  `0f52aeeeeec47a082c0d8a515130ee853aa1101d`; and
 - exact upstream `follang-linc` 0.1.0 revision
-  `96ae7c108a34063d8463f7ddbd4bd1d4d6fd57e2`.
+  `c874d5b0332249524422d9d08c35b3d4edd7e3fa`.
 
 Registry publication is disabled. The project does not claim crates.io name
 ownership or availability. Distribution uses an exact Git tag and its tested

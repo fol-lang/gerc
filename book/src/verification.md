@@ -45,6 +45,6 @@ Rust compilation, a linked value roundtrip, and owning-layer negative cases.
 full differential lane; it is never inferred from ambient `CC`.
 
 The pinned release inputs are PARC revision
-`11ca2be6d3dcda7227c0d9eb6c90259838f289fc` and LINC revision
-`96ae7c108a34063d8463f7ddbd4bd1d4d6fd57e2`. See the release-policy chapter for
+`0f52aeeeeec47a082c0d8a515130ee853aa1101d` and LINC revision
+`c874d5b0332249524422d9d08c35b3d4edd7e3fa`. See the release-policy chapter for
 the package, SemVer, generation-domain, algorithm, MSRV, and tag rules.
