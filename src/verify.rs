@@ -352,7 +352,7 @@ impl<'a> SourceVerifier<'a> {
         self.verify_type_metadata(owner, path, ty)?;
         match &ty.kind {
             CTypeKind::Void => {
-                if !matches!(position, TypePosition::Return) {
+                if !matches!(position, TypePosition::Return | TypePosition::BehindPointer) {
                     return self.unsupported_type(owner, path, "void appears in a value position");
                 }
             }
@@ -762,7 +762,9 @@ fn verify_rust_type(
         return invariant("post-lowering type retains rejected/partial support");
     }
     match ty.kind() {
-        RustTypeKind::Void if !matches!(position, TypePosition::Return) => {
+        RustTypeKind::Void
+            if !matches!(position, TypePosition::Return | TypePosition::BehindPointer) =>
+        {
             invariant("void remains in a post-lowering value position")
         }
         RustTypeKind::Void | RustTypeKind::Scalar(_) => Ok(()),

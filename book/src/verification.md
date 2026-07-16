@@ -11,6 +11,7 @@ make test-contract
 make test-generated
 make test-package
 make test-system
+make verify-pipeline
 make docs-check
 ```
 
@@ -30,3 +31,11 @@ Package validation extracts PARC, then LINC, then GERC and builds a scratch
 consumer using only `[patch.crates-io]` entries for the extracted packages. The
 consumer runs a nonzero typed generation test and checks the generated file and
 ordered link plan.
+
+`make verify-pipeline` first requires the pinned PARC and LINC Git revisions to
+be clean, validates both siblings through their Makefiles, and then runs the H5
+production corpus. The corpus uses LINC-owned compiler observation and
+certification, exact ordered static/shared/object providers, generated `no_std`
+Rust compilation, a linked value roundtrip, and owning-layer negative cases.
+`GERC_H5_CLANG` optionally names an explicit certifiable Clang binary for the
+full differential lane; it is never inferred from ambient `CC`.

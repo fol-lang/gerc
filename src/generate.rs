@@ -1750,7 +1750,7 @@ fn align_up(value: u64, alignment: u64) -> Option<u64> {
 }
 
 fn rust_object_size_fits(pointer_width: u16, size_bits: u64) -> bool {
-    if size_bits % 8 != 0 || pointer_width == 0 || pointer_width > 128 {
+    if !size_bits.is_multiple_of(8) || pointer_width == 0 || pointer_width > 128 {
         return false;
     }
     let maximum_bytes = if pointer_width == 128 {

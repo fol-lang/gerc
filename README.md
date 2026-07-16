@@ -39,12 +39,39 @@ The production boundary is strict:
 - unsupported ABI shapes return typed errors; there is no unknown-type fallback
 - every emitted Rust file is parsed as a production postcondition
 
-Generated raw bindings use `#![no_std]` and `core::ffi`. The certified H4
-projection covers measured natural and packed records, unions, raw C enums,
-fixed arrays, raw pointers, non-variadic C functions/callbacks, and non-TLS
-globals. Incomplete records are pointer-only. Extended floating types,
-complex/vector/bitfield forms, variadics, unsupported calling conventions,
-by-value opaque records, and TLS fail before emission.
+Generated raw bindings use `#![no_std]` and `core::ffi`.
+
+## H5 certification matrix
+
+The production corpus admits only LINC-owned certification output; callers do
+not supply layouts, probes, callable shapes, or declaration evidence. These are
+the exact type states in `tests/pipeline_support/matrix.rs`:
+
+- **supported-and-tested** (`PARC/LINC/GERC`): `void`, `_Bool`, plain/signed/
+  unsigned `char`, signed/unsigned `short`, `int`, `long`, and `long long`,
+  `float`, `double`, raw and nullable pointers, nonzero fixed arrays, complete
+  records and unions with measured layout, incomplete records behind pointers,
+  C enums as integer aliases and constants, C-calling-convention routines, and
+  C-calling-convention callbacks.
+- **explicitly-rejected**: long double and extended floating types
+  (`LINC-E3014`), complex floating types (`LINC-E3014`), compiler vectors
+  (`PARC` `CompletionBlocker::Unsupported`), `_BitInt` (`PARC-P1107`), C
+  128-bit integers (`LINC-E3014`), by-value opaque/incomplete records (`PARC`
+  `CompletionBlocker::IncompleteRecord`), bitfield layouts (`GERC-E2002`),
+  unsupported calling conventions (`LINC-E3050`), variadic or unspecified
+  callables (`LINC-E3050`), C++ types/ABI (`PARC-P0002`), and thread-local
+  globals (`GERC-E2002`).
+- **experimental-not-for-FOL**: function-like and string macros are preserved
+  but not emitted (`GERC-N3000`).
+
+| Platform | State | Owner / result |
+| --- | --- | --- |
+| x86_64-unknown-linux-gnu, ELF, explicit GCC | supported-and-tested | H5 pipeline |
+| x86_64-unknown-linux-gnu, ELF, explicit Clang | experimental-not-for-FOL | optional full typed H5 differential value roundtrip |
+| x86_64-unknown-linux-musl | explicitly-rejected | H5 gate: not certified |
+| second Linux architecture | explicitly-rejected | H5 gate: not certified |
+| aarch64-apple-darwin | explicitly-rejected | H5 gate: not certified |
+| x86_64-pc-windows-msvc and MinGW | explicitly-rejected | H5 gate: not certified |
 
 The domain values deliberately have no JSON decoder. PARC and LINC own their
 respective strict transport schemas; GERC H1 owns an in-memory projection.
@@ -55,8 +82,13 @@ The MSRV is Rust 1.89.
 
 ```sh
 make verify
+make verify-pipeline
 ```
 
 `make verify` includes the generated-source parser/build lane, the explicit GCC
 C/Rust ABI link-and-run fixture, package extraction with a nonzero clean
-consumer test, and the preservation corpus.
+consumer test, the preservation corpus, and `make verify-pipeline`.
+`verify-pipeline` requires the exact clean audited PARC/LINC revisions, runs
+their Makefile validation targets, then certifies, generates, links, and runs
+the H5 value corpus. Set `GERC_H5_CLANG` to an explicit certifiable Clang binary
+to add the optional full differential lane; ambient `CC` is ignored.
