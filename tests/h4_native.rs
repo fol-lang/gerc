@@ -18,7 +18,14 @@ fn generated_no_std_types_cross_an_explicit_gcc_abi_boundary() {
         Command::new(&gcc).arg("-dumpmachine"),
         "query explicit GCC target",
     );
-    assert_eq!(target.trim(), "x86_64-unknown-linux-gnu");
+    let target = target.trim();
+    assert!(
+        matches!(
+            target,
+            "x86_64-unknown-linux-gnu" | "x86_64-linux-gnu" | "x86_64-pc-linux-gnu"
+        ),
+        "compiler-reported target is outside the explicit H4 GNU alias set: {target}"
+    );
 
     let (source, evidence) = support::preservation_pair();
     let packet = support::declaration_id(source.source(), "parc_packet");

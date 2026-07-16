@@ -978,7 +978,7 @@ fn target_for_toolchain(
     assert!(
         matches!(
             toolchain.reported_target(),
-            "x86_64-unknown-linux-gnu" | "x86_64-linux-gnu"
+            "x86_64-unknown-linux-gnu" | "x86_64-linux-gnu" | "x86_64-pc-linux-gnu"
         ),
         "compiler-reported target is outside the explicit H5 GNU alias set: {}",
         toolchain.reported_target()

@@ -114,8 +114,8 @@ The package identity is `follang-gerc` 0.1.0 and the Rust import name is
 `gerc`. Registry publication is disabled (`publish = false`), so no crates.io
 name ownership or availability is claimed. Candidate archives and the full
 pipeline are tested against exact `follang-parc` 0.16.0 revision
-`ba603cdccc9375473eca0c42e5462cf90b6da249` and exact `follang-linc` 0.1.0
-revision `37c8fb16171114b39e2283ff4b9e351fa2d5975b`.
+`11ca2be6d3dcda7227c0d9eb6c90259838f289fc` and exact `follang-linc` 0.1.0
+revision `96ae7c108a34063d8463f7ddbd4bd1d4d6fd57e2`.
 
 `make release-check` is a non-mutating eligibility check. It never changes a
 version, commits, tags, pushes, uploads, or publishes. SemVer, generation
