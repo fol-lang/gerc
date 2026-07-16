@@ -1,103 +1,283 @@
-use std::fmt;
+use linc::contract::LinkAnalysisFingerprint;
+use parc::contract::{
+    CallingConvention, DeclarationId, MacroId, OperatingSystem, SourceFingerprint,
+    TargetFingerprint,
+};
+use thiserror::Error;
 
-/// Crate-wide error type for `gerc`.
-#[derive(Debug)]
-pub enum GercError {
-    /// The input was empty or contained no usable declarations.
-    EmptyInput,
-    /// A configuration value was invalid or contradictory.
-    InvalidConfig { reason: String },
-    /// An I/O failure occurred during output emission.
-    Io(std::io::Error),
-    /// Serialization or deserialization failed.
-    Serialization(String),
+/// Stable classification for generation failures.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum GenerationErrorCode {
+    EmptySelection,
+    DuplicateSelection,
+    SelectionMismatch,
+    SourceFingerprintMismatch,
+    TargetFingerprintMismatch,
+    EvidenceCoverageMismatch,
+    MissingDeclaration,
+    MissingDeclarationEvidence,
+    MissingLayoutEvidence,
+    UnsupportedCallingConvention,
+    UnsupportedType,
+    UnsupportedDeclaration,
+    UnsupportedRecordRepresentation,
+    LayoutMismatch,
+    InvalidEnumRepresentation,
+    InvalidIdentifier,
+    ProjectionInvariant,
+    GeneratedFileInvariant,
 }
 
-/// Convenience alias used throughout the crate.
-pub type GercResult<T> = Result<T, GercError>;
-
-impl fmt::Display for GercError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+impl GenerationErrorCode {
+    pub const fn as_str(self) -> &'static str {
         match self {
-            GercError::EmptyInput => write!(f, "input contains no usable declarations"),
-            GercError::InvalidConfig { reason } => {
-                write!(f, "invalid configuration: {reason}")
-            }
-            GercError::Io(e) => write!(f, "I/O error: {e}"),
-            GercError::Serialization(msg) => write!(f, "serialization error: {msg}"),
+            Self::EmptySelection => "GERC-E1000",
+            Self::DuplicateSelection => "GERC-E1001",
+            Self::SelectionMismatch => "GERC-E1002",
+            Self::SourceFingerprintMismatch => "GERC-E1100",
+            Self::TargetFingerprintMismatch => "GERC-E1101",
+            Self::EvidenceCoverageMismatch => "GERC-E1102",
+            Self::MissingDeclaration => "GERC-E1103",
+            Self::MissingDeclarationEvidence => "GERC-E1104",
+            Self::MissingLayoutEvidence => "GERC-E1105",
+            Self::UnsupportedCallingConvention => "GERC-E2000",
+            Self::UnsupportedType => "GERC-E2001",
+            Self::UnsupportedDeclaration => "GERC-E2002",
+            Self::UnsupportedRecordRepresentation => "GERC-E2003",
+            Self::LayoutMismatch => "GERC-E2100",
+            Self::InvalidEnumRepresentation => "GERC-E2101",
+            Self::InvalidIdentifier => "GERC-E2200",
+            Self::ProjectionInvariant => "GERC-E9000",
+            Self::GeneratedFileInvariant => "GERC-E9001",
         }
     }
 }
 
-impl std::error::Error for GercError {
-    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+/// A closed, typed refusal surface. GERC never substitutes an unknown Rust
+/// type or guesses missing ABI facts.
+#[derive(Debug, Clone, PartialEq, Eq, Error)]
+pub enum GenerationError {
+    #[error("{source} [{context}]")]
+    Contextual {
+        context: GenerationContext,
+        #[source]
+        source: Box<GenerationError>,
+    },
+    #[error("generation selection must contain at least one DeclarationId")]
+    EmptySelection,
+    #[error("generation selection repeats declaration {declaration}")]
+    DuplicateSelection { declaration: DeclarationId },
+    #[error("generation selection does not match the complete PARC selection")]
+    SelectionMismatch,
+    #[error("LINC evidence was produced for a different PARC source fingerprint")]
+    SourceFingerprintMismatch,
+    #[error("LINC evidence was produced for a different target fingerprint")]
+    TargetFingerprintMismatch,
+    #[error("LINC declaration evidence does not cover the selected transitive PARC closure")]
+    EvidenceCoverageMismatch,
+    #[error("selected declaration {declaration} is absent from the complete PARC closure")]
+    MissingDeclaration { declaration: DeclarationId },
+    #[error("declaration {declaration} has no checked LINC declaration evidence")]
+    MissingDeclarationEvidence { declaration: DeclarationId },
+    #[error("declaration {declaration} has no checked LINC layout evidence")]
+    MissingLayoutEvidence { declaration: DeclarationId },
+    #[error(
+        "calling convention {convention:?} for declaration {declaration} is not supported on {operating_system:?}"
+    )]
+    UnsupportedCallingConvention {
+        declaration: DeclarationId,
+        convention: CallingConvention,
+        operating_system: OperatingSystem,
+    },
+    #[error("declaration {declaration} contains an unsupported type at {path}: {reason}")]
+    UnsupportedType {
+        declaration: DeclarationId,
+        path: String,
+        reason: &'static str,
+    },
+    #[error("declaration {declaration} cannot be projected: {reason}")]
+    UnsupportedDeclaration {
+        declaration: DeclarationId,
+        reason: &'static str,
+    },
+    #[error("record {declaration} has an unsupported representation: {reason}")]
+    UnsupportedRecordRepresentation {
+        declaration: DeclarationId,
+        reason: &'static str,
+    },
+    #[error("measured layout for declaration {declaration} cannot be represented: {reason}")]
+    LayoutMismatch {
+        declaration: DeclarationId,
+        reason: &'static str,
+    },
+    #[error("enum {declaration} has an invalid measured representation: {reason}")]
+    InvalidEnumRepresentation {
+        declaration: DeclarationId,
+        reason: &'static str,
+    },
+    #[error("declaration {declaration} has no usable Rust identifier")]
+    InvalidIdentifier { declaration: DeclarationId },
+    #[error("validated Rust projection invariant failed: {reason}")]
+    ProjectionInvariant { reason: &'static str },
+    #[error("generated file-set invariant failed: {reason}")]
+    GeneratedFileInvariant { reason: &'static str },
+}
+
+impl GenerationError {
+    pub const fn code(&self) -> GenerationErrorCode {
         match self {
-            GercError::Io(e) => Some(e),
+            Self::Contextual { source, .. } => source.code(),
+            Self::EmptySelection => GenerationErrorCode::EmptySelection,
+            Self::DuplicateSelection { .. } => GenerationErrorCode::DuplicateSelection,
+            Self::SelectionMismatch => GenerationErrorCode::SelectionMismatch,
+            Self::SourceFingerprintMismatch => GenerationErrorCode::SourceFingerprintMismatch,
+            Self::TargetFingerprintMismatch => GenerationErrorCode::TargetFingerprintMismatch,
+            Self::EvidenceCoverageMismatch => GenerationErrorCode::EvidenceCoverageMismatch,
+            Self::MissingDeclaration { .. } => GenerationErrorCode::MissingDeclaration,
+            Self::MissingDeclarationEvidence { .. } => {
+                GenerationErrorCode::MissingDeclarationEvidence
+            }
+            Self::MissingLayoutEvidence { .. } => GenerationErrorCode::MissingLayoutEvidence,
+            Self::UnsupportedCallingConvention { .. } => {
+                GenerationErrorCode::UnsupportedCallingConvention
+            }
+            Self::UnsupportedType { .. } => GenerationErrorCode::UnsupportedType,
+            Self::UnsupportedDeclaration { .. } => GenerationErrorCode::UnsupportedDeclaration,
+            Self::UnsupportedRecordRepresentation { .. } => {
+                GenerationErrorCode::UnsupportedRecordRepresentation
+            }
+            Self::LayoutMismatch { .. } => GenerationErrorCode::LayoutMismatch,
+            Self::InvalidEnumRepresentation { .. } => {
+                GenerationErrorCode::InvalidEnumRepresentation
+            }
+            Self::InvalidIdentifier { .. } => GenerationErrorCode::InvalidIdentifier,
+            Self::ProjectionInvariant { .. } => GenerationErrorCode::ProjectionInvariant,
+            Self::GeneratedFileInvariant { .. } => GenerationErrorCode::GeneratedFileInvariant,
+        }
+    }
+
+    pub const fn stable_code(&self) -> &'static str {
+        self.code().as_str()
+    }
+
+    pub const fn context(&self) -> Option<&GenerationContext> {
+        match self {
+            Self::Contextual { context, .. } => Some(context),
             _ => None,
         }
     }
-}
 
-impl From<std::io::Error> for GercError {
-    fn from(e: std::io::Error) -> Self {
-        GercError::Io(e)
+    pub(crate) fn with_context(self, context: GenerationContext) -> Self {
+        match self {
+            Self::Contextual { .. } => self,
+            source => Self::Contextual {
+                context,
+                source: Box::new(source),
+            },
+        }
     }
 }
 
-impl From<serde_json::Error> for GercError {
-    fn from(e: serde_json::Error) -> Self {
-        GercError::Serialization(e.to_string())
+pub type GenerationResult<T> = Result<T, GenerationError>;
+
+/// Non-fatal generation note retained in [`crate::GenerationBundle`].
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct GenerationDiagnostic {
+    code: GenerationDiagnosticCode,
+    context: GenerationContext,
+    declaration: Option<DeclarationId>,
+    macro_id: Option<MacroId>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum GenerationDiagnosticCode {
+    PreservedMacroNotEmitted,
+}
+
+impl GenerationDiagnosticCode {
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::PreservedMacroNotEmitted => "GERC-N3000",
+        }
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn display_empty_input() {
-        let e = GercError::EmptyInput;
-        assert_eq!(e.to_string(), "input contains no usable declarations");
+impl GenerationDiagnostic {
+    pub(crate) const fn preserved_macro_not_emitted(
+        context: GenerationContext,
+        macro_id: MacroId,
+    ) -> Self {
+        Self {
+            code: GenerationDiagnosticCode::PreservedMacroNotEmitted,
+            context,
+            declaration: None,
+            macro_id: Some(macro_id),
+        }
     }
 
-    #[test]
-    fn display_invalid_config() {
-        let e = GercError::InvalidConfig {
-            reason: "bad value".into(),
-        };
-        assert!(e.to_string().contains("bad value"));
+    pub const fn code(&self) -> GenerationDiagnosticCode {
+        self.code
     }
 
-    #[test]
-    fn display_io() {
-        let io = std::io::Error::new(std::io::ErrorKind::NotFound, "gone");
-        let e = GercError::Io(io);
-        assert!(e.to_string().contains("gone"));
+    pub const fn stable_code(&self) -> &'static str {
+        self.code.as_str()
     }
 
-    #[test]
-    fn display_serialization() {
-        let e = GercError::Serialization("bad json".into());
-        assert!(e.to_string().contains("bad json"));
+    pub const fn context(&self) -> &GenerationContext {
+        &self.context
     }
 
-    #[test]
-    fn from_io_error() {
-        let io = std::io::Error::new(std::io::ErrorKind::PermissionDenied, "denied");
-        let e: GercError = io.into();
-        assert!(matches!(e, GercError::Io(_)));
+    pub const fn declaration(&self) -> Option<DeclarationId> {
+        self.declaration
     }
 
-    #[test]
-    fn error_source_io() {
-        let io = std::io::Error::other("inner");
-        let e = GercError::Io(io);
-        assert!(std::error::Error::source(&e).is_some());
+    pub const fn macro_id(&self) -> Option<MacroId> {
+        self.macro_id
+    }
+}
+
+/// Fingerprint context attached to every generation-phase error and note.
+/// Selection-shape errors created before a request exists are the only errors
+/// without this context.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct GenerationContext {
+    source_fingerprint: SourceFingerprint,
+    target_fingerprint: TargetFingerprint,
+    evidence_fingerprint: LinkAnalysisFingerprint,
+}
+
+impl GenerationContext {
+    pub(crate) const fn new(
+        source_fingerprint: SourceFingerprint,
+        target_fingerprint: TargetFingerprint,
+        evidence_fingerprint: LinkAnalysisFingerprint,
+    ) -> Self {
+        Self {
+            source_fingerprint,
+            target_fingerprint,
+            evidence_fingerprint,
+        }
     }
 
-    #[test]
-    fn error_source_none_for_others() {
-        let e = GercError::EmptyInput;
-        assert!(std::error::Error::source(&e).is_none());
+    pub const fn source_fingerprint(&self) -> SourceFingerprint {
+        self.source_fingerprint
+    }
+
+    pub const fn target_fingerprint(&self) -> TargetFingerprint {
+        self.target_fingerprint
+    }
+
+    pub const fn evidence_fingerprint(&self) -> LinkAnalysisFingerprint {
+        self.evidence_fingerprint
+    }
+}
+
+impl std::fmt::Display for GenerationContext {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            formatter,
+            "source={}, target={}, evidence={}",
+            self.source_fingerprint, self.target_fingerprint, self.evidence_fingerprint
+        )
     }
 }

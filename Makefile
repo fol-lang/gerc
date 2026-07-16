@@ -1,4 +1,4 @@
-PROJECT_NAME := $(shell grep '^name = ' Cargo.toml | sed -E 's/name = "(.*)"/\1/')
+PROJECT_NAME := $(shell sed -n 's/^name = "\([^"]*\)"/\1/p' Cargo.toml | head -n 1)
 PROJECT_CAP  := $(shell echo $(PROJECT_NAME) | tr '[:lower:]' '[:upper:]')
 CURRENT_VERSION := $(shell grep '^version = ' Cargo.toml | sed -E 's/version = "(.*)"/\1/')
 LATEST_TAG   ?= $(shell git describe --tags --abbrev=0 2>/dev/null)
@@ -51,17 +51,13 @@ check-features:
 	@cargo check --all-targets --no-default-features
 
 test-contract:
-	@cargo test --test artifact_boundaries --test root_api -- --test-threads=1
+	@bash tools/run-filtered-test.sh cargo test --test contract_h1 -- --test-threads=1
 
 test-package:
 	@tools/test-package.sh follang-gerc gerc
 
 test-system:
-	@GERC_SYSTEM_TEST_MODE=required cargo test --features system-tests \
-		--test end_to_end \
-		--test parc_pipeline \
-		--test failure_matrix_pipeline \
-		-- --nocapture --test-threads=1
+	@bash tools/run-filtered-test.sh cargo test --test preservation_corpus -- --nocapture --test-threads=1
 
 docs-check:
 	@command -v mdbook >/dev/null 2>&1 || { echo "mdbook is required"; exit 1; }

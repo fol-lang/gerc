@@ -17,13 +17,8 @@ include = ["/src/**/*.rs", "/Cargo.toml", "/LICENSE-*", "/README.md"]
 [lib]
 name = "gerc"
 
-[features]
-system-tests = []
-
 [dependencies]
-serde = { version = "1", features = ["derive"] }
-serde_json = "=1.0.145"
-
-[dev-dependencies]
-linc = { package = "follang-linc", path = "../linc" }
-parc = { package = "follang-parc", path = "../parc" }
+blake3 = "1"
+linc = { package = "follang-linc", version = "0.1.0", path = "../linc", default-features = false, features = ["contracts"] }
+parc = { package = "follang-parc", version = "0.16.0", path = "../parc" }
+thiserror = "2"
