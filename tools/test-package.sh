@@ -58,6 +58,8 @@ follang-linc = { path = "$linc_package" }
 EOF
 gerc_package=$(package_and_extract "$root" "$package_name" "$scratch/package-patches.toml")
 gerc_version=$(sed -n 's/^version = "\([^"]*\)"/\1/p' "$root/Cargo.toml" | head -n 1)
+parc_version=$(sed -n 's/^version = "\([^"]*\)"/\1/p' "$parc_package/Cargo.toml" | head -n 1)
+linc_version=$(sed -n 's/^version = "\([^"]*\)"/\1/p' "$linc_package/Cargo.toml" | head -n 1)
 
 mkdir -p "$scratch/consumer/src"
 cat >"$scratch/Cargo.toml" <<EOF
@@ -84,6 +86,8 @@ publish = false
 
 [dependencies]
 ${crate_name} = { package = "${package_name}", version = "=${gerc_version}" }
+parc = { package = "follang-parc", version = "=${parc_version}" }
+linc = { package = "follang-linc", version = "=${linc_version}", default-features = false, features = ["contracts"] }
 EOF
 cat >"$scratch/consumer/src/lib.rs" <<EOF
 use ${crate_name}::{GenerationBundle, GenerationError, GenerationRequest};
@@ -98,8 +102,58 @@ pub fn generate_checked(
 ) -> Result<GenerationBundle, GenerationError> {
     ${crate_name}::generate(request)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn packaged_typed_pipeline_generates_and_checks_nonempty_output() {
+        let package = parc::contract::decode_source_package(
+            parc::contract::corpus::COMPLETE_SOURCE_PACKAGE_JSON,
+        )
+        .expect("packaged PARC corpus");
+        let source = package
+            .into_complete(&linc::contract::corpus::preservation_selection())
+            .expect("complete packaged source");
+        let evidence = linc::contract::corpus::validated_preservation_link_analysis(&source)
+            .expect("validated packaged evidence");
+        let id = |name: &str| {
+            source
+                .source()
+                .declarations()
+                .iter()
+                .find(|declaration| {
+                    declaration
+                        .name
+                        .as_ref()
+                        .is_some_and(|source_name| source_name.normalized == name)
+                })
+                .expect("packaged declaration")
+                .id
+        };
+        let selection = ${crate_name}::ItemSelection::try_new([
+            id("parc_packet"),
+            id("parc_mode"),
+        ])
+        .expect("typed packaged selection");
+        let bundle = generate_checked(
+            ${crate_name}::GenerationRequest::try_new(&source, &evidence, &selection)
+                .expect("typed packaged request"),
+        )
+        .expect("packaged strict generation");
+        let generated = bundle
+            .files()
+            .get("src/lib.rs")
+            .and_then(|file| file.utf8_contents())
+            .expect("nonempty packaged generated file");
+        assert!(generated.contains("#![no_std]"));
+        assert!(generated.contains("core::ffi::c_int"));
+        assert!(!bundle.link_plan().atoms().is_empty());
+    }
+}
 EOF
 
 cargo generate-lockfile --manifest-path "$scratch/Cargo.toml" --offline
-cargo test --manifest-path "$scratch/Cargo.toml" --workspace --offline --locked
+cargo test --manifest-path "$scratch/Cargo.toml" --workspace --offline --locked -- --test-threads=1
 echo "packaged PARC/LINC/GERC archive workspace and typed consumer passed"

@@ -3,12 +3,13 @@ mod support;
 use std::{
     ffi::{OsStr, OsString},
     fs,
+    path::Path,
     process::Command,
 };
 
 use gerc::{
     generate, GenerationErrorCode, GenerationRequest, ItemSelection, RustItem, RustLinkAtom,
-    RustScalar,
+    RustScalar, RustTypeKind,
 };
 use linc::contract::{corpus as linc_corpus, CallableAbiAssessment};
 use parc::contract::{
@@ -56,6 +57,7 @@ fn preservation_supported_subset_generates_deterministically_and_compiles_no_std
         .expect("projected packet record");
     assert_eq!(record.size_bits(), Some(32));
     assert_eq!(record.alignment_bits(), Some(32));
+    assert_eq!(record.packing_bits(), None);
     assert_eq!(
         record.source_kind(),
         source_record_kind(source.source(), packet)
@@ -67,6 +69,13 @@ fn preservation_supported_subset_generates_deterministically_and_compiles_no_std
     assert_eq!(record.fields().len(), 1);
     assert_eq!(record.fields()[0].offset_bits(), 0);
     assert_eq!(record.fields()[0].size_bits(), 32);
+    assert!(matches!(
+        record.fields()[0].ty().kind(),
+        RustTypeKind::Scalar(RustScalar::CInt {
+            storage_bits: 32,
+            alignment_bits: 32,
+        })
+    ));
     let source_record = match &source
         .source()
         .declaration(packet)
@@ -226,6 +235,27 @@ fn preservation_supported_subset_generates_deterministically_and_compiles_no_std
         .map(OsString::from)
     );
     assert_eq!(first.link_plan().atoms()[1], first.link_plan().atoms()[3]);
+    assert_eq!(
+        first.link_plan().target_fingerprint(),
+        source.source().target_fingerprint()
+    );
+    assert_eq!(
+        first.link_plan().object_format(),
+        source.source().target().object_format()
+    );
+    let rustc_arguments = first
+        .link_plan()
+        .rustc_arguments()
+        .expect("certified GNU rustc arguments")
+        .into_arguments();
+    assert_eq!(rustc_arguments.len(), first.link_plan().atoms().len() * 2);
+    assert!(rustc_arguments
+        .chunks_exact(2)
+        .all(|pair| pair[0] == "-C" && pair[1].to_string_lossy().starts_with("link-arg=/")));
+    assert_eq!(rustc_arguments[2..4], rustc_arguments[6..8]);
+    assert!(!rustc_arguments
+        .iter()
+        .any(|argument| argument.to_string_lossy().contains("link-args")));
 
     let generated = first
         .files()
@@ -233,6 +263,8 @@ fn preservation_supported_subset_generates_deterministically_and_compiles_no_std
         .expect("deterministic Rust source");
     let source_text = generated.utf8_contents().expect("UTF-8 Rust source");
     assert!(source_text.contains("#![no_std]"));
+    assert!(source_text.contains("pub value: core::ffi::c_int"));
+    assert!(source_text.contains("pub type parc_mode = u32;"));
     assert!(source_text.contains("core::mem::offset_of!(parc_packet, value) == 0"));
     assert!(source_text.contains("core::mem::size_of::<parc_mode>() == 4"));
     assert!(source_text.contains("core::mem::align_of::<parc_mode>() == 4"));
@@ -292,6 +324,66 @@ fn preservation_win64_function_is_safely_rejected_on_linux() {
         context.evidence_fingerprint(),
         evidence.package().fingerprint()
     );
+}
+
+#[test]
+fn generated_output_is_identical_across_processes_and_working_directories() {
+    let root = std::env::temp_dir().join(format!("gerc-h4-cross-process-{}", std::process::id()));
+    let first = root.join("first/working/directory");
+    let second = root.join("second/other/directory");
+    fs::create_dir_all(&first).expect("create first working directory");
+    fs::create_dir_all(&second).expect("create second working directory");
+
+    let first_fingerprint = child_generation_fingerprint(&first);
+    let second_fingerprint = child_generation_fingerprint(&second);
+    fs::remove_dir_all(&root).expect("remove owned cross-process directory");
+    assert_eq!(first_fingerprint, second_fingerprint);
+}
+
+#[test]
+fn cross_process_generation_fingerprint_child() {
+    if std::env::var_os("GERC_H4_FINGERPRINT_CHILD").is_none() {
+        return;
+    }
+    let (source, evidence) = support::preservation_pair();
+    let packet = support::declaration_id(source.source(), "parc_packet");
+    let mode = support::declaration_id(source.source(), "parc_mode");
+    let selection = ItemSelection::try_new([packet, mode]).expect("child ABI roots");
+    let bundle = generate(
+        GenerationRequest::try_new(&source, &evidence, &selection).expect("child typed request"),
+    )
+    .expect("child strict generation");
+    println!(
+        "GERC_H4_FINGERPRINT={}",
+        bundle.manifest().generation_fingerprint()
+    );
+}
+
+fn child_generation_fingerprint(working_directory: &Path) -> String {
+    let output = Command::new(std::env::current_exe().expect("current integration-test binary"))
+        .arg("--exact")
+        .arg("cross_process_generation_fingerprint_child")
+        .arg("--nocapture")
+        .arg("--test-threads=1")
+        .env("GERC_H4_FINGERPRINT_CHILD", "1")
+        .current_dir(working_directory)
+        .output()
+        .expect("run deterministic generation child");
+    assert!(
+        output.status.success(),
+        "generation child failed:\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    const MARKER: &str = "GERC_H4_FINGERPRINT=";
+    String::from_utf8_lossy(&output.stdout)
+        .lines()
+        .find_map(|line| {
+            line.find(MARKER)
+                .and_then(|offset| line[offset + MARKER.len()..].split_whitespace().next())
+        })
+        .expect("child fingerprint marker")
+        .to_owned()
 }
 
 fn compile_generated(source: &str) {

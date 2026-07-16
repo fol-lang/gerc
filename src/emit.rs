@@ -3,8 +3,9 @@ use std::fmt::Write as _;
 use parc::contract::{ExactInteger, MacroValue};
 
 use crate::{
-    RustEnum, RustFunction, RustItem, RustMacro, RustRecord, RustRecordKind, RustType,
-    RustTypeKind, RustVariable, ValidatedRustProjection,
+    GenerationError, GenerationResult, RustEnum, RustFunction, RustItem, RustMacro, RustRecord,
+    RustRecordKind, RustType, RustTypeKind, RustVariable, RustVariableMutability,
+    ValidatedRustProjection,
 };
 
 pub(crate) fn render_projection(projection: &ValidatedRustProjection) -> String {
@@ -38,6 +39,18 @@ pub(crate) fn render_projection(projection: &ValidatedRustProjection) -> String 
     output
 }
 
+/// Production postcondition for every emitted Rust translation unit. Parsing
+/// is deliberately host-only and has no effect on the generated `no_std`
+/// dependency graph.
+pub(crate) fn parse_rust_file(path: &'static str, source: &str) -> GenerationResult<()> {
+    syn::parse_file(source)
+        .map(|_| ())
+        .map_err(|error| GenerationError::GeneratedSourceParse {
+            path,
+            message: error.to_string(),
+        })
+}
+
 fn render_macro(output: &mut String, source_macro: &RustMacro) {
     let Some(value) = source_macro.value() else {
         return;
@@ -66,10 +79,18 @@ fn render_macro(output: &mut String, source_macro: &RustMacro) {
 }
 
 fn render_function(output: &mut String, function: &RustFunction) {
-    writeln!(output, "unsafe extern {:?} {{", function.abi().spelling())
-        .expect("writing into a String cannot fail");
-    writeln!(output, "    #[link_name = {:?}]", function.link_name())
-        .expect("writing into a String cannot fail");
+    writeln!(
+        output,
+        "unsafe extern {} {{",
+        rust_string_literal(function.abi().spelling())
+    )
+    .expect("writing into a String cannot fail");
+    writeln!(
+        output,
+        "    #[link_name = {}]",
+        rust_string_literal(function.link_name())
+    )
+    .expect("writing into a String cannot fail");
     write!(output, "    pub fn {}(", function.rust_name().as_str())
         .expect("writing into a String cannot fail");
     for (index, parameter) in function.parameters().iter().enumerate() {
@@ -108,20 +129,42 @@ fn render_record(output: &mut String, record: &RustRecord) {
             )
             .expect("writing into a String cannot fail");
         }
-        RustRecordKind::Struct => {
+        RustRecordKind::Struct | RustRecordKind::Union => {
             let alignment_bytes = record
                 .alignment_bits()
                 .expect("validated concrete record has alignment")
                 / 8;
-            output.push_str("#[repr(C)]\n");
-            writeln!(output, "pub struct {} {{", record.rust_name().as_str())
-                .expect("writing into a String cannot fail");
+            match record.packing_bits() {
+                Some(bits) => {
+                    debug_assert_eq!(bits % 8, 0);
+                    writeln!(output, "#[repr(C, packed({}))]", bits / 8)
+                        .expect("writing into a String cannot fail");
+                }
+                None => output.push_str("#[repr(C)]\n"),
+            }
+            let record_keyword = match record.kind() {
+                RustRecordKind::Struct => "struct",
+                RustRecordKind::Union => "union",
+                RustRecordKind::Opaque => unreachable!("opaque handled above"),
+            };
+            writeln!(
+                output,
+                "pub {record_keyword} {} {{",
+                record.rust_name().as_str()
+            )
+            .expect("writing into a String cannot fail");
             for field in record.fields() {
+                let rendered_type = render_type(field.ty());
+                let rendered_type = if record.kind() == RustRecordKind::Union {
+                    format!("core::mem::ManuallyDrop<{rendered_type}>")
+                } else {
+                    rendered_type
+                };
                 writeln!(
                     output,
                     "    pub {}: {},",
                     field.rust_name().as_str(),
-                    render_type(field.ty())
+                    rendered_type
                 )
                 .expect("writing into a String cannot fail");
             }
@@ -137,6 +180,13 @@ fn render_record(output: &mut String, record: &RustRecord) {
             )
             .expect("writing into a String cannot fail");
             for field in record.fields() {
+                writeln!(
+                    output,
+                    "const _: () = assert!(core::mem::size_of::<{}>() == {});",
+                    render_type(field.ty()),
+                    field.size_bits() / 8
+                )
+                .expect("writing into a String cannot fail");
                 writeln!(
                     output,
                     "const _: () = assert!(core::mem::offset_of!({}, {}) == {});",
@@ -159,7 +209,7 @@ fn render_record(output: &mut String, record: &RustRecord) {
 fn render_enum(output: &mut String, enumeration: &RustEnum) {
     writeln!(
         output,
-        "#[repr(transparent)]\n#[derive(Clone, Copy, Debug, PartialEq, Eq)]\npub struct {}(pub {});",
+        "pub type {} = {};",
         enumeration.rust_name().as_str(),
         enumeration.storage().spelling()
     )
@@ -168,9 +218,8 @@ fn render_enum(output: &mut String, enumeration: &RustEnum) {
         let (value, _) = render_exact_integer(variant.value());
         writeln!(
             output,
-            "pub const {}: {} = {}({value} as {});",
+            "pub const {}: {} = {value} as {};",
             variant.rust_name().as_str(),
-            enumeration.rust_name().as_str(),
             enumeration.rust_name().as_str(),
             enumeration.storage().spelling()
         )
@@ -195,12 +244,15 @@ fn render_enum(output: &mut String, enumeration: &RustEnum) {
 
 fn render_variable(output: &mut String, variable: &RustVariable) {
     output.push_str("unsafe extern \"C\" {\n");
-    writeln!(output, "    #[link_name = {:?}]", variable.link_name())
-        .expect("writing into a String cannot fail");
-    let mutable = if variable.ty().qualifiers().is_const {
-        ""
-    } else {
-        "mut "
+    writeln!(
+        output,
+        "    #[link_name = {}]",
+        rust_string_literal(variable.link_name())
+    )
+    .expect("writing into a String cannot fail");
+    let mutable = match variable.mutability() {
+        RustVariableMutability::ReadOnly => "",
+        RustVariableMutability::Mutable => "mut ",
     };
     writeln!(
         output,
@@ -227,6 +279,7 @@ fn render_type(ty: &RustType) -> String {
         RustTypeKind::FixedArray { element, elements } => {
             format!("[{}; {elements}]", render_type(element))
         }
+        RustTypeKind::FlexibleArray { element } => format!("[{}; 0]", render_type(element)),
         RustTypeKind::Named { rust_name, .. } => rust_name.as_str().to_owned(),
         RustTypeKind::FunctionPointer {
             abi,
@@ -234,7 +287,10 @@ fn render_type(ty: &RustType) -> String {
             return_type,
             variadic,
         } => {
-            let mut rendered = format!("Option<unsafe extern {:?} fn(", abi.spelling());
+            let mut rendered = format!(
+                "Option<unsafe extern {} fn(",
+                rust_string_literal(abi.spelling())
+            );
             for (index, parameter) in parameters.iter().enumerate() {
                 if index != 0 {
                     rendered.push_str(", ");
@@ -258,6 +314,10 @@ fn render_type(ty: &RustType) -> String {
     }
 }
 
+fn rust_string_literal(value: &str) -> String {
+    format!("{value:?}")
+}
+
 fn render_exact_integer(value: ExactInteger) -> (String, &'static str) {
     match value {
         ExactInteger::Signed { value } => (value.to_string(), "i128"),
@@ -267,13 +327,27 @@ fn render_exact_integer(value: ExactInteger) -> (String, &'static str) {
 
 #[cfg(test)]
 mod tests {
-    use std::{fs, process::Command};
+    use std::{fs, path::PathBuf, process::Command, str::FromStr as _};
 
-    use parc::contract::{Nullability, SupportStatus, TypeQualifiers};
+    use linc::contract::{ArtifactFingerprint, ArtifactSymbolId, ProviderId, SymbolDecoration};
+    use parc::contract::{
+        CType, CTypeKind, ChildId, ChildRole, DeclarationId, DeclarationIdentity, EntityId,
+        EntityNamespace, EntityScope, ExactInteger, FileId, Linkage, Nullability,
+        RecordCompleteness, RecordKind, SourceDeclaration, SourceDeclarationKind, SourceName,
+        SourceOrigin, SourceProvenance, SourceRange, SourceTypeAlias, SupportStatus,
+        TypeQualifiers, Visibility,
+    };
 
-    use crate::{RustAbi, RustScalar, RustType, RustTypeKind};
+    use crate::{
+        NativeSymbolBinding, RustAbi, RustEnum, RustEnumVariant, RustField, RustName, RustRecord,
+        RustRecordKind, RustScalar, RustType, RustTypeKind, RustVariable, RustVariableMutability,
+        SourceDeclarationMetadata,
+    };
 
-    use super::render_type;
+    use super::{
+        parse_rust_file, render_enum, render_record, render_type, render_variable,
+        rust_string_literal,
+    };
 
     #[test]
     fn pointer_to_c_function_projects_as_nullable_function_pointer() {
@@ -332,5 +406,337 @@ mod tests {
             kind: RustTypeKind::Scalar(RustScalar::Bool),
         };
         assert_eq!(render_type(&c_bool), "bool");
+    }
+
+    #[test]
+    fn adversarial_rust_string_context_is_escaped_and_parse_checked() {
+        let hostile = "quote\" backslash\\ tab\t unicode-λ";
+        let literal = rust_string_literal(hostile);
+        let source = format!(
+            "#![no_std]\nunsafe extern \"C\" {{ #[link_name = {literal}] pub fn safe(); }}\n"
+        );
+        assert!(literal.contains("\\\""));
+        assert!(literal.contains("\\\\"));
+        assert!(literal.contains("\\t"));
+        parse_rust_file("src/lib.rs", &source).expect("hostile string remains valid Rust");
+        assert!(parse_rust_file("src/lib.rs", "pub fn {").is_err());
+    }
+
+    #[test]
+    fn union_fields_are_legal_and_raw_enum_alias_allows_duplicate_or_unknown_values() {
+        let union_id = declaration_id("h4_union", EntityNamespace::Tag);
+        let union_name = rust_name("h4_union");
+        let int = scalar(RustScalar::CInt {
+            storage_bits: 32,
+            alignment_bits: 32,
+        });
+        let long = scalar(RustScalar::CLong {
+            storage_bits: 64,
+            alignment_bits: 64,
+        });
+        let union = RustRecord {
+            declaration: union_id,
+            rust_name: union_name,
+            kind: RustRecordKind::Union,
+            source_kind: RecordKind::Union,
+            source_completeness: RecordCompleteness::Complete,
+            fields: vec![
+                field(union_id, "small", int, 32, 32),
+                field(union_id, "wide", long, 64, 64),
+            ],
+            size_bits: Some(64),
+            alignment_bits: Some(64),
+            packing_bits: None,
+            source: metadata(union_id, "h4_union"),
+        };
+        let mut source = String::from("#![no_std]\n");
+        render_record(&mut source, &union);
+        assert!(source.contains("pub union h4_union"));
+        assert_eq!(source.matches("core::mem::ManuallyDrop<").count(), 2);
+        assert!(source.contains("offset_of!(h4_union, wide) == 0"));
+
+        let packed_id = declaration_id("h4_packed", EntityNamespace::Tag);
+        let mut packed_int = field(
+            packed_id,
+            "value",
+            scalar(RustScalar::CInt {
+                storage_bits: 32,
+                alignment_bits: 32,
+            }),
+            32,
+            32,
+        );
+        packed_int.offset_bits = 8;
+        let packed = RustRecord {
+            declaration: packed_id,
+            rust_name: rust_name("h4_packed"),
+            kind: RustRecordKind::Struct,
+            source_kind: RecordKind::Struct,
+            source_completeness: RecordCompleteness::Complete,
+            fields: vec![
+                field(
+                    packed_id,
+                    "tag",
+                    scalar(RustScalar::CUnsignedChar {
+                        storage_bits: 8,
+                        alignment_bits: 8,
+                    }),
+                    8,
+                    8,
+                ),
+                packed_int,
+            ],
+            size_bits: Some(40),
+            alignment_bits: Some(8),
+            packing_bits: Some(8),
+            source: metadata(packed_id, "h4_packed"),
+        };
+        render_record(&mut source, &packed);
+        assert!(source.contains("#[repr(C, packed(1))]"));
+        assert!(source.contains("offset_of!(h4_packed, value) == 1"));
+
+        let flexible_id = declaration_id("h4_flexible", EntityNamespace::Tag);
+        let mut tail = field(
+            flexible_id,
+            "tail",
+            RustType {
+                qualifiers: TypeQualifiers::NONE,
+                nullability: Nullability::Unspecified,
+                support: SupportStatus::Supported,
+                kind: RustTypeKind::FlexibleArray {
+                    element: Box::new(scalar(RustScalar::CUnsignedChar {
+                        storage_bits: 8,
+                        alignment_bits: 8,
+                    })),
+                },
+            },
+            0,
+            8,
+        );
+        tail.offset_bits = 32;
+        let flexible = RustRecord {
+            declaration: flexible_id,
+            rust_name: rust_name("h4_flexible"),
+            kind: RustRecordKind::Struct,
+            source_kind: RecordKind::Struct,
+            source_completeness: RecordCompleteness::Complete,
+            fields: vec![
+                field(
+                    flexible_id,
+                    "length",
+                    scalar(RustScalar::CUnsignedInt {
+                        storage_bits: 32,
+                        alignment_bits: 32,
+                    }),
+                    32,
+                    32,
+                ),
+                tail,
+            ],
+            size_bits: Some(32),
+            alignment_bits: Some(32),
+            packing_bits: None,
+            source: metadata(flexible_id, "h4_flexible"),
+        };
+        render_record(&mut source, &flexible);
+        assert!(source.contains("pub tail: [core::ffi::c_uchar; 0]"));
+        assert!(source.contains("offset_of!(h4_flexible, tail) == 4"));
+
+        let enum_id = declaration_id("h4_mode", EntityNamespace::Tag);
+        let enumeration = RustEnum {
+            declaration: enum_id,
+            rust_name: rust_name("h4_mode"),
+            storage: RustScalar::U32,
+            alignment_bits: 32,
+            explicit_underlying_type: None,
+            variants: vec![
+                variant(enum_id, "H4_A", 7),
+                variant(enum_id, "H4_ALIAS_OF_A", 7),
+            ],
+            source: metadata(enum_id, "h4_mode"),
+        };
+        render_enum(&mut source, &enumeration);
+        source.push_str("pub const H4_UNKNOWN_IS_VALID: h4_mode = 0xffff_fffe;\n");
+        assert!(source.contains("pub type h4_mode = u32;"));
+        assert!(!source.contains("pub struct h4_mode"));
+        parse_rust_file("src/lib.rs", &source).expect("union and raw enum source parses");
+        compile_source(&source, "h4_union_enum");
+    }
+
+    #[test]
+    fn extern_global_mutability_is_explicit_and_link_name_is_exactly_escaped() {
+        let id = declaration_id("h4_global", EntityNamespace::Ordinary);
+        let ty = scalar(RustScalar::CInt {
+            storage_bits: 32,
+            alignment_bits: 32,
+        });
+        let symbol = || NativeSymbolBinding {
+            provider: ProviderId::from_str(&format!("lprovider1_{}", "0".repeat(64)))
+                .expect("provider id"),
+            artifact_fingerprint: ArtifactFingerprint::from_content(b"h4-global"),
+            artifact_path: PathBuf::from("/tmp/libh4.a"),
+            symbol: ArtifactSymbolId::new(0, 1),
+            expected_name: "h4_global".to_owned(),
+            actual_name: "h4_global".to_owned(),
+            raw_name: b"h4_global".to_vec(),
+            decoration: SymbolDecoration::None,
+        };
+        let variable = |name: &str, mutability| RustVariable {
+            declaration: id,
+            rust_name: rust_name(name),
+            link_name: "h4_global\"quoted\\tail".to_owned(),
+            ty: ty.clone(),
+            mutability,
+            thread_local: false,
+            symbol: symbol(),
+            source: metadata(id, name),
+        };
+        let mut source = String::from("#![no_std]\n");
+        render_variable(
+            &mut source,
+            &variable("READ_ONLY", RustVariableMutability::ReadOnly),
+        );
+        render_variable(
+            &mut source,
+            &variable("MUTABLE", RustVariableMutability::Mutable),
+        );
+        assert!(source.contains("pub static READ_ONLY"));
+        assert!(source.contains("pub static mut MUTABLE"));
+        parse_rust_file("src/lib.rs", &source).expect("extern globals parse");
+        compile_source(&source, "h4_extern_globals");
+    }
+
+    fn scalar(value: RustScalar) -> RustType {
+        RustType {
+            qualifiers: TypeQualifiers::NONE,
+            nullability: Nullability::Unspecified,
+            support: SupportStatus::Supported,
+            kind: RustTypeKind::Scalar(value),
+        }
+    }
+
+    fn field(
+        owner: DeclarationId,
+        name: &str,
+        ty: RustType,
+        size_bits: u64,
+        alignment_bits: u32,
+    ) -> RustField {
+        RustField {
+            child: ChildId::named(owner, ChildRole::Field, name).expect("field id"),
+            rust_name: rust_name(name),
+            source_name: Some(SourceName {
+                normalized: name.to_owned(),
+                original: name.to_owned(),
+            }),
+            ty,
+            offset_bits: 0,
+            size_bits,
+            alignment_bits: Some(alignment_bits),
+            range: source_range(),
+            provenance: SourceProvenance {
+                origin: SourceOrigin::Generated,
+                include_chain: Vec::new(),
+                macro_expansions: Vec::new(),
+            },
+            attributes: Vec::new(),
+            support: SupportStatus::Supported,
+            identity_tokens: vec![name.to_owned()],
+            duplicate_ordinal: 0,
+        }
+    }
+
+    fn variant(owner: DeclarationId, name: &str, value: i128) -> RustEnumVariant {
+        RustEnumVariant {
+            child: ChildId::named(owner, ChildRole::EnumVariant, name).expect("variant id"),
+            rust_name: rust_name(name),
+            source_name: SourceName {
+                normalized: name.to_owned(),
+                original: name.to_owned(),
+            },
+            value: ExactInteger::signed(value),
+            range: source_range(),
+            provenance: SourceProvenance {
+                origin: SourceOrigin::Generated,
+                include_chain: Vec::new(),
+                macro_expansions: Vec::new(),
+            },
+            attributes: Vec::new(),
+            support: SupportStatus::Supported,
+            identity_tokens: vec![name.to_owned()],
+            duplicate_ordinal: 0,
+        }
+    }
+
+    fn declaration_id(name: &str, namespace: EntityNamespace) -> DeclarationId {
+        DeclarationId::from_entity(
+            EntityId::named(namespace, EntityScope::TranslationUnit, name)
+                .expect("declaration entity"),
+        )
+    }
+
+    fn metadata(id: DeclarationId, name: &str) -> SourceDeclarationMetadata {
+        SourceDeclarationMetadata::from_source(&SourceDeclaration {
+            id,
+            identity: DeclarationIdentity::Named {
+                namespace: EntityNamespace::Ordinary,
+                scope: EntityScope::TranslationUnit,
+                normalized_name: name.to_owned(),
+            },
+            name: Some(SourceName {
+                normalized: name.to_owned(),
+                original: name.to_owned(),
+            }),
+            linkage: Linkage::None,
+            visibility: Visibility::Unspecified,
+            occurrences: Vec::new(),
+            support: SupportStatus::Supported,
+            kind: SourceDeclarationKind::TypeAlias(SourceTypeAlias {
+                target: CType {
+                    qualifiers: TypeQualifiers::NONE,
+                    nullability: Nullability::Unspecified,
+                    kind: CTypeKind::Bool,
+                    support: SupportStatus::Supported,
+                },
+            }),
+        })
+    }
+
+    fn rust_name(name: &str) -> RustName {
+        RustName::checked(name.to_owned()).expect("Rust name")
+    }
+
+    fn source_range() -> SourceRange {
+        SourceRange {
+            file: FileId::from_logical_path("generated/h4.h").expect("file id"),
+            start: 0,
+            end: 1,
+        }
+    }
+
+    fn compile_source(source: &str, crate_name: &str) {
+        let directory =
+            std::env::temp_dir().join(format!("gerc-emit-{crate_name}-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&directory);
+        fs::create_dir(&directory).expect("create compile directory");
+        let input = directory.join("lib.rs");
+        fs::write(&input, source).expect("write compile source");
+        let result = Command::new(std::env::var_os("RUSTC").unwrap_or_else(|| "rustc".into()))
+            .arg("--crate-name")
+            .arg(crate_name)
+            .arg("--crate-type=lib")
+            .arg("--edition=2021")
+            .arg("--emit=metadata")
+            .arg("-o")
+            .arg(directory.join("lib.rmeta"))
+            .arg(&input)
+            .output()
+            .expect("run rustc");
+        let _ = fs::remove_dir_all(&directory);
+        assert!(
+            result.status.success(),
+            "emitted source did not compile:\n{}",
+            String::from_utf8_lossy(&result.stderr)
+        );
     }
 }

@@ -3,9 +3,9 @@ use std::{ffi::OsStr, path::Path};
 use linc::contract::SymbolDecoration;
 use parc::contract::{
     AttributeDisposition, DeclarationIdentity, EntityNamespace, EntityScope, ExactInteger, Linkage,
-    MacroCategory, MacroForm, MacroValue, Nullability, RecordCompleteness, RecordKind,
-    SourceAttribute, SourceName, SourceOrigin, SourceProvenance, SourceRange, StorageClass,
-    SupportStatus, Visibility,
+    MacroCategory, MacroForm, MacroValue, Nullability, ObjectFormat, RecordCompleteness,
+    RecordKind, SourceAttribute, SourceName, SourceOrigin, SourceProvenance, SourceRange,
+    StorageClass, SupportStatus, Visibility,
 };
 
 use crate::{
@@ -62,6 +62,17 @@ pub(crate) fn generation_fingerprint(
         hash_field(&mut hasher, file.contents());
     }
     hash_field(&mut hasher, b"link-plan");
+    hash_field(&mut hasher, link_plan.target_fingerprint().as_bytes());
+    hash_field(
+        &mut hasher,
+        match link_plan.object_format() {
+            ObjectFormat::Elf => b"object-format-elf",
+            ObjectFormat::MachO => b"object-format-mach-o",
+            ObjectFormat::Coff => b"object-format-coff",
+            ObjectFormat::Wasm => b"object-format-wasm",
+            ObjectFormat::Xcoff => b"object-format-xcoff",
+        },
+    );
     hash_count(&mut hasher, link_plan.atoms().len());
     for atom in link_plan.atoms() {
         match atom {
@@ -132,6 +143,7 @@ fn hash_projection(hasher: &mut blake3::Hasher, projection: &ValidatedRustProjec
                     hasher,
                     match record.kind() {
                         RustRecordKind::Struct => b"struct",
+                        RustRecordKind::Union => b"union",
                         RustRecordKind::Opaque => b"opaque",
                     },
                 );
@@ -157,6 +169,7 @@ fn hash_projection(hasher: &mut blake3::Hasher, projection: &ValidatedRustProjec
                     hasher,
                     &record.alignment_bits().unwrap_or(u32::MAX).to_le_bytes(),
                 );
+                hash_optional_u32(hasher, record.packing_bits());
                 hash_count(hasher, record.fields().len());
                 for field in record.fields() {
                     hash_field(hasher, field.child().as_bytes());
@@ -179,7 +192,7 @@ fn hash_projection(hasher: &mut blake3::Hasher, projection: &ValidatedRustProjec
                 hash_field(hasher, enumeration.declaration().as_bytes());
                 hash_declaration_metadata(hasher, enumeration.source());
                 hash_field(hasher, enumeration.rust_name().as_str().as_bytes());
-                hash_field(hasher, enumeration.storage().spelling().as_bytes());
+                hash_scalar(hasher, enumeration.storage());
                 hash_field(hasher, &enumeration.alignment_bits().to_le_bytes());
                 match enumeration.explicit_underlying_type() {
                     Some(ty) => {
@@ -215,6 +228,13 @@ fn hash_projection(hasher: &mut blake3::Hasher, projection: &ValidatedRustProjec
                 hash_declaration_metadata(hasher, variable.source());
                 hash_field(hasher, variable.rust_name().as_str().as_bytes());
                 hash_field(hasher, variable.link_name().as_bytes());
+                hash_field(
+                    hasher,
+                    match variable.mutability() {
+                        crate::RustVariableMutability::ReadOnly => b"read-only",
+                        crate::RustVariableMutability::Mutable => b"mutable",
+                    },
+                );
                 hash_field(hasher, &[u8::from(variable.thread_local())]);
                 hash_type(hasher, variable.ty());
                 hash_symbol(hasher, variable.symbol());
@@ -301,7 +321,7 @@ fn hash_type(hasher: &mut blake3::Hasher, ty: &RustType) {
     );
     match ty.kind() {
         RustTypeKind::Void => hash_field(hasher, b"void"),
-        RustTypeKind::Scalar(scalar) => hash_field(hasher, scalar.spelling().as_bytes()),
+        RustTypeKind::Scalar(scalar) => hash_scalar(hasher, *scalar),
         RustTypeKind::Pointer(pointee) => {
             hash_field(hasher, b"pointer");
             hash_type(hasher, pointee);
@@ -309,6 +329,10 @@ fn hash_type(hasher: &mut blake3::Hasher, ty: &RustType) {
         RustTypeKind::FixedArray { element, elements } => {
             hash_field(hasher, b"fixed-array");
             hash_field(hasher, &elements.to_le_bytes());
+            hash_type(hasher, element);
+        }
+        RustTypeKind::FlexibleArray { element } => {
+            hash_field(hasher, b"flexible-array");
             hash_type(hasher, element);
         }
         RustTypeKind::Named {
@@ -335,6 +359,15 @@ fn hash_type(hasher: &mut blake3::Hasher, ty: &RustType) {
             hash_type(hasher, return_type);
         }
     }
+}
+
+fn hash_scalar(hasher: &mut blake3::Hasher, scalar: crate::RustScalar) {
+    hash_field(hasher, scalar.spelling().as_bytes());
+    hash_field(hasher, &scalar.size_bits().to_le_bytes());
+    hash_field(
+        hasher,
+        &scalar.alignment_bits().unwrap_or(u16::MAX).to_le_bytes(),
+    );
 }
 
 fn hash_exact_integer(hasher: &mut blake3::Hasher, value: ExactInteger) {

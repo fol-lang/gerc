@@ -33,7 +33,18 @@ The production boundary is strict:
 - output is an immutable `GenerationBundle`
 - generated files stay in memory; GERC has no overwrite or arbitrary-directory API
 - native link order, repetition, paths, and `OsString` names remain lossless
+- `RustLinkPlan::rustc_arguments()` returns exact per-argument native values;
+  it never creates a shell string or `-Clink-args` blob, and GNU projection
+  rejects a non-ELF target
 - unsupported ABI shapes return typed errors; there is no unknown-type fallback
+- every emitted Rust file is parsed as a production postcondition
+
+Generated raw bindings use `#![no_std]` and `core::ffi`. The certified H4
+projection covers measured natural and packed records, unions, raw C enums,
+fixed arrays, raw pointers, non-variadic C functions/callbacks, and non-TLS
+globals. Incomplete records are pointer-only. Extended floating types,
+complex/vector/bitfield forms, variadics, unsupported calling conventions,
+by-value opaque records, and TLS fail before emission.
 
 The domain values deliberately have no JSON decoder. PARC and LINC own their
 respective strict transport schemas; GERC H1 owns an in-memory projection.
@@ -45,3 +56,7 @@ The MSRV is Rust 1.89.
 ```sh
 make verify
 ```
+
+`make verify` includes the generated-source parser/build lane, the explicit GCC
+C/Rust ABI link-and-run fixture, package extraction with a nonzero clean
+consumer test, and the preservation corpus.

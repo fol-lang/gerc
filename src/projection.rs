@@ -298,6 +298,7 @@ impl RustParameter {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RustRecordKind {
     Struct,
+    Union,
     Opaque,
 }
 
@@ -311,6 +312,9 @@ pub struct RustRecord {
     pub(crate) fields: Vec<RustField>,
     pub(crate) size_bits: Option<u64>,
     pub(crate) alignment_bits: Option<u32>,
+    /// Measured packing cap in bits when the layout cannot be represented by
+    /// natural `repr(C)` alignment. `None` means natural layout.
+    pub(crate) packing_bits: Option<u32>,
     pub(crate) source: SourceDeclarationMetadata,
 }
 
@@ -338,6 +342,11 @@ impl RustRecord {
     }
     pub const fn alignment_bits(&self) -> Option<u32> {
         self.alignment_bits
+    }
+    /// The exact `repr(packed(N))` cap required by the measured C layout, in
+    /// bits. This is absent for natural `repr(C)` records and opaque records.
+    pub const fn packing_bits(&self) -> Option<u32> {
+        self.packing_bits
     }
     pub fn occurrences(&self) -> &[DeclarationOccurrence] {
         self.source.occurrences()
@@ -523,6 +532,7 @@ pub struct RustVariable {
     pub(crate) rust_name: RustName,
     pub(crate) link_name: String,
     pub(crate) ty: RustType,
+    pub(crate) mutability: RustVariableMutability,
     pub(crate) thread_local: bool,
     pub(crate) symbol: NativeSymbolBinding,
     pub(crate) source: SourceDeclarationMetadata,
@@ -541,6 +551,9 @@ impl RustVariable {
     pub fn ty(&self) -> &RustType {
         &self.ty
     }
+    pub const fn mutability(&self) -> RustVariableMutability {
+        self.mutability
+    }
     pub const fn thread_local(&self) -> bool {
         self.thread_local
     }
@@ -553,6 +566,15 @@ impl RustVariable {
     pub fn source(&self) -> &SourceDeclarationMetadata {
         &self.source
     }
+}
+
+/// Whether a raw extern object may be mutated through its Rust declaration.
+/// This is retained independently from the nested type so callers do not have
+/// to reinterpret C declaration qualifiers.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RustVariableMutability {
+    ReadOnly,
+    Mutable,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -626,6 +648,11 @@ pub enum RustTypeKind {
         element: Box<RustType>,
         elements: u64,
     },
+    /// A C flexible-array member. This is only valid as the final field of a
+    /// verified concrete struct and is emitted as a zero-length Rust array.
+    FlexibleArray {
+        element: Box<RustType>,
+    },
     Named {
         declaration: DeclarationId,
         rust_name: RustName,
@@ -641,6 +668,59 @@ pub enum RustTypeKind {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RustScalar {
     Bool,
+    CChar {
+        storage_bits: u16,
+        alignment_bits: u16,
+    },
+    CSignedChar {
+        storage_bits: u16,
+        alignment_bits: u16,
+    },
+    CUnsignedChar {
+        storage_bits: u16,
+        alignment_bits: u16,
+    },
+    CShort {
+        storage_bits: u16,
+        alignment_bits: u16,
+    },
+    CUnsignedShort {
+        storage_bits: u16,
+        alignment_bits: u16,
+    },
+    CInt {
+        storage_bits: u16,
+        alignment_bits: u16,
+    },
+    CUnsignedInt {
+        storage_bits: u16,
+        alignment_bits: u16,
+    },
+    CLong {
+        storage_bits: u16,
+        alignment_bits: u16,
+    },
+    CUnsignedLong {
+        storage_bits: u16,
+        alignment_bits: u16,
+    },
+    CLongLong {
+        storage_bits: u16,
+        alignment_bits: u16,
+    },
+    CUnsignedLongLong {
+        storage_bits: u16,
+        alignment_bits: u16,
+    },
+    CFloat {
+        storage_bits: u16,
+        alignment_bits: u16,
+    },
+    CDouble {
+        storage_bits: u16,
+        alignment_bits: u16,
+    },
+    /// Fixed-width measured integer storage used only for raw C enums.
     I8,
     U8,
     I16,
@@ -657,6 +737,19 @@ impl RustScalar {
     pub const fn spelling(self) -> &'static str {
         match self {
             Self::Bool => "bool",
+            Self::CChar { .. } => "core::ffi::c_char",
+            Self::CSignedChar { .. } => "core::ffi::c_schar",
+            Self::CUnsignedChar { .. } => "core::ffi::c_uchar",
+            Self::CShort { .. } => "core::ffi::c_short",
+            Self::CUnsignedShort { .. } => "core::ffi::c_ushort",
+            Self::CInt { .. } => "core::ffi::c_int",
+            Self::CUnsignedInt { .. } => "core::ffi::c_uint",
+            Self::CLong { .. } => "core::ffi::c_long",
+            Self::CUnsignedLong { .. } => "core::ffi::c_ulong",
+            Self::CLongLong { .. } => "core::ffi::c_longlong",
+            Self::CUnsignedLongLong { .. } => "core::ffi::c_ulonglong",
+            Self::CFloat { .. } => "core::ffi::c_float",
+            Self::CDouble { .. } => "core::ffi::c_double",
             Self::I8 => "i8",
             Self::U8 => "u8",
             Self::I16 => "i16",
@@ -673,9 +766,51 @@ impl RustScalar {
     pub const fn size_bits(self) -> u64 {
         match self {
             Self::Bool | Self::I8 | Self::U8 => 8,
+            Self::CChar { storage_bits, .. }
+            | Self::CSignedChar { storage_bits, .. }
+            | Self::CUnsignedChar { storage_bits, .. }
+            | Self::CShort { storage_bits, .. }
+            | Self::CUnsignedShort { storage_bits, .. }
+            | Self::CInt { storage_bits, .. }
+            | Self::CUnsignedInt { storage_bits, .. }
+            | Self::CLong { storage_bits, .. }
+            | Self::CUnsignedLong { storage_bits, .. }
+            | Self::CLongLong { storage_bits, .. }
+            | Self::CUnsignedLongLong { storage_bits, .. }
+            | Self::CFloat { storage_bits, .. }
+            | Self::CDouble { storage_bits, .. } => storage_bits as u64,
             Self::I16 | Self::U16 => 16,
             Self::I32 | Self::U32 | Self::F32 => 32,
             Self::I64 | Self::U64 | Self::F64 => 64,
+        }
+    }
+
+    pub const fn alignment_bits(self) -> Option<u16> {
+        match self {
+            Self::CChar { alignment_bits, .. }
+            | Self::CSignedChar { alignment_bits, .. }
+            | Self::CUnsignedChar { alignment_bits, .. }
+            | Self::CShort { alignment_bits, .. }
+            | Self::CUnsignedShort { alignment_bits, .. }
+            | Self::CInt { alignment_bits, .. }
+            | Self::CUnsignedInt { alignment_bits, .. }
+            | Self::CLong { alignment_bits, .. }
+            | Self::CUnsignedLong { alignment_bits, .. }
+            | Self::CLongLong { alignment_bits, .. }
+            | Self::CUnsignedLongLong { alignment_bits, .. }
+            | Self::CFloat { alignment_bits, .. }
+            | Self::CDouble { alignment_bits, .. } => Some(alignment_bits),
+            Self::Bool
+            | Self::I8
+            | Self::U8
+            | Self::I16
+            | Self::U16
+            | Self::I32
+            | Self::U32
+            | Self::I64
+            | Self::U64
+            | Self::F32
+            | Self::F64 => None,
         }
     }
 }

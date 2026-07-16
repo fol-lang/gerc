@@ -12,7 +12,14 @@ documentation = "https://docs.rs/follang-gerc"
 readme = "README.md"
 keywords = ["c", "ffi", "bindings", "codegen"]
 categories = ["development-tools::ffi", "code-generation"]
-include = ["/src/**/*.rs", "/Cargo.toml", "/LICENSE-*", "/README.md"]
+include = [
+    "/src/**/*.rs",
+    "/tests/**/*.rs",
+    "/tests/native-fixtures/**",
+    "/Cargo.toml",
+    "/LICENSE-*",
+    "/README.md",
+]
 
 [lib]
 name = "gerc"
@@ -21,4 +28,5 @@ name = "gerc"
 blake3 = "1"
 linc = { package = "follang-linc", version = "0.1.0", path = "../linc", default-features = false, features = ["contracts"] }
 parc = { package = "follang-parc", version = "0.16.0", path = "../parc" }
+syn = { version = "2", default-features = false, features = ["full", "parsing"] }
 thiserror = "2"

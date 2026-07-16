@@ -24,8 +24,10 @@ pub enum GenerationErrorCode {
     LayoutMismatch,
     InvalidEnumRepresentation,
     InvalidIdentifier,
+    UnsupportedLinkProjection,
     ProjectionInvariant,
     GeneratedFileInvariant,
+    GeneratedSourceParse,
 }
 
 impl GenerationErrorCode {
@@ -47,8 +49,10 @@ impl GenerationErrorCode {
             Self::LayoutMismatch => "GERC-E2100",
             Self::InvalidEnumRepresentation => "GERC-E2101",
             Self::InvalidIdentifier => "GERC-E2200",
+            Self::UnsupportedLinkProjection => "GERC-E2300",
             Self::ProjectionInvariant => "GERC-E9000",
             Self::GeneratedFileInvariant => "GERC-E9001",
+            Self::GeneratedSourceParse => "GERC-E9002",
         }
     }
 }
@@ -117,10 +121,14 @@ pub enum GenerationError {
     },
     #[error("declaration {declaration} has no usable Rust identifier")]
     InvalidIdentifier { declaration: DeclarationId },
+    #[error("ordered link plan has no certified target argument projection: {reason}")]
+    UnsupportedLinkProjection { reason: &'static str },
     #[error("validated Rust projection invariant failed: {reason}")]
     ProjectionInvariant { reason: &'static str },
     #[error("generated file-set invariant failed: {reason}")]
     GeneratedFileInvariant { reason: &'static str },
+    #[error("generated Rust file {path} failed the production parse postcondition: {message}")]
+    GeneratedSourceParse { path: &'static str, message: String },
 }
 
 impl GenerationError {
@@ -151,8 +159,12 @@ impl GenerationError {
                 GenerationErrorCode::InvalidEnumRepresentation
             }
             Self::InvalidIdentifier { .. } => GenerationErrorCode::InvalidIdentifier,
+            Self::UnsupportedLinkProjection { .. } => {
+                GenerationErrorCode::UnsupportedLinkProjection
+            }
             Self::ProjectionInvariant { .. } => GenerationErrorCode::ProjectionInvariant,
             Self::GeneratedFileInvariant { .. } => GenerationErrorCode::GeneratedFileInvariant,
+            Self::GeneratedSourceParse { .. } => GenerationErrorCode::GeneratedSourceParse,
         }
     }
 

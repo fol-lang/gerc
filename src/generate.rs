@@ -15,12 +15,13 @@ use parc::contract::{
 };
 
 use crate::{
-    fingerprint::generation_fingerprint, render_projection, GeneratedFile, GeneratedFileSet,
-    GenerationBundle, GenerationContext, GenerationDiagnostic, GenerationError, GenerationManifest,
+    emit::parse_rust_file, fingerprint::generation_fingerprint, render_projection,
+    verify_pre_lowering, verify_projection, GeneratedFile, GeneratedFileSet, GenerationBundle,
+    GenerationContext, GenerationDiagnostic, GenerationError, GenerationManifest,
     GenerationRequest, GenerationResult, NativeSymbolBinding, RustAbi, RustEnum, RustEnumVariant,
     RustField, RustFunction, RustItem, RustLinkPlan, RustMacro, RustName, RustParameter,
     RustRecord, RustRecordKind, RustScalar, RustType, RustTypeAlias, RustTypeKind, RustVariable,
-    SourceDeclarationMetadata, ValidatedRustProjection,
+    RustVariableMutability, SourceDeclarationMetadata, ValidatedRustProjection,
 };
 
 /// Strict PARC + LINC -> GERC generation. There is intentionally no source-
@@ -37,6 +38,7 @@ pub fn generate(request: GenerationRequest<'_>) -> GenerationResult<GenerationBu
 }
 
 fn generate_inner(request: GenerationRequest<'_>) -> GenerationResult<GenerationBundle> {
+    verify_pre_lowering(&request)?;
     let source = request.source().source();
     let evidence = request.evidence().package();
     let closure = request.declaration_closure();
@@ -102,9 +104,11 @@ fn generate_inner(request: GenerationRequest<'_>) -> GenerationResult<Generation
         macros,
         &expected_declarations,
     )?;
+    verify_projection(&projection)?;
     let rendered = render_projection(&projection);
+    parse_rust_file("src/lib.rs", &rendered)?;
     let files = GeneratedFileSet::try_new(vec![GeneratedFile::utf8("src/lib.rs", rendered)?])?;
-    let link_plan = RustLinkPlan::from_validated(evidence.resolved_link_plan());
+    let link_plan = RustLinkPlan::from_validated(evidence.resolved_link_plan(), source.target());
     let fingerprint = generation_fingerprint(
         generation_context,
         request.selection(),
@@ -255,19 +259,7 @@ fn lower_function(
                 "parameter",
                 parameter.id.as_bytes(),
             )?;
-            if parameter_requires_c_adjustment(
-                context,
-                declaration.id,
-                &parameter_path,
-                &parameter.ty,
-            )? {
-                return Err(GenerationError::UnsupportedType {
-                    declaration: declaration.id,
-                    path: parameter_path,
-                    reason: "C array/function parameter adjustment is not frozen",
-                });
-            }
-            let ty = lower_type(context, declaration.id, &parameter_path, &parameter.ty)?;
+            let ty = lower_parameter_type(context, declaration.id, &parameter_path, &parameter.ty)?;
             if matches!(ty.kind, RustTypeKind::Void) {
                 return Err(GenerationError::UnsupportedType {
                     declaration: declaration.id,
@@ -319,6 +311,7 @@ fn lower_record(
             fields: Vec::new(),
             size_bits: None,
             alignment_bits: None,
+            packing_bits: None,
             source: SourceDeclarationMetadata::from_source(declaration),
         });
     }
@@ -326,12 +319,6 @@ fn lower_record(
         return Err(GenerationError::UnsupportedRecordRepresentation {
             declaration: declaration.id,
             reason: "a by-value record requires a complete definition",
-        });
-    }
-    if record.kind != RecordKind::Struct {
-        return Err(GenerationError::UnsupportedRecordRepresentation {
-            declaration: declaration.id,
-            reason: "union storage has no frozen Rust projection yet",
         });
     }
     if record.fields.is_empty() {
@@ -350,7 +337,121 @@ fn lower_record(
             });
         }
     };
-    lower_natural_record(context, declaration, rust_name, record, layout)
+    if !rust_object_size_fits(
+        context.source.source().target().pointer_width(),
+        layout.size_bits(),
+    ) {
+        return Err(GenerationError::UnsupportedRecordRepresentation {
+            declaration: declaration.id,
+            reason: "record exceeds Rust's target object-size limit",
+        });
+    }
+    match record.kind {
+        RecordKind::Struct => lower_natural_record(context, declaration, rust_name, record, layout),
+        RecordKind::Union => lower_natural_union(context, declaration, rust_name, record, layout),
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct RecordFieldShape {
+    offset_bits: u64,
+    size_bits: u64,
+    natural_alignment_bits: u64,
+    measured_alignment_bits: Option<u32>,
+}
+
+/// Infer the only Rust representation family GERC certifies: natural
+/// `repr(C)` or `repr(C, packed(N))` with a power-of-two byte cap. This is
+/// derived from measured offsets/size/alignment rather than from attribute
+/// spelling, so compiler-specific `packed` syntax never leaks across the
+/// contract boundary. The nested option distinguishes natural layout from no
+/// representable layout.
+fn infer_packing(
+    kind: RustRecordKind,
+    fields: &[RecordFieldShape],
+    size_bits: u64,
+    alignment_bits: u32,
+) -> Option<Option<u32>> {
+    if representation_matches(kind, fields, size_bits, alignment_bits, None) {
+        return Some(None);
+    }
+
+    let maximum_natural = fields
+        .iter()
+        .map(|field| field.natural_alignment_bits)
+        .max()
+        .unwrap_or(8);
+    let mut cap = 8_u64;
+    while cap <= maximum_natural && cap <= u64::from(u32::MAX) {
+        if representation_matches(kind, fields, size_bits, alignment_bits, Some(cap)) {
+            return Some(Some(cap as u32));
+        }
+        let Some(next) = cap.checked_mul(2) else {
+            break;
+        };
+        cap = next;
+    }
+    None
+}
+
+fn representation_matches(
+    kind: RustRecordKind,
+    fields: &[RecordFieldShape],
+    size_bits: u64,
+    alignment_bits: u32,
+    packing_bits: Option<u64>,
+) -> bool {
+    let mut record_alignment = 8_u64;
+    let mut cursor = 0_u64;
+    let mut maximum_size = 0_u64;
+
+    for field in fields {
+        if field.natural_alignment_bits < 8 || !field.natural_alignment_bits.is_power_of_two() {
+            return false;
+        }
+        let effective_alignment = packing_bits.map_or(field.natural_alignment_bits, |cap| {
+            field.natural_alignment_bits.min(cap)
+        });
+        if field.measured_alignment_bits.is_some_and(|measured| {
+            let measured = u64::from(measured);
+            measured != field.natural_alignment_bits && measured != effective_alignment
+        }) {
+            return false;
+        }
+        record_alignment = record_alignment.max(effective_alignment);
+        match kind {
+            RustRecordKind::Struct => {
+                let Some(offset) = align_up(cursor, effective_alignment) else {
+                    return false;
+                };
+                if field.offset_bits != offset {
+                    return false;
+                }
+                let Some(next) = offset.checked_add(field.size_bits) else {
+                    return false;
+                };
+                cursor = next;
+            }
+            RustRecordKind::Union => {
+                if field.offset_bits != 0 {
+                    return false;
+                }
+                maximum_size = maximum_size.max(field.size_bits);
+            }
+            RustRecordKind::Opaque => return false,
+        }
+    }
+
+    if let Some(cap) = packing_bits {
+        record_alignment = record_alignment.min(cap);
+    }
+    let unrounded_size = match kind {
+        RustRecordKind::Struct => cursor,
+        RustRecordKind::Union => maximum_size,
+        RustRecordKind::Opaque => return false,
+    };
+    align_up(unrounded_size, record_alignment) == Some(size_bits)
+        && record_alignment == u64::from(alignment_bits)
 }
 
 fn lower_natural_record(
@@ -362,10 +463,9 @@ fn lower_natural_record(
 ) -> GenerationResult<RustRecord> {
     let mut field_names = NameAllocator::default();
     let mut fields = Vec::with_capacity(record.fields.len());
-    let mut cursor = 0_u64;
-    let mut natural_alignment = 8_u64;
+    let mut shapes = Vec::with_capacity(record.fields.len());
 
-    for field in &record.fields {
+    for (field_index, field) in record.fields.iter().enumerate() {
         if field.bit_width.is_some() {
             return Err(GenerationError::UnsupportedRecordRepresentation {
                 declaration: declaration.id,
@@ -381,42 +481,74 @@ fn lower_natural_record(
                 declaration: declaration.id,
                 reason: "a source field has no measured field layout",
             })?;
-        let (size_bits, alignment_bits) =
-            abi_size_alignment(context, declaration.id, "record.field", &field.ty, 0)?;
-        let measured_size = measured
-            .size_bits()
-            .ok_or(GenerationError::LayoutMismatch {
-                declaration: declaration.id,
-                reason: "field evidence omits size",
-            })?;
-        if measured_size != size_bits
-            || measured
-                .alignment_bits()
-                .is_some_and(|measured| u64::from(measured) != alignment_bits)
-        {
+        let flexible_element = match &field.ty.kind {
+            CTypeKind::Array {
+                element,
+                bound: ArrayBound::Flexible,
+                parameter_qualifiers,
+            } if *parameter_qualifiers == TypeQualifiers::NONE
+                && field_index + 1 == record.fields.len() =>
+            {
+                Some(element.as_ref())
+            }
+            CTypeKind::Array {
+                bound: ArrayBound::Flexible,
+                ..
+            } => {
+                return Err(GenerationError::UnsupportedRecordRepresentation {
+                    declaration: declaration.id,
+                    reason: "a flexible array must be the final unqualified struct field",
+                });
+            }
+            _ => None,
+        };
+        let (size_bits, alignment_bits, lowered_type) = if let Some(element) = flexible_element {
+            let (_, alignment_bits) = abi_size_alignment(
+                context,
+                declaration.id,
+                "record.flexible_element",
+                element,
+                0,
+            )?;
+            (
+                0,
+                alignment_bits,
+                RustType {
+                    qualifiers: field.ty.qualifiers,
+                    nullability: field.ty.nullability,
+                    support: field.ty.support.clone(),
+                    kind: RustTypeKind::FlexibleArray {
+                        element: Box::new(lower_type(
+                            context,
+                            declaration.id,
+                            "record.flexible_element",
+                            element,
+                        )?),
+                    },
+                },
+            )
+        } else {
+            let (size_bits, alignment_bits) =
+                abi_size_alignment(context, declaration.id, "record.field", &field.ty, 0)?;
+            (
+                size_bits,
+                alignment_bits,
+                lower_type(context, declaration.id, "record.field", &field.ty)?,
+            )
+        };
+        let measured_size = measured.size_bits().unwrap_or(0);
+        if measured_size != size_bits {
             return Err(GenerationError::LayoutMismatch {
                 declaration: declaration.id,
-                reason: "field size or alignment differs from the Rust primitive projection",
+                reason: "field size differs from the Rust primitive projection",
             });
         }
-        let expected_offset =
-            align_up(cursor, alignment_bits).ok_or(GenerationError::LayoutMismatch {
-                declaration: declaration.id,
-                reason: "record offset arithmetic overflowed",
-            })?;
-        if measured.offset_bits() != expected_offset {
-            return Err(GenerationError::UnsupportedRecordRepresentation {
-                declaration: declaration.id,
-                reason: "packed, reordered, or explicitly padded record layout is not frozen",
-            });
-        }
-        cursor = expected_offset
-            .checked_add(size_bits)
-            .ok_or(GenerationError::LayoutMismatch {
-                declaration: declaration.id,
-                reason: "record size arithmetic overflowed",
-            })?;
-        natural_alignment = natural_alignment.max(alignment_bits);
+        shapes.push(RecordFieldShape {
+            offset_bits: measured.offset_bits(),
+            size_bits,
+            natural_alignment_bits: alignment_bits,
+            measured_alignment_bits: measured.alignment_bits(),
+        });
         let rust_field_name = field_names.local_name(
             field.name.as_ref().map(|name| name.normalized.as_str()),
             "field",
@@ -426,7 +558,7 @@ fn lower_natural_record(
             child: field.id,
             rust_name: rust_field_name,
             source_name: field.name.clone(),
-            ty: lower_type(context, declaration.id, "record.field", &field.ty)?,
+            ty: lowered_type,
             offset_bits: measured.offset_bits(),
             size_bits,
             alignment_bits: measured.alignment_bits(),
@@ -439,18 +571,16 @@ fn lower_natural_record(
         });
     }
 
-    let natural_size =
-        align_up(cursor, natural_alignment).ok_or(GenerationError::LayoutMismatch {
-            declaration: declaration.id,
-            reason: "record tail-padding arithmetic overflowed",
-        })?;
-    if layout.size_bits() != natural_size || u64::from(layout.alignment_bits()) != natural_alignment
-    {
-        return Err(GenerationError::UnsupportedRecordRepresentation {
-            declaration: declaration.id,
-            reason: "measured record layout is not the natural repr(C) Rust layout",
-        });
-    }
+    let packing_bits = infer_packing(
+        RustRecordKind::Struct,
+        &shapes,
+        layout.size_bits(),
+        layout.alignment_bits(),
+    )
+    .ok_or(GenerationError::UnsupportedRecordRepresentation {
+        declaration: declaration.id,
+        reason: "measured record layout is neither natural repr(C) nor a supported packed layout",
+    })?;
 
     Ok(RustRecord {
         declaration: declaration.id,
@@ -461,6 +591,104 @@ fn lower_natural_record(
         fields,
         size_bits: Some(layout.size_bits()),
         alignment_bits: Some(layout.alignment_bits()),
+        packing_bits,
+        source: SourceDeclarationMetadata::from_source(declaration),
+    })
+}
+
+fn lower_natural_union(
+    context: &LoweringContext<'_>,
+    declaration: &SourceDeclaration,
+    rust_name: RustName,
+    record: &SourceRecord,
+    layout: &RecordLayoutEvidence,
+) -> GenerationResult<RustRecord> {
+    let mut field_names = NameAllocator::default();
+    let mut fields = Vec::with_capacity(record.fields.len());
+    let mut shapes = Vec::with_capacity(record.fields.len());
+
+    for field in &record.fields {
+        if field.bit_width.is_some() {
+            return Err(GenerationError::UnsupportedRecordRepresentation {
+                declaration: declaration.id,
+                reason: "union bitfields require an unsupported storage projection",
+            });
+        }
+        if matches!(
+            field.ty.kind,
+            CTypeKind::Array {
+                bound: ArrayBound::Flexible,
+                ..
+            }
+        ) {
+            return Err(GenerationError::UnsupportedRecordRepresentation {
+                declaration: declaration.id,
+                reason: "a C union cannot contain a flexible-array member",
+            });
+        }
+        let measured = layout
+            .fields()
+            .binary_search_by_key(&field.id, |entry| entry.child())
+            .ok()
+            .map(|index| &layout.fields()[index])
+            .ok_or(GenerationError::LayoutMismatch {
+                declaration: declaration.id,
+                reason: "a source union field has no measured layout",
+            })?;
+        let (size_bits, alignment_bits) =
+            abi_size_alignment(context, declaration.id, "union.field", &field.ty, 0)?;
+        if measured.offset_bits() != 0 || measured.size_bits() != Some(size_bits) {
+            return Err(GenerationError::LayoutMismatch {
+                declaration: declaration.id,
+                reason: "union field offset or size differs from its Rust projection",
+            });
+        }
+        shapes.push(RecordFieldShape {
+            offset_bits: 0,
+            size_bits,
+            natural_alignment_bits: alignment_bits,
+            measured_alignment_bits: measured.alignment_bits(),
+        });
+        fields.push(RustField {
+            child: field.id,
+            rust_name: field_names.local_name(
+                field.name.as_ref().map(|name| name.normalized.as_str()),
+                "union_field",
+                field.id.as_bytes(),
+            )?,
+            source_name: field.name.clone(),
+            ty: lower_type(context, declaration.id, "union.field", &field.ty)?,
+            offset_bits: 0,
+            size_bits,
+            alignment_bits: measured.alignment_bits(),
+            range: field.range,
+            provenance: field.provenance.clone(),
+            attributes: field.attributes.clone(),
+            support: field.support.clone(),
+            identity_tokens: field.identity_tokens.clone(),
+            duplicate_ordinal: field.duplicate_ordinal,
+        });
+    }
+    let packing_bits = infer_packing(
+        RustRecordKind::Union,
+        &shapes,
+        layout.size_bits(),
+        layout.alignment_bits(),
+    )
+    .ok_or(GenerationError::UnsupportedRecordRepresentation {
+        declaration: declaration.id,
+        reason: "measured union layout is neither natural repr(C) nor a supported packed layout",
+    })?;
+    Ok(RustRecord {
+        declaration: declaration.id,
+        rust_name,
+        kind: RustRecordKind::Union,
+        source_kind: record.kind,
+        source_completeness: record.completeness,
+        fields,
+        size_bits: Some(layout.size_bits()),
+        alignment_bits: Some(layout.alignment_bits()),
+        packing_bits,
         source: SourceDeclarationMetadata::from_source(declaration),
     })
 }
@@ -493,10 +721,12 @@ fn lower_enum(
         .as_ref()
         .map(|ty| lower_type(context, declaration.id, "enum.explicit_underlying_type", ty))
         .transpose()?;
-    if explicit_underlying_type
-        .as_ref()
-        .is_some_and(|ty| !matches!(ty.kind(), RustTypeKind::Scalar(value) if *value == storage))
-    {
+    if explicit_underlying_type.as_ref().is_some_and(|ty| {
+        !matches!(
+            ty.kind(),
+            RustTypeKind::Scalar(value) if scalar_integer_compatible(*value, storage)
+        )
+    }) {
         return Err(GenerationError::InvalidEnumRepresentation {
             declaration: declaration.id,
             reason: "explicit enum storage does not match the measured Rust scalar",
@@ -581,20 +811,33 @@ fn lower_variable(
     rust_name: RustName,
     variable: &SourceVariable,
 ) -> GenerationResult<RustVariable> {
-    if variable.thread_local {
-        return Err(GenerationError::UnsupportedDeclaration {
-            declaration: declaration.id,
-            reason: "thread-local extern statics require an unfrozen target-specific projection",
-        });
-    }
+    let mutability = variable_mutability(declaration.id, variable)?;
     Ok(RustVariable {
         declaration: declaration.id,
         rust_name,
         link_name: variable.link_name.clone(),
         ty: lower_type(context, declaration.id, "variable.type", &variable.ty)?,
+        mutability,
         thread_local: false,
         symbol: native_symbol_binding(context, declaration.id)?,
         source: SourceDeclarationMetadata::from_source(declaration),
+    })
+}
+
+fn variable_mutability(
+    declaration: DeclarationId,
+    variable: &SourceVariable,
+) -> GenerationResult<RustVariableMutability> {
+    if variable.thread_local {
+        return Err(GenerationError::UnsupportedDeclaration {
+            declaration,
+            reason: "thread-local extern statics are explicitly rejected",
+        });
+    }
+    Ok(if variable.ty.qualifiers.is_const {
+        RustVariableMutability::ReadOnly
+    } else {
+        RustVariableMutability::Mutable
     })
 }
 
@@ -797,6 +1040,14 @@ fn lower_type(
             bound: ArrayBound::Fixed { elements },
             parameter_qualifiers,
         } if *parameter_qualifiers == TypeQualifiers::NONE && *elements != 0 => {
+            let (size_bits, _) = abi_size_alignment(context, declaration, path, ty, 0)?;
+            if !rust_object_size_fits(context.source.source().target().pointer_width(), size_bits) {
+                return unsupported_type(
+                    declaration,
+                    path,
+                    "array exceeds Rust's target object-size limit",
+                );
+            }
             RustTypeKind::FixedArray {
                 element: Box::new(lower_type(
                     context,
@@ -867,19 +1118,7 @@ fn lower_function_pointer(
         .enumerate()
         .map(|(index, parameter)| {
             let parameter_path = format!("{path}.parameters[{index}]");
-            if parameter_requires_c_adjustment(
-                context,
-                declaration,
-                &parameter_path,
-                &parameter.ty,
-            )? {
-                return unsupported_type(
-                    declaration,
-                    &parameter_path,
-                    "nested C parameter adjustment is not frozen",
-                );
-            }
-            lower_type(context, declaration, &parameter_path, &parameter.ty)
+            lower_parameter_type(context, declaration, &parameter_path, &parameter.ty)
         })
         .collect::<GenerationResult<Vec<_>>>()?;
     Ok(RustTypeKind::FunctionPointer {
@@ -958,6 +1197,85 @@ fn parameter_requires_c_adjustment(
     })
 }
 
+fn lower_parameter_type(
+    context: &LoweringContext<'_>,
+    declaration: DeclarationId,
+    path: &str,
+    ty: &CType,
+) -> GenerationResult<RustType> {
+    if !parameter_requires_c_adjustment(context, declaration, path, ty)? {
+        return lower_type(context, declaration, path, ty);
+    }
+    let mut aliases = BTreeSet::new();
+    lower_adjusted_parameter_type(context, declaration, path, ty, &mut aliases)
+}
+
+fn lower_adjusted_parameter_type(
+    context: &LoweringContext<'_>,
+    declaration: DeclarationId,
+    path: &str,
+    ty: &CType,
+    aliases: &mut BTreeSet<DeclarationId>,
+) -> GenerationResult<RustType> {
+    validate_type_semantics(declaration, path, ty)?;
+    let kind = match &ty.kind {
+        CTypeKind::AliasRef(target) => {
+            if !aliases.insert(*target) {
+                return unsupported_type(declaration, path, "parameter type alias chain is cyclic");
+            }
+            let target_declaration = context.source.source().declaration(*target).ok_or(
+                GenerationError::MissingDeclaration {
+                    declaration: *target,
+                },
+            )?;
+            let SourceDeclarationKind::TypeAlias(alias) = &target_declaration.kind else {
+                return unsupported_type(
+                    declaration,
+                    path,
+                    "parameter AliasRef does not resolve to a type alias",
+                );
+            };
+            let lowered = lower_adjusted_parameter_type(
+                context,
+                declaration,
+                &format!("{path}.alias_target"),
+                &alias.target,
+                aliases,
+            );
+            aliases.remove(target);
+            return lowered;
+        }
+        CTypeKind::Array { element, bound, .. } => {
+            if matches!(
+                bound,
+                ArrayBound::Variable { .. } | ArrayBound::Invalid { .. }
+            ) {
+                return unsupported_type(
+                    declaration,
+                    path,
+                    "variable or invalid parameter array bound is not certified",
+                );
+            }
+            RustTypeKind::Pointer(Box::new(lower_type(
+                context,
+                declaration,
+                &format!("{path}.adjusted_pointee"),
+                element,
+            )?))
+        }
+        CTypeKind::Function(function) => {
+            lower_function_pointer(context, declaration, path, function)?
+        }
+        _ => return lower_type(context, declaration, path, ty),
+    };
+    Ok(RustType {
+        qualifiers: ty.qualifiers,
+        nullability: ty.nullability,
+        support: ty.support.clone(),
+        kind,
+    })
+}
+
 fn requires_c_parameter_adjustment<'a>(
     ty: &'a CType,
     mut resolve_alias: impl FnMut(DeclarationId) -> Option<&'a CType>,
@@ -985,22 +1303,19 @@ fn lower_integer(
     integer: &CIntegerType,
     model: &CDataModel,
 ) -> GenerationResult<RustScalar> {
-    let (bits, signedness) = match integer {
-        CIntegerType::Char { signedness } => (
-            model.char_layout.storage_bits,
-            match signedness {
-                CharTypeSignedness::Plain => match model.char_signedness {
-                    CharSignedness::Signed => Signedness::Signed,
-                    CharSignedness::Unsigned => Signedness::Unsigned,
-                },
-                CharTypeSignedness::Signed => Signedness::Signed,
-                CharTypeSignedness::Unsigned => Signedness::Unsigned,
+    let signedness = match integer {
+        CIntegerType::Char { signedness } => match signedness {
+            CharTypeSignedness::Plain => match model.char_signedness {
+                CharSignedness::Signed => Signedness::Signed,
+                CharSignedness::Unsigned => Signedness::Unsigned,
             },
-        ),
-        CIntegerType::Short { signedness } => (model.short_layout.storage_bits, *signedness),
-        CIntegerType::Int { signedness } => (model.int_layout.storage_bits, *signedness),
-        CIntegerType::Long { signedness } => (model.long_layout.storage_bits, *signedness),
-        CIntegerType::LongLong { signedness } => (model.long_long_layout.storage_bits, *signedness),
+            CharTypeSignedness::Signed => Signedness::Signed,
+            CharTypeSignedness::Unsigned => Signedness::Unsigned,
+        },
+        CIntegerType::Short { signedness }
+        | CIntegerType::Int { signedness }
+        | CIntegerType::Long { signedness }
+        | CIntegerType::LongLong { signedness } => *signedness,
         CIntegerType::Int128 { .. } => {
             return unsupported_type(declaration, path, "128-bit C integers are not frozen");
         }
@@ -1017,11 +1332,85 @@ fn lower_integer(
             "Rust signed integers require two's-complement target representation",
         );
     }
-    scalar_for(bits, signedness).ok_or_else(|| GenerationError::UnsupportedType {
-        declaration,
-        path: path.to_owned(),
-        reason: "integer storage width has no frozen Rust scalar",
-    })
+    let scalar = match integer {
+        CIntegerType::Char {
+            signedness: CharTypeSignedness::Plain,
+        } => RustScalar::CChar {
+            storage_bits: model.char_layout.storage_bits,
+            alignment_bits: model.char_layout.alignment_bits,
+        },
+        CIntegerType::Char {
+            signedness: CharTypeSignedness::Signed,
+        } => RustScalar::CSignedChar {
+            storage_bits: model.char_layout.storage_bits,
+            alignment_bits: model.char_layout.alignment_bits,
+        },
+        CIntegerType::Char {
+            signedness: CharTypeSignedness::Unsigned,
+        } => RustScalar::CUnsignedChar {
+            storage_bits: model.char_layout.storage_bits,
+            alignment_bits: model.char_layout.alignment_bits,
+        },
+        CIntegerType::Short {
+            signedness: Signedness::Signed,
+        } => RustScalar::CShort {
+            storage_bits: model.short_layout.storage_bits,
+            alignment_bits: model.short_layout.alignment_bits,
+        },
+        CIntegerType::Short {
+            signedness: Signedness::Unsigned,
+        } => RustScalar::CUnsignedShort {
+            storage_bits: model.short_layout.storage_bits,
+            alignment_bits: model.short_layout.alignment_bits,
+        },
+        CIntegerType::Int {
+            signedness: Signedness::Signed,
+        } => RustScalar::CInt {
+            storage_bits: model.int_layout.storage_bits,
+            alignment_bits: model.int_layout.alignment_bits,
+        },
+        CIntegerType::Int {
+            signedness: Signedness::Unsigned,
+        } => RustScalar::CUnsignedInt {
+            storage_bits: model.int_layout.storage_bits,
+            alignment_bits: model.int_layout.alignment_bits,
+        },
+        CIntegerType::Long {
+            signedness: Signedness::Signed,
+        } => RustScalar::CLong {
+            storage_bits: model.long_layout.storage_bits,
+            alignment_bits: model.long_layout.alignment_bits,
+        },
+        CIntegerType::Long {
+            signedness: Signedness::Unsigned,
+        } => RustScalar::CUnsignedLong {
+            storage_bits: model.long_layout.storage_bits,
+            alignment_bits: model.long_layout.alignment_bits,
+        },
+        CIntegerType::LongLong {
+            signedness: Signedness::Signed,
+        } => RustScalar::CLongLong {
+            storage_bits: model.long_long_layout.storage_bits,
+            alignment_bits: model.long_long_layout.alignment_bits,
+        },
+        CIntegerType::LongLong {
+            signedness: Signedness::Unsigned,
+        } => RustScalar::CUnsignedLongLong {
+            storage_bits: model.long_long_layout.storage_bits,
+            alignment_bits: model.long_long_layout.alignment_bits,
+        },
+        CIntegerType::Int128 { .. } | CIntegerType::BitInt { .. } => {
+            unreachable!("unsupported integer ranks returned above")
+        }
+    };
+    if scalar.size_bits() == 0 || scalar.alignment_bits() == Some(0) {
+        return unsupported_type(
+            declaration,
+            path,
+            "C integer rank has an invalid target layout",
+        );
+    }
+    Ok(scalar)
 }
 
 fn lower_float(
@@ -1035,13 +1424,19 @@ fn lower_float(
             if model.float_layout.scalar.storage_bits == 32
                 && model.float_layout.format == FloatingFormat::IeeeBinary32 =>
         {
-            Ok(RustScalar::F32)
+            Ok(RustScalar::CFloat {
+                storage_bits: model.float_layout.scalar.storage_bits,
+                alignment_bits: model.float_layout.scalar.alignment_bits,
+            })
         }
         CFloatingType::Double
             if model.double_layout.scalar.storage_bits == 64
                 && model.double_layout.format == FloatingFormat::IeeeBinary64 =>
         {
-            Ok(RustScalar::F64)
+            Ok(RustScalar::CDouble {
+                storage_bits: model.double_layout.scalar.storage_bits,
+                alignment_bits: model.double_layout.scalar.alignment_bits,
+            })
         }
         CFloatingType::Float | CFloatingType::Double => unsupported_type(
             declaration,
@@ -1058,7 +1453,7 @@ fn lower_float(
     }
 }
 
-fn lower_calling_convention(
+pub(crate) fn lower_calling_convention(
     declaration: DeclarationId,
     convention: &CallingConvention,
     architecture: Architecture,
@@ -1169,6 +1564,13 @@ fn abi_size_alignment(
                         declaration,
                         reason: "array size overflowed",
                     })?;
+            if !rust_object_size_fits(context.source.source().target().pointer_width(), size) {
+                return unsupported_type(
+                    declaration,
+                    path,
+                    "array exceeds Rust's target object-size limit",
+                );
+            }
             Ok((size, alignment))
         }
         CTypeKind::Array { .. } => unsupported_type(
@@ -1260,10 +1662,53 @@ fn scalar_for(bits: u16, signedness: Signedness) -> Option<RustScalar> {
     }
 }
 
+fn scalar_integer_compatible(source: RustScalar, measured: RustScalar) -> bool {
+    source.size_bits() == measured.size_bits()
+        && scalar_signedness(source).is_some()
+        && scalar_signedness(source) == scalar_signedness(measured)
+}
+
+fn scalar_signedness(scalar: RustScalar) -> Option<Signedness> {
+    match scalar {
+        RustScalar::CChar { .. } => None,
+        RustScalar::CSignedChar { .. }
+        | RustScalar::CShort { .. }
+        | RustScalar::CInt { .. }
+        | RustScalar::CLong { .. }
+        | RustScalar::CLongLong { .. }
+        | RustScalar::I8
+        | RustScalar::I16
+        | RustScalar::I32
+        | RustScalar::I64 => Some(Signedness::Signed),
+        RustScalar::CUnsignedChar { .. }
+        | RustScalar::CUnsignedShort { .. }
+        | RustScalar::CUnsignedInt { .. }
+        | RustScalar::CUnsignedLong { .. }
+        | RustScalar::CUnsignedLongLong { .. }
+        | RustScalar::U8
+        | RustScalar::U16
+        | RustScalar::U32
+        | RustScalar::U64 => Some(Signedness::Unsigned),
+        RustScalar::Bool
+        | RustScalar::CFloat { .. }
+        | RustScalar::CDouble { .. }
+        | RustScalar::F32
+        | RustScalar::F64 => None,
+    }
+}
+
 fn integer_fits(value: ExactInteger, storage: RustScalar) -> bool {
     let bits = storage.size_bits();
     match storage {
-        RustScalar::I8 | RustScalar::I16 | RustScalar::I32 | RustScalar::I64 => {
+        RustScalar::CSignedChar { .. }
+        | RustScalar::CShort { .. }
+        | RustScalar::CInt { .. }
+        | RustScalar::CLong { .. }
+        | RustScalar::CLongLong { .. }
+        | RustScalar::I8
+        | RustScalar::I16
+        | RustScalar::I32
+        | RustScalar::I64 => {
             let maximum = (1_i128 << (bits - 1)) - 1;
             let minimum = -(1_i128 << (bits - 1));
             match value {
@@ -1271,14 +1716,27 @@ fn integer_fits(value: ExactInteger, storage: RustScalar) -> bool {
                 ExactInteger::Unsigned { value } => value <= maximum as u128,
             }
         }
-        RustScalar::U8 | RustScalar::U16 | RustScalar::U32 | RustScalar::U64 => {
+        RustScalar::CUnsignedChar { .. }
+        | RustScalar::CUnsignedShort { .. }
+        | RustScalar::CUnsignedInt { .. }
+        | RustScalar::CUnsignedLong { .. }
+        | RustScalar::CUnsignedLongLong { .. }
+        | RustScalar::U8
+        | RustScalar::U16
+        | RustScalar::U32
+        | RustScalar::U64 => {
             let maximum = (1_u128 << bits) - 1;
             match value {
                 ExactInteger::Signed { value } => value >= 0 && (value as u128) <= maximum,
                 ExactInteger::Unsigned { value } => value <= maximum,
             }
         }
-        RustScalar::Bool | RustScalar::F32 | RustScalar::F64 => false,
+        RustScalar::Bool
+        | RustScalar::CChar { .. }
+        | RustScalar::CFloat { .. }
+        | RustScalar::CDouble { .. }
+        | RustScalar::F32
+        | RustScalar::F64 => false,
     }
 }
 
@@ -1289,6 +1747,18 @@ fn align_up(value: u64, alignment: u64) -> Option<u64> {
     value
         .checked_add(alignment - 1)
         .map(|value| value & !(alignment - 1))
+}
+
+fn rust_object_size_fits(pointer_width: u16, size_bits: u64) -> bool {
+    if size_bits % 8 != 0 || pointer_width == 0 || pointer_width > 128 {
+        return false;
+    }
+    let maximum_bytes = if pointer_width == 128 {
+        i128::MAX as u128
+    } else {
+        (1_u128 << (pointer_width - 1)) - 1
+    };
+    u128::from(size_bits / 8) <= maximum_bytes
 }
 
 fn unsupported_type<T>(
@@ -1332,13 +1802,13 @@ impl NameAllocator {
         let mut base = source_name
             .filter(|name| !name.is_empty())
             .map(sanitize_identifier)
-            .unwrap_or_else(|| format!("__gerc_{role}_{}", short_hex(identity)));
+            .unwrap_or_else(|| format!("__gerc_{role}_{}", identity_hex(identity)));
         if is_unrawable_keyword(&base) {
             base = format!("__gerc_{base}");
         }
         let mut candidate = escape_keyword(base.clone());
         if !self.used.insert(candidate.clone()) {
-            candidate = escape_keyword(format!("{base}_{}", short_hex(identity)));
+            candidate = escape_keyword(format!("{base}_{}", identity_hex(identity)));
             if !self.used.insert(candidate.clone()) {
                 return Err(GenerationError::ProjectionInvariant {
                     reason: "identifier allocation collision survived its identity suffix",
@@ -1431,6 +1901,7 @@ fn is_keyword(value: &str) -> bool {
             | "unsafe"
             | "unsized"
             | "use"
+            | "union"
             | "virtual"
             | "where"
             | "while"
@@ -1438,11 +1909,8 @@ fn is_keyword(value: &str) -> bool {
     )
 }
 
-fn short_hex(identity: &[u8; 32]) -> String {
-    identity[..6]
-        .iter()
-        .map(|byte| format!("{byte:02x}"))
-        .collect()
+fn identity_hex(identity: &[u8; 32]) -> String {
+    identity.iter().map(|byte| format!("{byte:02x}")).collect()
 }
 
 #[cfg(test)]
@@ -1458,16 +1926,19 @@ mod tests {
         Architecture, ArrayBound, CFunctionType, CType, CTypeKind, CallingConvention,
         DeclarationId, DeclarationIdentity, EntityNamespace, EntityScope, FunctionPrototype,
         Linkage, Nullability, OperatingSystem, SourceDeclaration, SourceDeclarationKind,
-        SourceName, SourceTypeAlias, SupportStatus, TypeQualifiers, Visibility,
+        SourceName, SourceTypeAlias, SourceVariable, SupportStatus, TypeQualifiers, Visibility,
     };
 
     use linc::contract::SymbolDecoration;
 
     use super::{
-        lower_calling_convention, requires_c_parameter_adjustment, validate_emittable_symbol_name,
-        NameAllocator,
+        infer_packing, lower_calling_convention, requires_c_parameter_adjustment,
+        rust_object_size_fits, validate_emittable_symbol_name, variable_mutability, NameAllocator,
+        RecordFieldShape,
     };
-    use crate::{GenerationErrorCode, SourceDeclarationMetadata};
+    use crate::{
+        GenerationErrorCode, RustRecordKind, RustVariableMutability, SourceDeclarationMetadata,
+    };
 
     static NEXT_TEMP: AtomicU64 = AtomicU64::new(0);
 
@@ -1479,7 +1950,7 @@ mod tests {
             "return", "self", "Self", "static", "struct", "super", "trait", "true", "type",
             "unsafe", "use", "where", "while", "async", "await", "dyn", "abstract", "become",
             "box", "do", "final", "macro", "override", "priv", "typeof", "unsized", "virtual",
-            "yield", "try", "gen",
+            "yield", "try", "gen", "union", "_",
         ];
         let mut allocator = NameAllocator::default();
         let mut source = String::from("#![no_std]\n");
@@ -1520,13 +1991,38 @@ mod tests {
             source.push_str("pub fn ");
             source.push_str(name.as_str());
             source.push_str("() {}\n");
-            if matches!(keyword, "crate" | "self" | "Self" | "super") {
+            if matches!(keyword, "_" | "crate" | "self" | "Self" | "super") {
                 assert!(!name.as_str().starts_with("r#"));
             } else {
                 assert!(name.as_str().starts_with("r#"));
             }
         }
         compile_rust(&source, "keyword_projection");
+    }
+
+    #[test]
+    fn c_namespaces_and_post_normalization_collisions_remain_distinct() {
+        let mut allocator = NameAllocator::default();
+        let first = allocator
+            .local_name(Some("same-name"), "ordinary", &[1; 32])
+            .expect("first normalized name");
+        let second = allocator
+            .local_name(Some("same_u2dname"), "tag", &[2; 32])
+            .expect("post-normalization collision");
+        let third = allocator
+            .local_name(Some("same-name"), "value", &[3; 32])
+            .expect("C namespace collision");
+        assert_eq!(first.as_str(), "same_u2dname");
+        assert_ne!(first, second);
+        assert_ne!(first, third);
+        assert_ne!(second, third);
+        let source = format!(
+            "#![no_std]\npub struct {} {{ _x: u8 }}\npub type {} = u8;\npub const {}: u8 = 0;\n",
+            first.as_str(),
+            second.as_str(),
+            third.as_str(),
+        );
+        compile_rust(&source, "namespace_collisions");
     }
 
     #[test]
@@ -1649,6 +2145,123 @@ mod tests {
             underscored.code(),
             GenerationErrorCode::UnsupportedDeclaration
         );
+    }
+
+    #[test]
+    fn globals_preserve_constness_and_tls_fails_closed() {
+        let declaration = declaration_id(8);
+        let variable = |is_const, thread_local| SourceVariable {
+            link_name: "h4_global".to_owned(),
+            ty: CType {
+                qualifiers: TypeQualifiers {
+                    is_const,
+                    ..TypeQualifiers::NONE
+                },
+                nullability: Nullability::Unspecified,
+                kind: CTypeKind::Bool,
+                support: SupportStatus::Supported,
+            },
+            thread_local,
+        };
+        assert_eq!(
+            variable_mutability(declaration, &variable(true, false)).expect("const global"),
+            RustVariableMutability::ReadOnly
+        );
+        assert_eq!(
+            variable_mutability(declaration, &variable(false, false)).expect("mutable global"),
+            RustVariableMutability::Mutable
+        );
+        let error =
+            variable_mutability(declaration, &variable(false, true)).expect_err("TLS must reject");
+        assert_eq!(error.code(), GenerationErrorCode::UnsupportedDeclaration);
+        assert!(error.to_string().contains("thread-local"));
+    }
+
+    #[test]
+    fn measured_natural_and_packed_record_layouts_have_exact_rust_representations() {
+        let natural = [
+            RecordFieldShape {
+                offset_bits: 0,
+                size_bits: 8,
+                natural_alignment_bits: 8,
+                measured_alignment_bits: Some(8),
+            },
+            RecordFieldShape {
+                offset_bits: 32,
+                size_bits: 32,
+                natural_alignment_bits: 32,
+                measured_alignment_bits: Some(32),
+            },
+        ];
+        assert_eq!(
+            infer_packing(RustRecordKind::Struct, &natural, 64, 32),
+            Some(None)
+        );
+
+        let packed_one = [
+            natural[0],
+            RecordFieldShape {
+                offset_bits: 8,
+                ..natural[1]
+            },
+        ];
+        assert_eq!(
+            infer_packing(RustRecordKind::Struct, &packed_one, 40, 8),
+            Some(Some(8))
+        );
+
+        let packed_two = [
+            natural[0],
+            RecordFieldShape {
+                offset_bits: 16,
+                measured_alignment_bits: Some(16),
+                ..natural[1]
+            },
+        ];
+        assert_eq!(
+            infer_packing(RustRecordKind::Struct, &packed_two, 48, 16),
+            Some(Some(16))
+        );
+
+        let packed_union = [
+            RecordFieldShape {
+                offset_bits: 0,
+                size_bits: 32,
+                natural_alignment_bits: 32,
+                measured_alignment_bits: Some(32),
+            },
+            RecordFieldShape {
+                offset_bits: 0,
+                size_bits: 64,
+                natural_alignment_bits: 64,
+                measured_alignment_bits: Some(32),
+            },
+        ];
+        assert_eq!(
+            infer_packing(RustRecordKind::Union, &packed_union, 64, 32),
+            Some(Some(32))
+        );
+
+        let unrepresentable = [
+            natural[0],
+            RecordFieldShape {
+                offset_bits: 24,
+                ..natural[1]
+            },
+        ];
+        assert_eq!(
+            infer_packing(RustRecordKind::Struct, &unrepresentable, 64, 32),
+            None
+        );
+    }
+
+    #[test]
+    fn fixed_arrays_must_fit_rust_target_object_limits() {
+        assert!(rust_object_size_fits(32, 8));
+        assert!(rust_object_size_fits(32, (i32::MAX as u64) * 8));
+        assert!(!rust_object_size_fits(32, (i32::MAX as u64 + 1) * 8));
+        assert!(rust_object_size_fits(64, u64::MAX - 7));
+        assert!(!rust_object_size_fits(64, u64::MAX));
     }
 
     #[test]

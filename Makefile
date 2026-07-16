@@ -14,7 +14,7 @@ $(info Project: $(PROJECT_NAME))
 $(info Version: $(CURRENT_VERSION))
 $(info ------------------------------------------)
 
-.PHONY: build b compile c fmt fmt-check lint check-features test t test-contract test-package test-system docs-check verify help h clean docs release
+.PHONY: build b compile c fmt fmt-check lint check-features test t test-contract test-generated test-package test-system docs-check verify help h clean docs release
 
 SHELL := /bin/bash
 
@@ -53,6 +53,13 @@ check-features:
 test-contract:
 	@bash tools/run-filtered-test.sh cargo test --test contract_h1 -- --test-threads=1
 
+test-generated:
+	@set -eu; \
+		gcc="$${GERC_H4_GCC:-gcc}"; \
+		command -v "$$gcc" >/dev/null 2>&1 || { echo "$$gcc is required for the certified generated ABI lane"; exit 1; }; \
+		command -v rustc >/dev/null 2>&1 || { echo "rustc is required for the certified generated ABI lane"; exit 1; }; \
+		GERC_H4_GCC="$$(command -v "$$gcc")" bash tools/run-filtered-test.sh cargo test --test h4_native -- --nocapture --test-threads=1
+
 test-package:
 	@tools/test-package.sh follang-gerc gerc
 
@@ -82,6 +89,7 @@ verify:
 		$(MAKE) check-features; \
 		$(MAKE) test; \
 		$(MAKE) test-contract; \
+		$(MAKE) test-generated; \
 		$(MAKE) test-package; \
 		$(MAKE) test-system; \
 		$(MAKE) docs-check; \
@@ -101,6 +109,7 @@ help:
 	@echo "  check-features  Check default, all, and no-default features"
 	@echo "  test         Run tests"
 	@echo "  test-contract  Run contract tests"
+	@echo "  test-generated Run the explicit GCC generated C/Rust ABI lane"
 	@echo "  test-package   Test the package archive and clean consumer"
 	@echo "  test-system    Run required system tests"
 	@echo "  docs-check     Build Rust and mdBook documentation"
