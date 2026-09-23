@@ -29,7 +29,7 @@ name = "gerc"
 
 [dependencies]
 blake3 = "1"
-linc = { package = "follang-linc", version = "=0.1.0", git = "https://github.com/fol-lang/linc", rev = "2405c975ee6abc5c56c5d18f4e132077f01b8471", default-features = false, features = ["contracts"] }
+linc = { package = "follang-linc", version = "=0.1.0", git = "https://github.com/fol-lang/linc", rev = "7f519985769c0b4aa5d4219b0d222cdf59db18d2", default-features = false, features = ["contracts"] }
 parc = { package = "follang-parc", version = "=0.16.0", git = "https://github.com/fol-lang/parc", rev = "a938364b49d6f51040151d3ab591ddac139fab0c" }
 syn = { version = "2", default-features = false, features = ["full", "parsing"] }
 thiserror = "2"
