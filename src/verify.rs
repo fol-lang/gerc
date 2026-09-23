@@ -365,9 +365,7 @@ impl<'a> SourceVerifier<'a> {
             CTypeKind::Void => {
                 if !matches!(
                     position,
-                    TypePosition::Return
-                        | TypePosition::BehindPointer
-                        | TypePosition::AliasTarget
+                    TypePosition::Return | TypePosition::BehindPointer | TypePosition::AliasTarget
                 ) {
                     return self.unsupported_type(owner, path, "void appears in a value position");
                 }
@@ -435,7 +433,9 @@ impl<'a> SourceVerifier<'a> {
             CTypeKind::Function(function) => {
                 if !matches!(
                     position,
-                    TypePosition::BehindPointer | TypePosition::Parameter
+                    TypePosition::BehindPointer
+                        | TypePosition::Parameter
+                        | TypePosition::AliasTarget
                 ) {
                     return self.unsupported_type(
                         owner,

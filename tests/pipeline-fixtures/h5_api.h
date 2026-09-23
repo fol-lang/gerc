@@ -18,6 +18,7 @@ typedef union h5_choice {
 } h5_choice;
 
 typedef void (*h5_callback)(int *value, int delta);
+typedef void h5_handler(int *value, int delta);
 
 typedef struct h5_payload {
     _Bool boolean;
@@ -40,6 +41,7 @@ typedef struct h5_payload {
     h5_mode mode;
     h5_choice choice;
     h5_callback callback;
+    h5_handler *handler;
     int match;
     int crate;
 } h5_payload;

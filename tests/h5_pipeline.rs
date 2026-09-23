@@ -743,6 +743,7 @@ fn main() {{
             {choice_integer}: core::mem::ManuallyDrop::new(31),
         }},
         {callback_field}: Some(callback),
+        {handler_field}: Some(callback),
         {match_field}: 3,
         {crate_field}: 0x1234,
     }};
@@ -766,7 +767,7 @@ fn main() {{
     assert!(output.{opaque}.is_null());
     assert_eq!(output.{mode}, 7);
     assert_eq!(unsafe {{ *output.{choice_field}.{choice_integer} }}, 47);
-    assert_eq!(output.{match_field}, 20);
+    assert_eq!(output.{match_field}, 26);
     assert_eq!(output.{crate_field}, 0x479e);
 }}
 "#,
@@ -793,6 +794,7 @@ fn main() {{
         mode = field("mode"),
         choice_field = field("choice"),
         callback_field = field("callback"),
+        handler_field = field("handler"),
         match_field = field("match"),
         crate_field = field("crate"),
     );

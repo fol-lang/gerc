@@ -32,6 +32,9 @@ h5_payload h5_roundtrip(h5_payload type) {
     if (type.callback != 0) {
         type.callback(&type.signed_int, dependency_delta);
     }
+    if (type.handler != 0) {
+        type.handler(&type.match, 5);
+    }
     type.match += 17;
     type.crate ^= 0x55aa;
     return type;

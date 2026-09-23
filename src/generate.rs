@@ -75,12 +75,11 @@ fn generate_inner(request: GenerationRequest<'_>) -> GenerationResult<Generation
     };
     for pass_redundant in [false, true] {
         for entry in closure {
-            let declaration =
-                source
-                    .declaration(entry.declaration())
-                    .ok_or(GenerationError::MissingDeclaration {
-                        declaration: entry.declaration(),
-                    })?;
+            let declaration = source.declaration(entry.declaration()).ok_or(
+                GenerationError::MissingDeclaration {
+                    declaration: entry.declaration(),
+                },
+            )?;
             if is_redundant_self_alias(declaration) != pass_redundant {
                 continue;
             }
@@ -830,12 +829,44 @@ fn lower_alias(
     rust_name: RustName,
     alias: &SourceTypeAlias,
 ) -> GenerationResult<RustTypeAlias> {
+    let target = match aliased_function(context, &alias.target) {
+        Some(function) => RustType {
+            qualifiers: TypeQualifiers::NONE,
+            nullability: Nullability::Unspecified,
+            support: alias.target.support.clone(),
+            kind: lower_function_pointer(context, declaration.id, "type_alias.target", function)?,
+        },
+        None => lower_type(context, declaration.id, "type_alias.target", &alias.target)?,
+    };
     Ok(RustTypeAlias {
         declaration: declaration.id,
         rust_name,
-        target: lower_type(context, declaration.id, "type_alias.target", &alias.target)?,
+        target,
         source: SourceDeclarationMetadata::from_source(declaration),
     })
+}
+
+/// The function type a C type names, directly or through type aliases. A
+/// function typedef has no Rust value type, so it projects as the pointer to
+/// it, and a pointer to it is that same function pointer.
+fn aliased_function<'a>(
+    context: &'a LoweringContext<'_>,
+    ty: &'a CType,
+) -> Option<&'a parc::contract::CFunctionType> {
+    let mut current = ty;
+    for _ in 0..64 {
+        match &current.kind {
+            CTypeKind::Function(function) => return Some(function),
+            CTypeKind::AliasRef(target) => {
+                match &context.source.source().declaration(*target)?.kind {
+                    SourceDeclarationKind::TypeAlias(alias) => current = &alias.target,
+                    _ => return None,
+                }
+            }
+            _ => return None,
+        }
+    }
+    None
 }
 
 fn lower_variable(
@@ -1056,12 +1087,12 @@ fn lower_type(
         CTypeKind::Complex(_) => {
             return unsupported_type(declaration, path, "complex C representation is not frozen");
         }
-        CTypeKind::Pointer(pointee) => match &pointee.kind {
-            CTypeKind::Function(function) => {
+        CTypeKind::Pointer(pointee) => match aliased_function(context, pointee) {
+            Some(function) => {
                 validate_type_semantics(declaration, &format!("{path}.pointee"), pointee)?;
                 lower_function_pointer(context, declaration, path, function)?
             }
-            _ => RustTypeKind::Pointer(Box::new(lower_type(
+            None => RustTypeKind::Pointer(Box::new(lower_type(
                 context,
                 declaration,
                 &format!("{path}.pointee"),
