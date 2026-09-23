@@ -72,10 +72,13 @@ struct h5_signal { h5_signal_cb cb; int count; };
 typedef struct h5_loop { h5_signal watcher; int live; } h5_loop;
 int h5_loop_count(h5_loop loop);
 
-/* libsodium's hash state: a record whose declared alignment exceeds every
- * field's. */
+/* libsodium's hash state, packed like its header packs it: a record whose
+ * declared alignment exceeds every field's, beside one packing narrows. */
+#pragma pack(push, 1)
 typedef struct __attribute__((aligned(64))) h5_hash { unsigned char opaque[96]; } h5_hash;
-int h5_hash_first(const h5_hash *state);
+struct h5_packed { char tag; int value; };
+#pragma pack(pop)
+int h5_hash_first(const h5_hash *state, const struct h5_packed *packed);
 int h5_variadic(int count, ...);
 #if defined(GERC_H5_ENABLE_MS_ABI)
 int __attribute__((ms_abi)) h5_msabi(int value);

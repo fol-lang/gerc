@@ -321,39 +321,46 @@ fn certify_record_meeting_its_own_alias(harness: &Harness) {
     .expect("a record whose callback field names its own alias generates");
 }
 
-/// libsodium's `crypto_generichash_state`, reached through a pointer:
-/// `aligned(64)` raises the record's alignment past its bytes' and pads its
-/// size, which only `repr(align)` reproduces; the emitted size and alignment
-/// assertions must compile.
+/// libsodium's `crypto_generichash_state`, reached through a pointer and
+/// defined under `#pragma pack(1)` as its header does: `aligned(64)` raises the
+/// record's alignment past its bytes' and pads its size, which only
+/// `repr(align)` reproduces, while the packing narrows its neighbour to
+/// `repr(packed(1))`. The emitted size and alignment assertions must compile.
 fn certify_over_aligned_record(harness: &Harness) {
     let root = declaration_id(&harness.source, "h5_hash_first", Kind::Function);
     let state = declaration_id(&harness.source, "h5_hash", Kind::Record);
-    let complete = complete(&harness.source, [root, state]);
+    let packed = declaration_id(&harness.source, "h5_packed", Kind::Record);
+    let complete = complete(&harness.source, [root, state, packed]);
     let evidence = certify(harness, &complete, &harness.full_inputs())
         .expect("over-aligned record certification");
-    let selection = ItemSelection::try_new([root, state]).expect("over-aligned selection");
+    let selection = ItemSelection::try_new([root, state, packed]).expect("over-aligned selection");
     let bundle = generate(
         GenerationRequest::try_new(&complete, &evidence, &selection)
             .expect("over-aligned generation request"),
     )
     .expect("an over-aligned record generates");
-    let record = bundle
-        .projection()
-        .items()
-        .iter()
-        .find_map(|item| match item {
-            RustItem::Record(record) if record.kind() == RustRecordKind::Struct => Some(record),
-            _ => None,
-        })
-        .expect("over-aligned record projection");
-    assert_eq!(record.forced_alignment_bits(), Some(512));
-    assert_eq!(record.size_bits(), Some(1024));
+    let record = |declaration| {
+        bundle
+            .projection()
+            .items()
+            .iter()
+            .find_map(|item| match item {
+                RustItem::Record(record) if record.declaration() == declaration => Some(record),
+                _ => None,
+            })
+            .expect("record projection")
+    };
+    assert_eq!(record(state).forced_alignment_bits(), Some(512));
+    assert_eq!(record(state).size_bits(), Some(1024));
+    assert_eq!(record(packed).packing_bits(), Some(8));
+    assert_eq!(record(packed).size_bits(), Some(40));
     let generated = bundle
         .files()
         .get("src/lib.rs")
         .and_then(|file| file.utf8_contents())
         .expect("generated over-aligned source");
     assert!(generated.contains("#[repr(C, align(64))]"));
+    assert!(generated.contains("#[repr(C, packed(1))]"));
     let directory = harness.scratch.path().join("over-aligned-consumer");
     fs::create_dir(&directory).expect("create over-aligned consumer directory");
     let source = directory.join("bindings.rs");
