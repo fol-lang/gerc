@@ -118,6 +118,7 @@ fn h5_production_pipeline_certifies_positive_and_owning_layer_negative_cases() {
     let mut executed = BTreeSet::new();
 
     let positive = certify_positive_pipeline(&harness);
+    certify_record_meeting_its_own_alias(&harness);
     executed.insert("positive-abi-roundtrip");
     certify_macro_policy(&positive.bundle);
     executed.insert("preserve-nonemitted-macros");
@@ -300,6 +301,23 @@ fn certify_positive_pipeline(harness: &Harness) -> PositiveCertification {
 
     compile_and_run_generated(harness, &bundle, root);
     PositiveCertification { evidence, bundle }
+}
+
+/// libuv's `uv_signal_t` inside `uv_loop_t`: a record held by value whose
+/// callback field takes a pointer to its own alias. That meets the alias
+/// again one record down, which is recursion through a record, not a typedef
+/// cycle, and generates.
+fn certify_record_meeting_its_own_alias(harness: &Harness) {
+    let root = declaration_id(&harness.source, "h5_loop_count", Kind::Function);
+    let complete = complete(&harness.source, [root]);
+    let evidence = certify(harness, &complete, &harness.full_inputs())
+        .expect("self-referencing record certification");
+    let selection = ItemSelection::try_new([root]).expect("self-referencing selection");
+    generate(
+        GenerationRequest::try_new(&complete, &evidence, &selection)
+            .expect("self-referencing generation request"),
+    )
+    .expect("a record whose callback field names its own alias generates");
 }
 
 fn certify_macro_policy(bundle: &GenerationBundle) {

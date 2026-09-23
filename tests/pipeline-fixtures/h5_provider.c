@@ -55,6 +55,8 @@ h5_bits h5_bitfields(h5_bits value) {
     return value;
 }
 
+int h5_loop_count(h5_loop loop) { return loop.watcher.count + loop.live; }
+
 int h5_variadic(int count, ...) { return count; }
 
 #if defined(GERC_H5_ENABLE_MS_ABI)

@@ -63,6 +63,14 @@ double _Complex h5_complex(double _Complex value);
 _BitInt(17) h5_bit_int(_BitInt(17) value);
 #endif
 h5_bits h5_bitfields(h5_bits value);
+
+/* libuv's shape: a record whose callback field takes a pointer to its own
+ * alias, held by value inside another record. */
+typedef struct h5_signal h5_signal;
+typedef void (*h5_signal_cb)(h5_signal *self);
+struct h5_signal { h5_signal_cb cb; int count; };
+typedef struct h5_loop { h5_signal watcher; int live; } h5_loop;
+int h5_loop_count(h5_loop loop);
 int h5_variadic(int count, ...);
 #if defined(GERC_H5_ENABLE_MS_ABI)
 int __attribute__((ms_abi)) h5_msabi(int value);

@@ -520,7 +520,12 @@ impl<'a> SourceVerifier<'a> {
                             "opaque record is used by value",
                         );
                     }
-                    self.verify_record(*target, record, aliases, by_value_records)?;
+                    // A record starts a fresh alias context. A real typedef
+                    // cycle never passes through one, while libuv's
+                    // `uv_signal_t` -- a record whose callback field takes a
+                    // `uv_signal_t *` -- meets its own alias again one record
+                    // down. By-value recursion has its own guard.
+                    self.verify_record(*target, record, &mut Vec::new(), by_value_records)?;
                 }
             }
             CTypeKind::EnumRef(target) => {
