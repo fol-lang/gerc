@@ -170,6 +170,7 @@ fn hash_projection(hasher: &mut blake3::Hasher, projection: &ValidatedRustProjec
                     &record.alignment_bits().unwrap_or(u32::MAX).to_le_bytes(),
                 );
                 hash_optional_u32(hasher, record.packing_bits());
+                hash_optional_u32(hasher, record.forced_alignment_bits());
                 hash_count(hasher, record.fields().len());
                 for field in record.fields() {
                     hash_field(hasher, field.child().as_bytes());

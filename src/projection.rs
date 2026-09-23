@@ -315,6 +315,9 @@ pub struct RustRecord {
     /// Measured packing cap in bits when the layout cannot be represented by
     /// natural `repr(C)` alignment. `None` means natural layout.
     pub(crate) packing_bits: Option<u32>,
+    /// Measured alignment in bits that natural `repr(C)` does not reach,
+    /// rendered as `repr(C, align(N))`. Never set together with packing.
+    pub(crate) forced_alignment_bits: Option<u32>,
     pub(crate) source: SourceDeclarationMetadata,
 }
 
@@ -347,6 +350,10 @@ impl RustRecord {
     /// bits. This is absent for natural `repr(C)` records and opaque records.
     pub const fn packing_bits(&self) -> Option<u32> {
         self.packing_bits
+    }
+    /// The `repr(align(N))` floor required by the measured C layout, in bits.
+    pub const fn forced_alignment_bits(&self) -> Option<u32> {
+        self.forced_alignment_bits
     }
     pub fn occurrences(&self) -> &[DeclarationOccurrence] {
         self.source.occurrences()

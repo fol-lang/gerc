@@ -708,6 +708,7 @@ pub(crate) fn verify_projection(projection: &ValidatedRustProjection) -> Generat
                         || record.size_bits().is_some()
                         || record.alignment_bits().is_some()
                         || record.packing_bits().is_some()
+                        || record.forced_alignment_bits().is_some()
                     {
                         return invariant("opaque record carries concrete layout state");
                     }
@@ -732,6 +733,11 @@ pub(crate) fn verify_projection(projection: &ValidatedRustProjection) -> Generat
                             || alignment_bits > packing
                     }) {
                         return invariant("concrete record carries an invalid packing cap");
+                    }
+                    if record.forced_alignment_bits().is_some_and(|forced| {
+                        forced != alignment_bits || record.packing_bits().is_some()
+                    }) {
+                        return invariant("concrete record carries an invalid alignment floor");
                     }
                     for (index, field) in record.fields().iter().enumerate() {
                         if field.offset_bits() % 8 != 0 || field.size_bits() % 8 != 0 {
@@ -913,6 +919,7 @@ mod tests {
                 size_bits: None,
                 alignment_bits: None,
                 packing_bits: None,
+                forced_alignment_bits: None,
                 source: metadata(opaque_id, "opaque"),
             }),
             RustItem::TypeAlias(RustTypeAlias {
@@ -995,6 +1002,7 @@ mod tests {
             size_bits: Some(32),
             alignment_bits: Some(32),
             packing_bits: None,
+            forced_alignment_bits: None,
             source: metadata(owner, "bad_flexible"),
         })]);
         assert!(verify_projection(&flexible_projection)
@@ -1013,6 +1021,7 @@ mod tests {
             size_bits: Some(32),
             alignment_bits: Some(32),
             packing_bits: None,
+            forced_alignment_bits: None,
             source: metadata(owner, "bad_union"),
         })]);
         assert!(verify_projection(&union_projection)

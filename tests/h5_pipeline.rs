@@ -119,6 +119,7 @@ fn h5_production_pipeline_certifies_positive_and_owning_layer_negative_cases() {
 
     let positive = certify_positive_pipeline(&harness);
     certify_record_meeting_its_own_alias(&harness);
+    certify_over_aligned_record(&harness);
     executed.insert("positive-abi-roundtrip");
     certify_macro_policy(&positive.bundle);
     executed.insert("preserve-nonemitted-macros");
@@ -318,6 +319,55 @@ fn certify_record_meeting_its_own_alias(harness: &Harness) {
             .expect("self-referencing generation request"),
     )
     .expect("a record whose callback field names its own alias generates");
+}
+
+/// libsodium's `crypto_generichash_state`, reached through a pointer:
+/// `aligned(64)` raises the record's alignment past its bytes' and pads its
+/// size, which only `repr(align)` reproduces; the emitted size and alignment
+/// assertions must compile.
+fn certify_over_aligned_record(harness: &Harness) {
+    let root = declaration_id(&harness.source, "h5_hash_first", Kind::Function);
+    let state = declaration_id(&harness.source, "h5_hash", Kind::Record);
+    let complete = complete(&harness.source, [root, state]);
+    let evidence = certify(harness, &complete, &harness.full_inputs())
+        .expect("over-aligned record certification");
+    let selection = ItemSelection::try_new([root, state]).expect("over-aligned selection");
+    let bundle = generate(
+        GenerationRequest::try_new(&complete, &evidence, &selection)
+            .expect("over-aligned generation request"),
+    )
+    .expect("an over-aligned record generates");
+    let record = bundle
+        .projection()
+        .items()
+        .iter()
+        .find_map(|item| match item {
+            RustItem::Record(record) if record.kind() == RustRecordKind::Struct => Some(record),
+            _ => None,
+        })
+        .expect("over-aligned record projection");
+    assert_eq!(record.forced_alignment_bits(), Some(512));
+    assert_eq!(record.size_bits(), Some(1024));
+    let generated = bundle
+        .files()
+        .get("src/lib.rs")
+        .and_then(|file| file.utf8_contents())
+        .expect("generated over-aligned source");
+    assert!(generated.contains("#[repr(C, align(64))]"));
+    let directory = harness.scratch.path().join("over-aligned-consumer");
+    fs::create_dir(&directory).expect("create over-aligned consumer directory");
+    let source = directory.join("bindings.rs");
+    fs::write(&source, generated).expect("write over-aligned bindings");
+    checked(
+        Command::new(&harness.rustc)
+            .arg("--crate-name=h5_aligned")
+            .arg("--crate-type=rlib")
+            .arg("--edition=2021")
+            .arg("-o")
+            .arg(directory.join("libh5_aligned.rlib"))
+            .arg(&source),
+        "build over-aligned no_std crate",
+    );
 }
 
 fn certify_macro_policy(bundle: &GenerationBundle) {

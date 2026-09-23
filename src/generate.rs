@@ -344,6 +344,7 @@ fn lower_record(
             size_bits: None,
             alignment_bits: None,
             packing_bits: None,
+            forced_alignment_bits: None,
             source: SourceDeclarationMetadata::from_source(declaration),
         });
     }
@@ -392,20 +393,37 @@ struct RecordFieldShape {
     measured_alignment_bits: Option<u32>,
 }
 
-/// Infer the only Rust representation family GERC certifies: natural
-/// `repr(C)` or `repr(C, packed(N))` with a power-of-two byte cap. This is
-/// derived from measured offsets/size/alignment rather than from attribute
-/// spelling, so compiler-specific `packed` syntax never leaks across the
-/// contract boundary. The nested option distinguishes natural layout from no
-/// representable layout.
-fn infer_packing(
+/// The Rust representation a measured record needs beyond plain `repr(C)`:
+/// a packing cap, a raised minimum alignment, or neither. Rust admits at most
+/// one of the two on a type.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+struct RecordRepresentation {
+    packing_bits: Option<u32>,
+    forced_alignment_bits: Option<u32>,
+}
+
+/// Infer the only Rust representation families GERC certifies: natural
+/// `repr(C)`, `repr(C, packed(N))` with a power-of-two byte cap, or
+/// `repr(C, align(N))` when the measured alignment exceeds every field's.
+/// This is derived from measured offsets/size/alignment rather than from
+/// attribute spelling, so compiler-specific `packed`/`aligned` syntax never
+/// leaks across the contract boundary. `None` is no representable layout.
+fn infer_representation(
     kind: RustRecordKind,
     fields: &[RecordFieldShape],
     size_bits: u64,
     alignment_bits: u32,
-) -> Option<Option<u32>> {
-    if representation_matches(kind, fields, size_bits, alignment_bits, None) {
-        return Some(None);
+) -> Option<RecordRepresentation> {
+    let natural = RecordRepresentation::default();
+    if representation_matches(kind, fields, size_bits, alignment_bits, natural) {
+        return Some(natural);
+    }
+    let raised = RecordRepresentation {
+        packing_bits: None,
+        forced_alignment_bits: Some(alignment_bits),
+    };
+    if representation_matches(kind, fields, size_bits, alignment_bits, raised) {
+        return Some(raised);
     }
 
     let maximum_natural = fields
@@ -415,8 +433,12 @@ fn infer_packing(
         .unwrap_or(8);
     let mut cap = 8_u64;
     while cap <= maximum_natural && cap <= u64::from(u32::MAX) {
-        if representation_matches(kind, fields, size_bits, alignment_bits, Some(cap)) {
-            return Some(Some(cap as u32));
+        let packed = RecordRepresentation {
+            packing_bits: Some(cap as u32),
+            forced_alignment_bits: None,
+        };
+        if representation_matches(kind, fields, size_bits, alignment_bits, packed) {
+            return Some(packed);
         }
         let Some(next) = cap.checked_mul(2) else {
             break;
@@ -431,8 +453,9 @@ fn representation_matches(
     fields: &[RecordFieldShape],
     size_bits: u64,
     alignment_bits: u32,
-    packing_bits: Option<u64>,
+    representation: RecordRepresentation,
 ) -> bool {
+    let packing_bits = representation.packing_bits.map(u64::from);
     let mut record_alignment = 8_u64;
     let mut cursor = 0_u64;
     let mut maximum_size = 0_u64;
@@ -476,6 +499,12 @@ fn representation_matches(
 
     if let Some(cap) = packing_bits {
         record_alignment = record_alignment.min(cap);
+    }
+    if let Some(floor) = representation.forced_alignment_bits {
+        if u64::from(floor) <= record_alignment {
+            return false;
+        }
+        record_alignment = u64::from(floor);
     }
     let unrounded_size = match kind {
         RustRecordKind::Struct => cursor,
@@ -603,7 +632,7 @@ fn lower_natural_record(
         });
     }
 
-    let packing_bits = infer_packing(
+    let representation = infer_representation(
         RustRecordKind::Struct,
         &shapes,
         layout.size_bits(),
@@ -611,7 +640,7 @@ fn lower_natural_record(
     )
     .ok_or(GenerationError::UnsupportedRecordRepresentation {
         declaration: declaration.id,
-        reason: "measured record layout is neither natural repr(C) nor a supported packed layout",
+        reason: "measured record layout is neither natural repr(C) nor a supported packed or aligned layout",
     })?;
 
     Ok(RustRecord {
@@ -623,7 +652,8 @@ fn lower_natural_record(
         fields,
         size_bits: Some(layout.size_bits()),
         alignment_bits: Some(layout.alignment_bits()),
-        packing_bits,
+        packing_bits: representation.packing_bits,
+        forced_alignment_bits: representation.forced_alignment_bits,
         source: SourceDeclarationMetadata::from_source(declaration),
     })
 }
@@ -701,7 +731,7 @@ fn lower_natural_union(
             duplicate_ordinal: field.duplicate_ordinal,
         });
     }
-    let packing_bits = infer_packing(
+    let representation = infer_representation(
         RustRecordKind::Union,
         &shapes,
         layout.size_bits(),
@@ -709,7 +739,7 @@ fn lower_natural_union(
     )
     .ok_or(GenerationError::UnsupportedRecordRepresentation {
         declaration: declaration.id,
-        reason: "measured union layout is neither natural repr(C) nor a supported packed layout",
+        reason: "measured union layout is neither natural repr(C) nor a supported packed or aligned layout",
     })?;
     Ok(RustRecord {
         declaration: declaration.id,
@@ -720,7 +750,8 @@ fn lower_natural_union(
         fields,
         size_bits: Some(layout.size_bits()),
         alignment_bits: Some(layout.alignment_bits()),
-        packing_bits,
+        packing_bits: representation.packing_bits,
+        forced_alignment_bits: representation.forced_alignment_bits,
         source: SourceDeclarationMetadata::from_source(declaration),
     })
 }
@@ -1996,9 +2027,9 @@ mod tests {
     use linc::contract::SymbolDecoration;
 
     use super::{
-        infer_packing, lower_calling_convention, requires_c_parameter_adjustment,
+        infer_representation, lower_calling_convention, requires_c_parameter_adjustment,
         rust_object_size_fits, validate_emittable_symbol_name, variable_mutability, NameAllocator,
-        RecordFieldShape,
+        RecordFieldShape, RecordRepresentation,
     };
     use crate::{
         GenerationErrorCode, RustRecordKind, RustVariableMutability, SourceDeclarationMetadata,
@@ -2243,6 +2274,10 @@ mod tests {
 
     #[test]
     fn measured_natural_and_packed_record_layouts_have_exact_rust_representations() {
+        let packing = |kind, fields: &[RecordFieldShape], size_bits, alignment_bits| {
+            infer_representation(kind, fields, size_bits, alignment_bits)
+                .map(|representation| representation.packing_bits)
+        };
         let natural = [
             RecordFieldShape {
                 offset_bits: 0,
@@ -2258,7 +2293,7 @@ mod tests {
             },
         ];
         assert_eq!(
-            infer_packing(RustRecordKind::Struct, &natural, 64, 32),
+            packing(RustRecordKind::Struct, &natural, 64, 32),
             Some(None)
         );
 
@@ -2270,7 +2305,7 @@ mod tests {
             },
         ];
         assert_eq!(
-            infer_packing(RustRecordKind::Struct, &packed_one, 40, 8),
+            packing(RustRecordKind::Struct, &packed_one, 40, 8),
             Some(Some(8))
         );
 
@@ -2283,7 +2318,7 @@ mod tests {
             },
         ];
         assert_eq!(
-            infer_packing(RustRecordKind::Struct, &packed_two, 48, 16),
+            packing(RustRecordKind::Struct, &packed_two, 48, 16),
             Some(Some(16))
         );
 
@@ -2302,7 +2337,7 @@ mod tests {
             },
         ];
         assert_eq!(
-            infer_packing(RustRecordKind::Union, &packed_union, 64, 32),
+            packing(RustRecordKind::Union, &packed_union, 64, 32),
             Some(Some(32))
         );
 
@@ -2314,8 +2349,30 @@ mod tests {
             },
         ];
         assert_eq!(
-            infer_packing(RustRecordKind::Struct, &unrepresentable, 64, 32),
+            packing(RustRecordKind::Struct, &unrepresentable, 64, 32),
             None
+        );
+
+        let hash_state = [RecordFieldShape {
+            offset_bits: 0,
+            size_bits: 768,
+            natural_alignment_bits: 8,
+            measured_alignment_bits: Some(8),
+        }];
+        assert_eq!(
+            infer_representation(RustRecordKind::Struct, &hash_state, 1024, 512),
+            Some(RecordRepresentation {
+                packing_bits: None,
+                forced_alignment_bits: Some(512),
+            })
+        );
+        assert_eq!(
+            infer_representation(RustRecordKind::Struct, &hash_state, 768, 512),
+            None
+        );
+        assert_eq!(
+            infer_representation(RustRecordKind::Struct, &natural, 64, 32),
+            Some(RecordRepresentation::default())
         );
     }
 

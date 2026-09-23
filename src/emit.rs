@@ -134,13 +134,18 @@ fn render_record(output: &mut String, record: &RustRecord) {
                 .alignment_bits()
                 .expect("validated concrete record has alignment")
                 / 8;
-            match record.packing_bits() {
-                Some(bits) => {
+            match (record.packing_bits(), record.forced_alignment_bits()) {
+                (Some(bits), _) => {
                     debug_assert_eq!(bits % 8, 0);
                     writeln!(output, "#[repr(C, packed({}))]", bits / 8)
                         .expect("writing into a String cannot fail");
                 }
-                None => output.push_str("#[repr(C)]\n"),
+                (None, Some(bits)) => {
+                    debug_assert_eq!(bits % 8, 0);
+                    writeln!(output, "#[repr(C, align({}))]", bits / 8)
+                        .expect("writing into a String cannot fail");
+                }
+                (None, None) => output.push_str("#[repr(C)]\n"),
             }
             let record_keyword = match record.kind() {
                 RustRecordKind::Struct => "struct",
@@ -447,6 +452,7 @@ mod tests {
             size_bits: Some(64),
             alignment_bits: Some(64),
             packing_bits: None,
+            forced_alignment_bits: None,
             source: metadata(union_id, "h4_union"),
         };
         let mut source = String::from("#![no_std]\n");
@@ -489,6 +495,7 @@ mod tests {
             size_bits: Some(40),
             alignment_bits: Some(8),
             packing_bits: Some(8),
+            forced_alignment_bits: None,
             source: metadata(packed_id, "h4_packed"),
         };
         render_record(&mut source, &packed);
@@ -536,6 +543,7 @@ mod tests {
             size_bits: Some(32),
             alignment_bits: Some(32),
             packing_bits: None,
+            forced_alignment_bits: None,
             source: metadata(flexible_id, "h4_flexible"),
         };
         render_record(&mut source, &flexible);
